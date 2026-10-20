@@ -1,0 +1,29 @@
+{
+  "name": "sistema-de-automatizaci-n-de-horarios",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Automatizacion-de-Horarios/Sistema-de-Automatizaci-n-de-Horarios.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Automatizacion-de-Horarios/Sistema-de-Automatizaci-n-de-Horarios/issues"
+  },
+  "homepage": "https://github.com/Automatizacion-de-Horarios/Sistema-de-Automatizaci-n-de-Horarios#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "mysql2": "^3.24.6",
+    "nodemon": "^3.1.14"
+  }
+}
