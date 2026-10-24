@@ -1,0 +1,41 @@
+name: Deploy a VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Desplegar en VPS
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.HOST_VPS }}
+          username: senati
+          key: ${{ secrets.KEY_PRIVADA_VPS }}
+          script: |
+            set -e
+
+            APP_DIR="/home/senati/apps/sistema-horarios"
+            REPO="https://github.com/Automatizacion-de-Horarios/Sistema_de_Automatizacion_y_Gestion_de_Horarios-Academicos.git"
+
+            mkdir -p "$APP_DIR"
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone "$REPO" "$APP_DIR"
+            else
+              cd "$APP_DIR"
+              git fetch origin
+              git reset --hard origin/main
+              git clean -fd
+            fi
+
+            echo "=================================="
+            echo "DEPLOY COMPLETADO"
+            echo "=================================="
+
+            cd "$APP_DIR"
+            git log -1 --oneline
