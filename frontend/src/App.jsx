@@ -237,7 +237,7 @@ function App() {
                 {/*    [ÁREA DE TRABAJO] EQUIPO 2: INFRAESTRUCTURA Y AMBIENTES       */}
                 {/* =============================================================== */}
                 <section id="aulas-view" className={`view ${activeView === 'aulas-view' ? 'active' : ''}`}>
-                    {/* El Equipo 2 colocará aquí el Módulo de Infraestructura, Aulas y Plazas Libres */}
+                    <AmbientesModulo />
                 </section>
                 {/* ===================== FIN SECCIÓN EQUIPO 2 ==================== */}
 
@@ -641,6 +641,285 @@ function CarrerasModulo({ activeView, setActiveView, periodoGlobal, triggerToast
                 })}
             </div>
         </section>
+    );
+}
+
+// ===============================================================
+//   MÓDULO AUTÓNOMO: INFRAESTRUCTURA, AULAS Y AMBIENTES (EQUIPO 2)
+// ===============================================================
+function AmbientesModulo() {
+    // Mock data basado en las tablas futuras: tipo_ambiente, ambientes, ambiente_apto_carreras
+    const [tipoAmbiente] = useState([
+        { id_tipo: 1, descripcion: 'Taller' },
+        { id_tipo: 2, descripcion: 'Laboratorio' },
+        { id_tipo: 3, descripcion: 'Teoría' },
+        { id_tipo: 4, descripcion: 'Auditorio' }
+    ]);
+
+    const [ambientes] = useState([
+        {
+            id_ambiente: 1,
+            codigo_ambiente: 'T-101',
+            id_tipo_ambiente: 1,
+            descripcion: 'Taller de Mecánica',
+            aforo_maximo: 20,
+            piso_ubicacion: '1er Piso',
+            pabellón: 'Pabellón A',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 2,
+            codigo_ambiente: 'LAB-201',
+            id_tipo_ambiente: 2,
+            descripcion: 'Laboratorio de Electrónica',
+            aforo_maximo: 16,
+            piso_ubicacion: '2do Piso',
+            pabellón: 'Pabellón B',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 3,
+            codigo_ambiente: 'T-102',
+            id_tipo_ambiente: 1,
+            descripcion: 'Taller de Soldadura',
+            aforo_maximo: 12,
+            piso_ubicacion: '1er Piso',
+            pabellón: 'Pabellón A',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 4,
+            codigo_ambiente: 'AULA-301',
+            id_tipo_ambiente: 3,
+            descripcion: 'Aula de Teoría - General',
+            aforo_maximo: 40,
+            piso_ubicacion: '3er Piso',
+            pabellón: 'Pabellón C',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 5,
+            codigo_ambiente: 'LAB-202',
+            id_tipo_ambiente: 2,
+            descripcion: 'Laboratorio de Redes',
+            aforo_maximo: 15,
+            piso_ubicacion: '2do Piso',
+            pabellón: 'Pabellón B',
+            estado: 'mantenimiento'
+        },
+        {
+            id_ambiente: 6,
+            codigo_ambiente: 'T-103',
+            id_tipo_ambiente: 1,
+            descripcion: 'Taller de Carpintería',
+            aforo_maximo: 18,
+            piso_ubicacion: '1er Piso',
+            pabellón: 'Pabellón A',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 7,
+            codigo_ambiente: 'AULA-302',
+            id_tipo_ambiente: 3,
+            descripcion: 'Aula Multimedia',
+            aforo_maximo: 35,
+            piso_ubicacion: '3er Piso',
+            pabellón: 'Pabellón C',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 8,
+            codigo_ambiente: 'AUD-001',
+            id_tipo_ambiente: 4,
+            descripcion: 'Auditorio Principal',
+            aforo_maximo: 150,
+            piso_ubicacion: 'Planta Baja',
+            pabellón: 'Pabellón Central',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 9,
+            codigo_ambiente: 'LAB-203',
+            id_tipo_ambiente: 2,
+            descripcion: 'Laboratorio de Computación',
+            aforo_maximo: 14,
+            piso_ubicacion: '2do Piso',
+            pabellón: 'Pabellón B',
+            estado: 'disponible'
+        }
+    ]);
+
+    const [filtroTipo, setFiltroTipo] = useState('todos');
+
+    // Umbral para considerar aforo restringido (menor a 18 personas)
+    const UMBRAL_AFRO_RESTRINGIDO = 18;
+
+    const getTipoAmbiente = (idTipo) => {
+        const tipo = tipoAmbiente.find(t => t.id_tipo === idTipo);
+        return tipo ? tipo.descripcion : 'Sin Tipo';
+    };
+
+    const ambientesFiltrados = filtroTipo === 'todos' 
+        ? ambientes 
+        : ambientes.filter(a => a.id_tipo_ambiente === parseInt(filtroTipo));
+
+    // Contadores por tipo
+    const contarPorTipo = (idTipo) => {
+        if (idTipo === 'todos') return ambientes.length;
+        return ambientes.filter(a => a.id_tipo_ambiente === parseInt(idTipo)).length;
+    };
+
+    const totalAforos = ambientes.reduce((sum, a) => sum + a.aforo_maximo, 0);
+    const ambientesDisponibles = ambientes.filter(a => a.estado === 'disponible').length;
+    const ambientesRestringidos = ambientes.filter(a => a.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO).length;
+
+    return (
+        <>
+            <header className="view-header">
+                <div className="header-title-area">
+                    <h1>Infraestructura y Ambientes</h1>
+                    <p className="subtitle">Gestión de aulas, talleres, laboratorios y espacios académicos</p>
+                </div>
+            </header>
+
+            {/* Resumen de Infraestructura */}
+            <div className="ambientes-resumen">
+                <div className="resumen-card">
+                    <div className="resumen-icon">
+                        <i className="fas fa-door-open"></i>
+                    </div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor">{ambientes.length}</span>
+                        <span className="resumen-label">Total de Ambientes</span>
+                    </div>
+                </div>
+                <div className="resumen-card">
+                    <div className="resumen-icon">
+                        <i className="fas fa-check-circle"></i>
+                    </div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor">{ambientesDisponibles}</span>
+                        <span className="resumen-label">Disponibles</span>
+                    </div>
+                </div>
+                <div className="resumen-card">
+                    <div className="resumen-icon">
+                        <i className="fas fa-users"></i>
+                    </div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor">{totalAforos}</span>
+                        <span className="resumen-label">Capacidad Total</span>
+                    </div>
+                </div>
+                <div className="resumen-card">
+                    <div className="resumen-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
+                        <i className="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor" style={{ color: '#b45309' }}>{ambientesRestringidos}</span>
+                        <span className="resumen-label">Aforo Restringido (&lt;{UMBRAL_AFRO_RESTRINGIDO})</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Filtros rápidos por tipo de ambiente */}
+            <div className="ambientes-filtros">
+                <button
+                    className={`ambiente-filter-chip ${filtroTipo === 'todos' ? 'active' : ''}`}
+                    onClick={() => setFiltroTipo('todos')}
+                >
+                    <i className="fas fa-th"></i>
+                    Todos
+                    <span className="chip-count">{contarPorTipo('todos')}</span>
+                </button>
+                {tipoAmbiente.map(tipo => (
+                    <button
+                        key={tipo.id_tipo}
+                        className={`ambiente-filter-chip ${filtroTipo === tipo.id_tipo.toString() ? 'active' : ''}`}
+                        onClick={() => setFiltroTipo(tipo.id_tipo.toString())}
+                    >
+                        <i className={tipo.descripcion === 'Taller' ? 'fas fa-wrench' : 
+                                      tipo.descripcion === 'Laboratorio' ? 'fas fa-flask' :
+                                      tipo.descripcion === 'Teoría' ? 'fas fa-chalkboard-teacher' :
+                                      'fas fa-users'}></i>
+                        {tipo.descripcion}
+                        <span className="chip-count">{contarPorTipo(tipo.id_tipo)}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Grilla de Aulas / Ambientes */}
+            <div className="ambientes-grid">
+                {ambientesFiltrados.map(ambiente => {
+                    const esAforoRestringido = ambiente.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO;
+                    return (
+                        <div 
+                            key={ambiente.id_ambiente} 
+                            className={`aula-card ${esAforoRestringido ? 'aforo-restringido' : ''}`}
+                        >
+                            <div className="aula-card-header">
+                                <div className="aula-codigo">
+                                    <i className="far fa-building"></i>
+                                    {ambiente.codigo_ambiente}
+                                </div>
+                                <span className="aula-tipo-badge">
+                                    {getTipoAmbiente(ambiente.id_tipo_ambiente)}
+                                </span>
+                            </div>
+
+                            <div style={{ marginBottom: '10px', fontSize: '13px', color: 'var(--text-normal)', fontWeight: '500' }}>
+                                {ambiente.descripcion}
+                            </div>
+
+                            <div className="aula-info-grid">
+                                <div className="aula-info-item">
+                                    <span className="aula-info-label">Pabellón</span>
+                                    <span className="aula-info-value">
+                                        <i className="fas fa-map-marker-alt" style={{ color: 'var(--text-muted)', marginRight: '4px' }}></i>
+                                        {ambiente.pabellón}
+                                    </span>
+                                </div>
+                                <div className="aula-info-item">
+                                    <span className="aula-info-label">Ubicación</span>
+                                    <span className="aula-info-value">{ambiente.piso_ubicacion}</span>
+                                </div>
+                            </div>
+
+                            <div className="aula-aforo">
+                                <span className="aula-aforo-label">
+                                    <i className="fas fa-users"></i>
+                                    Aforo Máximo
+                                </span>
+                                <span className="aula-aforo-valor">{ambiente.aforo_maximo} personas</span>
+                            </div>
+
+                            {esAforoRestringido && (
+                                <div className="aula-alerta-restringido">
+                                    <i className="fas fa-exclamation-circle"></i>
+                                    <span>Aforo Restringido - Capacidad Limitada</span>
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: '12px' }}>
+                                <span className={`aula-estado ${ambiente.estado}`}>
+                                    <span className="estado-dot"></span>
+                                    {ambiente.estado === 'disponible' ? 'Disponible' : 
+                                     ambiente.estado === 'mantenimiento' ? 'En Mantenimiento' : 
+                                     'Ocupado'}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {ambientesFiltrados.length === 0 && (
+                <div className="workspace-card">
+                    <h2>No hay ambientes</h2>
+                    <p>No se encontraron ambientes con el filtro seleccionado.</p>
+                </div>
+            )}
+        </>
     );
 }
 

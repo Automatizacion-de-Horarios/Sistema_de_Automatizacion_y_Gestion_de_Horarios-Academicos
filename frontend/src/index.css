@@ -320,6 +320,287 @@ body {
 /*          [ESTILOS DEL EQUIPO 2]: INFRAESTRUCTURA Y AMBIENTES               */
 /* ========================================================================== */
 
+/* --- Filtros rápidos por tipo de ambiente --- */
+.ambientes-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.ambiente-filter-chip {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--bg-main);
+    color: var(--text-normal);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ambiente-filter-chip:hover {
+    background: var(--border-light);
+}
+
+.ambiente-filter-chip.active {
+    background: var(--active-bg);
+    color: var(--active-color);
+    border-color: var(--active-color);
+    font-weight: 600;
+}
+
+.ambiente-filter-chip .chip-count {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--active-color);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* --- Grilla de Aulas / Ambientes --- */
+.ambientes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* --- Tarjetas de Aulas --- */
+.aula-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 18px 20px;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.aula-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    border-color: #cbd5e1;
+}
+
+/* Alerta visual para aforo restringido - resaltar en amarillo */
+.aula-card.aforo-restringido {
+    background: #fffbeb;
+    border: 2px solid #f59e0b;
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2), var(--shadow-sm);
+}
+
+.aula-card.aforo-restringido::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.aula-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 10px;
+}
+
+.aula-codigo {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.aula-codigo i {
+    color: var(--senati-blue);
+    font-size: 16px;
+}
+
+.aula-tipo-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--active-bg);
+    color: var(--active-color);
+    white-space: nowrap;
+}
+
+.aula-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 16px;
+    margin-bottom: 12px;
+}
+
+.aula-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.aula-info-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.aula-info-value {
+    font-size: 13px;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.aula-aforo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+    margin-top: 12px;
+}
+
+.aula-aforo-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.aula-aforo-valor {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.aula-card.aforo-restringido .aula-aforo-valor {
+    color: #b45309;
+}
+
+.aula-alerta-restringido {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 6px 10px;
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: var(--radius-md);
+    font-size: 11px;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.aula-alerta-restringido i {
+    color: #d97706;
+    font-size: 12px;
+}
+
+.aula-estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.aula-estado.disponible {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.aula-estado.mantenimiento {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.aula-estado.ocupado {
+    background: #e0f2fe;
+    color: #075985;
+}
+
+.estado-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.aula-estado.disponible .estado-dot {
+    background: #22c55e;
+}
+
+.aula-estado.mantenimiento .estado-dot {
+    background: #ef4444;
+}
+
+.aula-estado.ocupado .estado-dot {
+    background: #0ea5e9;
+}
+
+/* --- Resumen de Infraestructura --- */
+.ambientes-resumen {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.resumen-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.resumen-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    background: var(--active-bg);
+    color: var(--active-color);
+}
+
+.resumen-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.resumen-valor {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.resumen-label {
+    font-size: 11px;
+    color: var(--text-muted);
+}
 
 /* ========================================================================== */
 /*          [ESTILOS DEL EQUIPO 3]: CARRERAS, MALLAS Y FERIADOS               */
