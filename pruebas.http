@@ -1,0 +1,112 @@
+### Variables
+@baseUrl = http://localhost:3000/api/docentes
+@usuario = admin_test
+
+### 1. Listar todos los docentes
+GET {{baseUrl}}
+
+### 2. Buscar docente por texto (?q=)
+GET {{baseUrl}}?q=HUANCA
+
+### 3. Obtener catálogo de cursos
+GET {{baseUrl}}/catalogo-cursos
+
+### 4. Obtener catálogo de carreras
+GET {{baseUrl}}/catalogo-carreras
+
+### 5. Crear docente exitosamente (201)
+POST {{baseUrl}}
+Content-Type: application/json
+x-usuario: {{usuario}}
+
+{
+  "codigo_instructor": "999999999",
+  "nombre_completo": "perez gomez, juan carlos",
+  "especialidad": "bases de datos"
+}
+
+### 6. Error: Crear docente con ID repetido (409)
+POST {{baseUrl}}
+Content-Type: application/json
+x-usuario: {{usuario}}
+
+{
+  "codigo_instructor": "999999999",
+  "nombre_completo": "otro docente",
+  "especialidad": "redes"
+}
+
+### 7. Error: Crear docente con ID de 8 dígitos (400)
+POST {{baseUrl}}
+Content-Type: application/json
+x-usuario: {{usuario}}
+
+{
+  "codigo_instructor": "12345678",
+  "nombre_completo": "TEST ERROR"
+}
+
+### 8. Obtener docente por ID (ID 1)
+GET {{baseUrl}}/1
+
+### 9. Actualizar datos de docente (ID 1)
+PUT {{baseUrl}}/1
+Content-Type: application/json
+x-usuario: {{usuario}}
+
+{
+  "nombre_completo": "HUANCA CORONADO, DANILO MARTIN",
+  "especialidad": "ING CIBERSEGURIDAD AVANZADA",
+  "horas_semanales_contrato": 20
+}
+
+### 10. Cambiar estado de docente (ID 1)
+PATCH {{baseUrl}}/1/estado
+Content-Type: application/json
+x-usuario: {{usuario}}
+
+{
+  "estado": "V"
+}
+
+### 11. Obtener auditoría (ID 1)
+GET {{baseUrl}}/1/auditoria
+
+### 12. Obtener disponibilidad (ID 1)
+GET {{baseUrl}}/1/disponibilidad
+
+### 13. Actualizar y fusionar franjas de disponibilidad (ID 1)
+PUT {{baseUrl}}/1/disponibilidad
+Content-Type: application/json
+x-usuario: {{usuario}}
+
+{
+  "franjas": [
+    { "dia_semana": 1, "hora_inicio": "08:00", "hora_fin": "10:00" },
+    { "dia_semana": 1, "hora_inicio": "09:30", "hora_fin": "11:00" },
+    { "dia_semana": 2, "hora_inicio": "14:00", "hora_fin": "18:00" }
+  ]
+}
+
+### 14. Error: Franja con fin menor que inicio (400)
+PUT {{baseUrl}}/1/disponibilidad
+Content-Type: application/json
+x-usuario: {{usuario}}
+
+{
+  "franjas": [
+    { "dia_semana": 1, "hora_inicio": "10:00", "hora_fin": "08:00" }
+  ]
+}
+
+### 15. Actualizar competencias de docente (ID 1)
+PUT {{baseUrl}}/1/competencias
+Content-Type: application/json
+x-usuario: {{usuario}}
+
+{
+  "curso_ids": [1, 2, 3]
+}
+
+### 16. Consultar docentes aptos para un curso
+GET {{baseUrl}}/aptos?curso_id=1

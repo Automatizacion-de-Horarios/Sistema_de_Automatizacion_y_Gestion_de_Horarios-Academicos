@@ -1,14 +1,21 @@
 const mysql = require('mysql2');
+// src/config/db.js
 require('dotenv').config();
+const { Pool } = require('pg');
 
-const db = mysql.createPool({
-    host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DB,
-    port: process.env.MYSQL_PORT,
-    waitForConnections: true,
-    connectionLimit: 10
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
-module.exports = db.promise();
+pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+        console.error('Error al conectar a la base de datos PostgreSQL:', err.message);
+    } else {
+        console.log('Conexión exitosa a PostgreSQL en Supabase:', res.rows[0].now);
+    }
+});
+
+module.exports = pool;

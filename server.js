@@ -1,18 +1,37 @@
+// server.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const docenteRoutes = require('./src/routes/docenteRoutes');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.CORS_ORIGIN || '*'
+}));
 app.use(express.json());
 
-// Ruta base de prueba
-app.get('/', (req, res) => {
-    res.json({ mensaje: "API Sistema de Automatización de Horarios corriendo" });
+// Montaje de rutas del módulo
+app.use('/api/docentes', docenteRoutes);
+
+// Manejo de rutas inexistentes (404)
+app.use((req, res, next) => {
+    res.status(404).json({
+        ok: false,
+        mensaje: 'Ruta no encontrada en el módulo de docentes'
+    });
 });
 
-const PORT = process.env.PORT || 3000;
+// Manejo de errores globales (500)
+app.use((err, req, res, next) => {
+    console.error('Error no controlado:', err.stack);
+    res.status(500).json({
+        ok: false,
+        mensaje: 'Error interno del servidor'
+    });
+});
+
 app.listen(PORT, () => {
-    console.log(`Backend corriendo en http://localhost:${PORT}`);
+    console.log(`Servidor backend corriendo en el puerto ${PORT}`);
 });

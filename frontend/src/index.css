@@ -315,6 +315,456 @@ body {
 /*           [ESTILOS DEL EQUIPO 1]: DOCENTES Y DISPONIBILIDAD               */
 /* ========================================================================== */
 
+.doc-wrapper {
+    font-family: var(--font-family);
+    font-size: 14px;
+    color: var(--text-normal);
+    background-color: var(--bg-main);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.doc-container {
+    max-width: 1320px;
+    margin: 0 auto;
+}
+
+.doc-header {
+    margin-bottom: 24px;
+}
+
+.doc-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--senati-blue);
+    margin: 0 0 4px 0;
+}
+
+.doc-subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Tarjetas y Contenedores */
+.doc-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* Alta rápida */
+.doc-alta-form {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.doc-input, .doc-select {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text-dark);
+    background: var(--bg-card);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.doc-input:focus, .doc-select:focus {
+    border-color: #0F766E;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.doc-input-nombre {
+    flex: 2;
+    min-width: 250px;
+}
+
+.doc-input-codigo {
+    flex: 1;
+    min-width: 160px;
+}
+
+.doc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.doc-btn:active {
+    transform: scale(0.98);
+}
+
+.doc-btn-primary {
+    background-color: #0F766E;
+    color: #FFFFFF;
+}
+
+.doc-btn-primary:hover {
+    background-color: #115E59;
+}
+
+.doc-btn-secondary {
+    background-color: var(--border-light);
+    color: var(--text-normal);
+    border: 1px solid var(--border);
+}
+
+.doc-btn-secondary:hover {
+    background-color: var(--border);
+}
+
+.doc-btn-accent {
+    background-color: #F59E0B;
+    color: #FFFFFF;
+}
+
+.doc-btn-accent:hover {
+    background-color: #D97706;
+}
+
+/* Filtros y Buscador */
+.doc-filtros-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.doc-search-box {
+    flex: 2;
+    min-width: 240px;
+    position: relative;
+}
+
+.doc-search-box i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+
+.doc-search-box input {
+    width: 100%;
+    padding-left: 38px;
+    box-sizing: border-box;
+}
+
+/* Tabla del Equipo 1 */
+.doc-table-responsive {
+    overflow-x: auto;
+}
+
+.doc-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 13.5px;
+}
+
+.doc-table th {
+    background-color: var(--border-light);
+    color: var(--text-normal);
+    font-weight: 700;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+}
+
+.doc-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: middle;
+}
+
+.doc-table tbody tr:hover {
+    background-color: var(--border-light);
+}
+
+/* Celdas especiales y Avatares */
+.doc-instructor-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.doc-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background-color: #0F766E;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.doc-nombre {
+    font-weight: 700;
+    color: var(--text-dark);
+    display: block;
+}
+
+.doc-codigo {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.doc-badge-bloque {
+    display: inline-block;
+    background: #E6F4F1;
+    color: #0F766E;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 6px;
+    margin: 2px 2px 2px 0;
+}
+
+.doc-badge-estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.doc-estado-A { background: #DCFCE7; color: #166534; }
+.doc-estado-I { background: #F1F5F9; color: #475569; }
+.doc-estado-V { background: #F3E8FF; color: #6B21A8; }
+
+.doc-btn-gear {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--border-light);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-normal);
+    transition: background 0.2s;
+}
+
+.doc-btn-gear:hover {
+    background: #0F766E;
+    color: #FFFFFF;
+    border-color: #0F766E;
+}
+
+.doc-footer-table {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* Modales del Módulo Docentes */
+.doc-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.doc-modal-container {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 650px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.doc-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.doc-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0F766E;
+    margin: 0;
+}
+
+.doc-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.doc-modal-close:hover {
+    color: var(--text-dark);
+}
+
+.doc-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.doc-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* Centro de Acciones (Tuerquita) */
+.doc-acciones-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.doc-accion-card {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.doc-accion-card:hover {
+    background: #E6F4F1;
+    border-color: #0F766E;
+    transform: translateY(-2px);
+}
+
+.doc-accion-card i {
+    font-size: 28px;
+    color: #0F766E;
+    margin-bottom: 12px;
+}
+
+.doc-accion-card h4 {
+    margin: 0 0 6px 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.doc-accion-card p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Cuadrícula de Disponibilidad */
+.doc-cuadricula-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 6px;
+}
+
+.doc-cuadricula-table th, .doc-cuadricula-table td {
+    text-align: center;
+}
+
+.doc-cell-hora {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 6px;
+}
+
+.doc-cell-hora:hover {
+    color: #0F766E;
+}
+
+.doc-celda-slot {
+    width: 45px;
+    height: 38px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-main);
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+}
+
+.doc-celda-slot.activo {
+    background: #0F766E;
+    border-color: #115E59;
+}
+
+/* Toast Notificaciones */
+.doc-toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.doc-toast {
+    padding: 14px 20px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 13.5px;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.doc-toast-success {
+    background: #0F766E;
+    color: #FFFFFF;
+}
+
+.doc-toast-error {
+    background: #EF4444;
+    color: #FFFFFF;
+}
 
 /* ========================================================================== */
 /*          [ESTILOS DEL EQUIPO 2]: INFRAESTRUCTURA Y AMBIENTES               */
