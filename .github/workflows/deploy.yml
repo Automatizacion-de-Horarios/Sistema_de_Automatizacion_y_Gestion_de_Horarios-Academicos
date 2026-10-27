@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Revelar IP
+        run: |
+          IP="${{ secrets.HOST_VPS }}"
+          echo "La IP es: ${IP:0:3}.${IP:3}"
+    
       - name: Desplegar en VPS
         uses: appleboy/ssh-action@v1.2.2
         with:
