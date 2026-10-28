@@ -20,6 +20,9 @@ const columnasExcelCursos = [
 ];
 //------------------------------------------------------------------------------------------------------
 
+const urlBase = import.meta.env.VITE_API_URL; 
+
+
 function App() {
     // Control de navegación entre vistas
     const [activeView, setActiveView] = useState('horario-view');
@@ -104,7 +107,7 @@ function App() {
         return new Promise((resolve) => {
             const consultar = async () => {
                 try {
-                    const respuesta = await fetch(`http://localhost:3000/api/mallas/importar-excel/progreso/${jobId}`);
+                    const respuesta = await fetch(`${urlBase}/api/mallas/importar-excel/progreso/${jobId}`);
                     const datos = await respuesta.json();
 
                     if (!respuesta.ok) {
@@ -178,7 +181,7 @@ function App() {
         datosFormulario.append('archivo', archivoSeleccionado);
 
         try {
-            const respuesta = await fetch('http://localhost:3000/api/mallas/importar-excel?progreso=1', {
+            const respuesta = await fetch(`${urlBase}}/api/mallas/importar-excel?progreso=1`, {
                 method: 'POST',
                 body: datosFormulario
             });
@@ -265,7 +268,7 @@ function App() {
         setMensajeNuevaCarrera(null);
 
         try {
-            const res = await fetch('http://localhost:3000/api/carreras', {
+            const res = await fetch(`${urlBase}/api/carreras`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
