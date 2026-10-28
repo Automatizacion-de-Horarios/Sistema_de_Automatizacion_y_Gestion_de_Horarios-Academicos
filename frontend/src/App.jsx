@@ -525,9 +525,6 @@ function App() {
                 />
                     
                 
-                <section id="feriados-view" className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}>
-                    {/* El Equipo 3 colocará aquí el Módulo de Calendario y Fechas Inamovibles */}
-                </section>
 
                 
                 {/* ===================== FIN SECCIÓN EQUIPO 3 ==================== */}
@@ -548,6 +545,13 @@ function App() {
                 <section id="aulas-view" className={`view ${activeView === 'aulas-view' ? 'active' : ''}`}>
                     <AmbientesModulo />
                 </section>
+
+
+
+                <section id="feriados-view" className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}>
+                    <FeriadosModulo triggerToast={triggerToast} />
+                </section>
+
                 {/* ===================== FIN SECCIÓN EQUIPO 2 ==================== */}
 
                 {/* =============================================================== */}
@@ -1427,6 +1431,339 @@ function CarrerasModulo({ activeView, setActiveView, triggerToast }) {
                 })}
             </div>
         </section>
+    );
+}
+
+// ===============================================================
+//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2)
+// ===============================================================
+function FeriadosModulo({ triggerToast }) {
+    // 1. Iniciamos con un arreglo vacío; los datos vendrán de la base de datos
+    const [feriados, setFeriados] = useState([]);
+
+    const [mostrarModal, setMostrarModal] = useState(false);
+    const [nuevoFeriado, setNuevoFeriado] = useState({
+        fecha: '',
+        descripcion: '',
+        estado: 'activo'
+    });
+
+    // 2. CONEXIÓN CON BD: Cargar feriados al montar el componente (GET)
+    useEffect(() => {
+        const obtenerFeriadosBD = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/feriados');
+                if (!response.ok) throw new Error('Error al obtener feriados');
+                const data = await response.json();
+                setFeriados(data);
+            } catch (error) {
+                console.error(error);
+                if (typeof triggerToast === 'function') {
+                    triggerToast('No se pudo conectar con la base de datos.');
+                }
+            }
+        };
+        obtenerFeriadosBD();
+    }, []);
+
+    const formatearFecha = (fechaStr) => {
+        // Limpiamos la hora si viene con formato ISO de la BD
+        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+        const partes = soloFecha.split('-'); // [año, mes, día]
+        if (partes.length === 3) {
+            // Mostramos solo el Día y el Mes de manera legible, indicando que se repite anualmente
+            const fechaTemp = new Date(soloFecha + 'T00:00:00');
+            const mesNombre = fechaTemp.toLocaleDateString('es-PE', { month: 'long' });
+            return `${partes[2]} de ${mesNombre} (Todos los años)`;
+        }
+        return '';
+    };
+
+    const obtenerDiaMes = (fechaStr) => {
+        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+        const fecha = new Date(soloFecha + 'T00:00:00');
+        return {
+            dia: fecha.toLocaleDateString('es-PE', { day: '2-digit' }),
+            mes: fecha.toLocaleDateString('es-PE', { month: 'short' }).toUpperCase().replace('.', '')
+        };
+    };
+
+    const feriadosOrdenados = [...feriados].sort((a, b) => {
+        const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; // Extrae 'MM-DD'
+        const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; // Extrae 'MM-DD'
+        return fechaA.localeCompare(fechaB);
+    });
+
+    const totalFeriados = feriados.length;
+    const feriadosActivos = feriados.filter(f => f.estado === 'activo').length;
+    const feriadosInhabilitados = feriados.filter(f => f.estado === 'inhabilitado').length;
+
+    // 3. CONEXIÓN CON BD: Cambiar estado en la base de datos (PUT)
+    const toggleEstadoFeriado = async (idFeriado) => {
+        const feriadoActual = feriados.find(f => f.id_feriado === idFeriado);
+        if (!feriadoActual) return;
+
+        const nuevoEstado = feriadoActual.estado === 'activo' ? 'inhabilitado' : 'activo';
+
+        try {
+            const response = await fetch(`http://localhost:3000/api/feriados/${idFeriado}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fecha: feriadoActual.fecha.split('T')[0],
+                    descripcion: feriadoActual.descripcion,
+                    estado: nuevoEstado
+                })
+            });
+
+            if (!response.ok) throw new Error('Error al actualizar estado');
+
+            // Actualizamos el estado localmente solo si el backend respondió con éxito
+            setFeriados(prev =>
+                prev.map(feriado => {
+                    if (feriado.id_feriado === idFeriado) {
+                        return { ...feriado, estado: nuevoEstado };
+                    }
+                    return feriado;
+                })
+            );
+
+            if (typeof triggerToast === 'function') {
+                triggerToast(
+                    nuevoEstado === 'activo'
+                        ? `Feriado "${feriadoActual.descripcion}" activado correctamente.`
+                        : `Feriado "${feriadoActual.descripcion}" inhabilitado correctamente.`
+                );
+            }
+        } catch (error) {
+            console.error(error);
+            if (typeof triggerToast === 'function') {
+                triggerToast('Error al actualizar el estado en la base de datos.');
+            }
+        }
+    };
+
+    const abrirModal = () => {
+        setNuevoFeriado({
+            fecha: '',
+            descripcion: '',
+            estado: 'activo'
+        });
+        setMostrarModal(true);
+    };
+
+    const cerrarModal = () => {
+        setMostrarModal(false);
+    };
+
+    // 4. CONEXIÓN CON BD: Guardar nuevo feriado en la base de datos (POST)
+    const agregarFeriado = async () => {
+        if (!nuevoFeriado.fecha) {
+            if (typeof triggerToast === 'function') {
+                triggerToast('Debe seleccionar una fecha para el feriado.');
+            }
+            return;
+        }
+        if (!nuevoFeriado.descripcion.trim()) {
+            if (typeof triggerToast === 'function') {
+                triggerToast('Debe ingresar una descripción para el feriado.');
+            }
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:3000/api/feriados', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fecha: nuevoFeriado.fecha,
+                    descripcion: nuevoFeriado.descripcion.trim(),
+                    estado: nuevoFeriado.estado
+                })
+            });
+
+            if (!response.ok) throw new Error('Error al registrar el feriado');
+
+            const feriadoCreado = await response.json();
+
+            // Añadimos el feriado devuelto por la BD (con su ID real autoincrementable)
+            setFeriados(prev => [...prev, feriadoCreado]);
+
+            if (typeof triggerToast === 'function') {
+                triggerToast('Feriado registrado correctamente en la base de datos.');
+            }
+
+            setMostrarModal(false);
+        } catch (error) {
+            console.error(error);
+            if (typeof triggerToast === 'function') {
+                triggerToast('Error al guardar el feriado en el servidor.');
+            }
+        }
+    };
+
+    const manejarCambioInput = (e) => {
+        const { name, value } = e.target;
+        setNuevoFeriado(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    return (
+        <>
+            <header className="feriados-header">
+                <div className="feriados-header-info">
+                    <h1>Gestión de Feriados</h1>
+                    <p className="subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
+                </div>
+                <div className="feriados-actions">
+                    <button className="btn btn-primary" onClick={abrirModal}>
+                        <i className="fas fa-plus"></i>
+                        Nuevo Feriado
+                    </button>
+                </div>
+            </header>
+
+            <div className="feriados-resumen">
+                <div className="feriado-resumen-card">
+                    <div className="feriado-resumen-icon total">
+                        <i className="fas fa-calendar-day"></i>
+                    </div>
+                    <div className="feriado-resumen-info">
+                        <span className="feriado-resumen-valor">{totalFeriados}</span>
+                        <span className="feriado-resumen-label">Total de Feriados</span>
+                    </div>
+                </div>
+                <div className="feriado-resumen-card">
+                    <div className="feriado-resumen-icon activos">
+                        <i className="fas fa-check-circle"></i>
+                    </div>
+                    <div className="feriado-resumen-info">
+                        <span className="feriado-resumen-valor">{feriadosActivos}</span>
+                        <span className="feriado-resumen-label">Activos</span>
+                    </div>
+                </div>
+                <div className="feriado-resumen-card">
+                    <div className="feriado-resumen-icon inhabilitados">
+                        <i className="fas fa-ban"></i>
+                    </div>
+                    <div className="feriado-resumen-info">
+                        <span className="feriado-resumen-valor">{feriadosInhabilitados}</span>
+                        <span className="feriado-resumen-label">Inhabilitados</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="feriados-lista">
+                {feriadosOrdenados.map(feriado => {
+                    const { dia, mes } = obtenerDiaMes(feriado.fecha);
+                    const esInhabilitado = feriado.estado === 'inhabilitado';
+                    return (
+                        <div
+                            key={feriado.id_feriado}
+                            className={`feriado-card ${esInhabilitado ? 'inhabilitado' : ''}`}
+                        >
+                            <div className="feriado-card-info">
+                                <div className="feriado-fecha-badge">
+                                    <span className="feriado-fecha-dia">{dia}</span>
+                                    <span className="feriado-fecha-mes">{mes}</span>
+                                </div>
+                                <div className="feriado-detalles">
+                                    <span className="feriado-descripcion">{feriado.descripcion}</span>
+                                    <span className="feriado-fecha-completa">
+                                        <i className="far fa-calendar-alt"></i>
+                                        {formatearFecha(feriado.fecha)}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="feriado-acciones">
+                                <span className={`feriado-estado-badge ${feriado.estado}`}>
+                                    <span className="feriado-estado-dot"></span>
+                                    {feriado.estado === 'activo' ? 'Activo' : 'Inhabilitado'}
+                                </span>
+                                <button
+                                    className={`btn-toggle-estado ${feriado.estado === 'activo' ? 'desactivar' : 'activar'}`}
+                                    onClick={() => toggleEstadoFeriado(feriado.id_feriado)}
+                                >
+                                    <i className={`fas ${feriado.estado === 'activo' ? 'fa-toggle-off' : 'fa-toggle-on'}`}></i>
+                                    {feriado.estado === 'activo' ? 'Inhabilitar' : 'Activar'}
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {feriadosOrdenados.length === 0 && (
+                <div className="workspace-card">
+                    <h2>No hay feriados registrados</h2>
+                    <p>Agrega un nuevo feriado utilizando el botón "Nuevo Feriado".</p>
+                </div>
+            )}
+
+            <div className={`feriado-modal-backdrop ${mostrarModal ? 'active' : ''}`}>
+                <div className="feriado-modal">
+                    <div className="feriado-modal-header">
+                        <div className="feriado-modal-title">
+                            <i className="fas fa-flag"></i>
+                            Registrar Nuevo Feriado
+                        </div>
+                        <button className="feriado-modal-close" onClick={cerrarModal}>
+                            <i className="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div className="feriado-modal-body">
+                        <div className="feriado-form-group">
+                            <label htmlFor="feriado-fecha">Fecha</label>
+                            <input
+                                id="feriado-fecha"
+                                type="date"
+                                className="feriado-input"
+                                name="fecha"
+                                value={nuevoFeriado.fecha}
+                                onChange={manejarCambioInput}
+                            />
+                        </div>
+                        <div className="feriado-form-group">
+                            <label htmlFor="feriado-descripcion">Descripción</label>
+                            <input
+                                id="feriado-descripcion"
+                                type="text"
+                                className="feriado-input"
+                                name="descripcion"
+                                placeholder="Ej. Día de la Independencia"
+                                value={nuevoFeriado.descripcion}
+                                onChange={manejarCambioInput}
+                                maxLength={255}
+                            />
+                        </div>
+                        <div className="feriado-form-group">
+                            <label htmlFor="feriado-estado">Estado inicial</label>
+                            <select
+                                id="feriado-estado"
+                                className="feriado-input"
+                                name="estado"
+                                value={nuevoFeriado.estado}
+                                onChange={manejarCambioInput}
+                            >
+                                <option value="activo">Activo</option>
+                                <option value="inhabilitado">Inhabilitado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="feriado-modal-footer">
+                        <button className="btn btn-secondary" onClick={cerrarModal}>
+                            Cancelar
+                        </button>
+                        <button className="btn btn-primary" onClick={agregarFeriado}>
+                            <i className="fas fa-save"></i>
+                            Guardar Feriado
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
     );
 }
 
