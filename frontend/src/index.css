@@ -398,159 +398,221 @@ body {
     border-color: #cbd5e1;
 }
 
+/* --- Filtros rápidos por tipo de ambiente --- */
+.ambientes-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.ambiente-filter-chip {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--bg-main);
+    color: var(--text-normal);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ambiente-filter-chip:hover {
+    background: var(--border-light);
+}
+
 .ambiente-filter-chip.active {
-    background: #0284c7;
-    color: #ffffff;
-    border-color: #0284c7;
+    background: var(--active-bg);
+    color: var(--active-color);
+    border-color: var(--active-color);
+    font-weight: 600;
 }
 
-.chip-count {
-    background: #e2e8f0;
-    color: #475569;
+.ambiente-filter-chip .chip-count {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--active-color);
+    padding: 2px 8px;
+    border-radius: 12px;
     font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: 700;
+    font-weight: 600;
 }
 
-.ambiente-filter-chip.active .chip-count {
-    background: rgba(255, 255, 255, 0.2);
-    color: #ffffff;
-}
-
-/* Grilla de Aulas */
+/* --- Grilla de Aulas / Ambientes --- */
 .ambientes-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
+/* --- Tarjetas de Aulas --- */
 .aula-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s, box-shadow 0.2s;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 18px 20px;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .aula-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    border-color: #cbd5e1;
 }
 
+/* Alerta visual para aforo restringido - resaltar en amarillo */
 .aula-card.aforo-restringido {
-    border-left: 4px solid #f59e0b; /* Borde naranja de advertencia */
+    background: #fffbeb;
+    border: 2px solid #f59e0b;
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2), var(--shadow-sm);
+}
+
+.aula-card.aforo-restringido::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
 }
 
 .aula-card-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 12px;
+    gap: 10px;
 }
 
 .aula-codigo {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--text-dark);
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
 .aula-codigo i {
-    color: #0284c7;
+    color: var(--senati-blue);
+    font-size: 16px;
 }
 
 .aula-tipo-badge {
-    background: #f1f5f9;
-    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    background: var(--active-bg);
+    color: var(--active-color);
+    white-space: nowrap;
 }
 
-/* Info del Aula */
 .aula-info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    background: #f8fafc;
-    padding: 12px;
-    border-radius: 8px;
-    margin-top: 16px;
-    margin-bottom: 16px;
+    gap: 10px 16px;
+    margin-bottom: 12px;
 }
 
 .aula-info-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
 }
 
 .aula-info-label {
     font-size: 11px;
-    color: #64748b;
+    color: var(--text-muted);
+    font-weight: 500;
     text-transform: uppercase;
-    font-weight: 600;
+    letter-spacing: 0.3px;
 }
 
 .aula-info-value {
     font-size: 13px;
-    color: #334155;
-    font-weight: 500;
+    color: var(--text-dark);
+    font-weight: 600;
 }
 
-/* Aforo y Alertas */
 .aula-aforo {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding-top: 16px;
-    border-top: 1px solid #e2e8f0;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+    margin-top: 12px;
 }
 
 .aula-aforo-label {
-    font-size: 13px;
-    color: #475569;
+    font-size: 12px;
+    color: var(--text-muted);
     display: flex;
     align-items: center;
     gap: 6px;
-    font-weight: 500;
 }
 
 .aula-aforo-valor {
     font-size: 14px;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-dark);
+}
+
+.aula-card.aforo-restringido .aula-aforo-valor {
+    color: #b45309;
 }
 
 .aula-alerta-restringido {
-    background: #fef3c7;
-    color: #b45309;
-    font-size: 12px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    margin-top: 12px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-weight: 500;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 6px 10px;
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: var(--radius-md);
+    font-size: 11px;
+    font-weight: 600;
+    color: #92400e;
 }
 
-/* Estados (Disponible, Mantenimiento, Ocupado) */
+.aula-alerta-restringido i {
+    color: #d97706;
+    font-size: 12px;
+}
+
 .aula-estado {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 4px 10px;
+    padding: 3px 10px;
     border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.aula-estado.disponible {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.aula-estado.mantenimiento {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.aula-estado.ocupado {
+    background: #e0f2fe;
+    color: #075985;
 }
 
 .estado-dot {
@@ -559,220 +621,63 @@ body {
     border-radius: 50%;
 }
 
-.aula-estado.disponible { background: #dcfce7; color: #166534; }
-.aula-estado.disponible .estado-dot { background: #16a34a; }
-
-.aula-estado.mantenimiento { background: #fee2e2; color: #991b1b; }
-.aula-estado.mantenimiento .estado-dot { background: #dc2626; }
-
-.aula-estado.ocupado { background: #ffedd5; color: #c2410c; }
-.aula-estado.ocupado .estado-dot { background: #ea580c; }
-
-/* Mensaje vacío */
-.workspace-card {
-    text-align: center;
-    padding: 40px 20px;
-    background: #ffffff;
-    border: 1px dashed #cbd5e1;
-    border-radius: 12px;
-    color: #64748b;
+.aula-estado.disponible .estado-dot {
+    background: #22c55e;
 }
 
-/* Botones de acción dentro de la tarjeta */
-.aula-actions {
+.aula-estado.mantenimiento .estado-dot {
+    background: #ef4444;
+}
+
+.aula-estado.ocupado .estado-dot {
+    background: #0ea5e9;
+}
+
+/* --- Resumen de Infraestructura --- */
+.ambientes-resumen {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.resumen-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
 }
 
-.btn-icon {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    padding: 6px;
-    border-radius: 6px;
-    transition: all 0.2s;
+.resumen-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 16px;
+    background: var(--active-bg);
+    color: var(--active-color);
 }
 
-.btn-icon.edit { color: #0284c7; }
-.btn-icon.edit:hover { background: #e0f2fe; }
-
-.btn-icon.delete { color: #dc2626; }
-.btn-icon.delete:hover { background: #fee2e2; }
-
-
-
-/* Modal y Formulario */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(3px);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.modal-content {
-    background: #ffffff;
-    width: 100%;
-    max-width: 500px;
-    border-radius: 12px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+.resumen-info {
     display: flex;
     flex-direction: column;
 }
 
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border);
-}
-
-.modal-header h3 {
-    margin: 0;
+.resumen-valor {
     font-size: 18px;
+    font-weight: 700;
     color: var(--text-dark);
 }
 
-.btn-close {
-    background: none;
-    border: none;
-    font-size: 18px;
+.resumen-label {
+    font-size: 11px;
     color: var(--text-muted);
-    cursor: pointer;
-}
-
-.btn-close:hover { color: var(--text-dark); }
-
-.modal-form {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 8px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-}
-
-.card-modal {
-    background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    overflow: hidden; 
-    border: 1px solid #e2e8f0;
-    max-width: 550px !important;
-}
-
-.modal-header-modern {
-    background: #f8fafc;
-    padding: 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.modal-title-area {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.modal-icon-bg {
-    width: 48px;
-    height: 48px;
-    background: #e0e7ff;
-    color: #0284c7;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-}
-
-.modal-title-area h3 {
-    margin: 0 0 4px 0;
-    font-size: 18px;
-    color: #0f172a;
-    font-weight: 700;
-}
-
-.modal-title-area p {
-    margin: 0;
-    font-size: 13px;
-    color: #64748b;
-}
-
-.modal-form-modern {
-    padding: 24px;
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.form-group.col-span-2 {
-    grid-column: span 2;
-}
-
-.form-group label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #475569;
-    margin-bottom: 8px;
-}
-
-.form-group label i {
-    color: #94a3b8;
-    font-size: 14px;
-}
-
-.input-modern {
-    width: 100%;
-    padding: 12px 16px;
-    background-color: #f8fafc;
-    border: 1px solid #cbd5e1;
-    border-radius: 10px;
-    font-size: 14px;
-    color: #1e293b;
-    transition: all 0.2s ease;
-}
-
-.input-modern:focus {
-    background-color: #ffffff;
-    border-color: #0284c7;
-    box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15);
-    outline: none;
-}
-
-.modal-footer-modern {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
 }
 
 /* ========================================================================== */
@@ -786,156 +691,193 @@ body {
     margin-bottom: 24px;
 }
 
-.header-title-area h1 {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text-dark);
-    margin-bottom: 4px;
-}
-
-.header-title-area .subtitle {
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
-.header-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.btn {
+/* Botones estándar SENATI - Equipo 3 */
+.eq4-btn {
     padding: 8px 16px;
     border-radius: var(--radius-md);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    border: 1px solid transparent;
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    border: 1px solid transparent;
     transition: all 0.2s ease;
 }
-
-.btn-primary {
+.eq4-btn-primary {
     background-color: var(--senati-blue);
-    color: #ffffff;
+    color: white;
 }
-
-.btn-primary:hover {
+.eq4-btn-primary:hover:not(:disabled) {
     background-color: var(--senati-blue-hover);
 }
-
-.btn-secondary {
-    background-color: #ffffff;
+.eq4-btn-secondary {
+    background-color: white;
+    color: var(--text-dark);
     border-color: var(--border);
-    color: var(--text-normal);
 }
-
-.btn-secondary:hover {
+.eq4-btn-secondary:hover:not(:disabled) {
     background-color: var(--border-light);
 }
-
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 20px;
+.eq4-btn-sm {
+    padding: 6px 12px;
     font-size: 12px;
-    font-weight: 600;
+}
+.eq4-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-/* --- Directorio de Carreras (Grilla y Tarjetas) --- */
-.carreras-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-}
-
-.card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-}
-
-/* --- Métricas Resumen de la Malla --- */
-.malla-metrics-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
-}
-
-.malla-metric-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 16px 20px;
+/* Modales - Equipo 3 */
+.eq4-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(3px);
+    z-index: 2000;
     display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: var(--shadow-sm);
-}
-
-.metric-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
     justify-content: center;
-    font-size: 18px;
+    align-items: center;
 }
-
-.metric-value {
-    display: block;
+.eq4-modal-content-custom {
+    background: white;
+    border-radius: var(--radius-lg);
+    width: 620px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15);
+    animation: eq4-modalIn 0.25s ease-out;
+}
+@keyframes eq4-modalIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+.eq4-modal-header-custom {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.eq4-modal-header-custom h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.eq4-modal-close-btn {
+    background: transparent;
+    border: none;
     font-size: 20px;
-    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    line-height: 1;
+}
+.eq4-modal-close-btn:hover {
     color: var(--text-dark);
 }
-
-.metric-label {
-    font-size: 12px;
-    color: var(--text-muted);
+.eq4-modal-body-custom {
+    padding: 24px;
 }
-
-/* --- Filtros Chips de Asignaturas --- */
-.malla-filter-chips {
+.eq4-modal-footer-custom {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: #F8FAFC;
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+    border-bottom-left-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
 }
 
-.filter-chip {
-    padding: 6px 14px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
+/* Zona Drag and Drop - Equipo 3 */
+.eq4-upload-zone-custom {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 36px 20px;
+    text-align: center;
     background: var(--bg-main);
-    color: var(--text-normal);
-    font-size: 12px;
-    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
 }
-
-.filter-chip:hover {
-    background: var(--border-light);
+.eq4-upload-zone-custom:hover, .eq4-upload-zone-custom.eq4-dragover {
+    border-color: var(--senati-blue);
+    background-color: var(--active-bg);
 }
-
-.filter-chip.active {
-    background: var(--active-bg);
-    color: var(--active-color);
-    border-color: var(--active-color);
+.eq4-upload-icon-custom {
+    font-size: 40px;
+    color: var(--senati-blue);
+    margin-bottom: 12px;
+    display: block;
+}
+.eq4-upload-title-custom {
+    display: block;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+.eq4-upload-subtitle-custom {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.eq4-file-selected-badge {
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    color: var(--senati-blue);
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
     font-weight: 600;
 }
 
-/* --- Cuadrícula de Asignaturas / Cursos --- */
-.malla-courses-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
+/* Área de trabajo para Equipo 3 */
+.eq4-workspace-card {
+    background: var(--bg-card);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    text-align: center;
+    margin-top: 16px;
 }
+
+.eq4-workspace-card h2 {
+    font-size: 20px;
+    color: var(--senati-blue);
+    margin-bottom: 8px;
+}
+
+.eq4-workspace-card p {
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 600px;
+    margin: 0 auto 16px auto;
+}
+
+.eq4-workspace-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--active-bg);
+    color: var(--active-color);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+
 
 /* ========================================================================== */
 /*         [ESTILOS DEL EQUIPO 4]: MOTOR, MATRIZ Y EXPORTADOR EXCEL           */

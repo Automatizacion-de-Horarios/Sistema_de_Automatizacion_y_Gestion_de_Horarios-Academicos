@@ -1,5 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import senatiLogo from './assets/logo-senati.png';
+
+//--------Estructura referencial del Excel de cursos aceptado - EQUIPO 4 SECCION CURSOS ---------------
+// La fila 1 es un título general, la fila 2 son los encabezados y desde la fila 3 vienen los cursos.
+const columnasExcelCursos = [
+    { nombre: 'CODIGO', ejemplo: 'PIAD', omitida: false },
+    { nombre: 'CATALOGO', ejemplo: '202610', omitida: true },
+    { nombre: 'MAT CUR', ejemplo: 'SCIU-185', omitida: false },
+    { nombre: 'HORARIO SINFO', ejemplo: 'TEC', omitida: false },
+    { nombre: 'CLASIFICACIÓN BLACKBOARD', ejemplo: 'TEC', omitida: true },
+    { nombre: 'SEMESTRE', ejemplo: 'I', omitida: false },
+    { nombre: 'DESCRIPCIÓN DE CURSO', ejemplo: 'MATEMÁTICA', omitida: false },
+    { nombre: 'SEMANAS', ejemplo: '16', omitida: false },
+    { nombre: 'TEORÍA / TECNOLOGÍA', ejemplo: '64', omitida: false },
+    { nombre: 'TALLER / EMPRESA', ejemplo: '—', omitida: false },
+    { nombre: 'VIRTUAL', ejemplo: '16', omitida: false },
+    { nombre: 'EVALUACIÓN SEMESTRAL', ejemplo: '5', omitida: false },
+    { nombre: 'TOTAL HORAS', ejemplo: '85', omitida: false }
+];
+//------------------------------------------------------------------------------------------------------
 
 function App() {
     // Control de navegación entre vistas
@@ -20,8 +39,258 @@ function App() {
     };
 
     // Datos dinámicos (se cargarán desde la base de datos)
+    // eslint-disable-next-line no-unused-vars
     const [carreras, setCarreras] = useState([]);
+    // eslint-disable-next-line no-unused-vars
     const [currentUser, setCurrentUser] = useState(null);
+
+
+// ------------------------Nuevas CONST  (Equipo 4 CURSOS )--------------------------------------
+    const [modalImportarAbierto, setModalImportarAbierto] = useState(false);
+    const [archivoSeleccionado, setArchivoSeleccionado] = useState(null);
+    const [arrastrandoArchivo, setArrastrandoArchivo] = useState(false);
+    const [cargandoProceso, setCargandoProceso] = useState(false);
+    const [resultadoImportacion, setResultadoImportacion] = useState(null);
+    const [errorImportacion, setErrorImportacion] = useState(null);
+
+    // Progreso real de la importación (job + polling al backend) - Equipo 4
+    const [progresoImportacion, setProgresoImportacion] = useState(null);
+    const [panelProgresoVisible, setPanelProgresoVisible] = useState(false);
+    const intervaloProgresoRef = useRef(null);
+
+    const detenerPollingProgreso = () => {
+        if (intervaloProgresoRef.current) {
+            clearInterval(intervaloProgresoRef.current);
+            intervaloProgresoRef.current = null;
+        }
+    };
+
+    // Limpia el intervalo si el componente se desmonta
+    useEffect(() => {
+        return () => detenerPollingProgreso();
+    }, []);
+
+    // Manejador de selección de archivo mediante el botón de examinar
+    const manejarCambioArchivo = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setArchivoSeleccionado(e.target.files[0]);
+            setResultadoImportacion(null);
+            setErrorImportacion(null);
+        }
+    };
+
+    // Manejadores para arrastrar y soltar (Drag and Drop)
+    const manejarArrastreSobre = (e) => {
+        e.preventDefault();
+        setArrastrandoArchivo(true);
+    };
+
+    const manejarSalidaArrastre = () => {
+        setArrastrandoArchivo(false);
+    };
+
+    const manejarSoltarArchivo = (e) => {
+        e.preventDefault();
+        setArrastrandoArchivo(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            setArchivoSeleccionado(e.dataTransfer.files[0]);
+            setResultadoImportacion(null);
+            setErrorImportacion(null);
+        }
+    };
+
+    // Consulta periódicamente el avance de la importación hasta que termine.
+    const seguirProgresoImportacion = (jobId) => {
+        return new Promise((resolve) => {
+            const consultar = async () => {
+                try {
+                    const respuesta = await fetch(`http://localhost:3000/api/mallas/importar-excel/progreso/${jobId}`);
+                    const datos = await respuesta.json();
+
+                    if (!respuesta.ok) {
+                        detenerPollingProgreso();
+                        setErrorImportacion({
+                            mensaje: datos.mensaje || 'No se pudo consultar el avance de la importación.'
+                        });
+                        setCargandoProceso(false);
+                        resolve();
+                        return;
+                    }
+
+                    const trabajo = datos.trabajo;
+
+                    setProgresoImportacion({
+                        porcentaje: trabajo.porcentaje || 0,
+                        paso: trabajo.paso || 'Procesando',
+                        mensaje: trabajo.mensaje || '',
+                        datos: trabajo.datos || {}
+                    });
+
+                    if (trabajo.estado === 'completado') {
+                        detenerPollingProgreso();
+                        setResultadoImportacion(trabajo.resultado);
+                        setCargandoProceso(false);
+                        resolve();
+                        return;
+                    }
+
+                    if (trabajo.estado === 'error') {
+                        detenerPollingProgreso();
+                        setErrorImportacion(trabajo.error || {
+                            mensaje: trabajo.mensaje || 'Error al procesar el archivo.'
+                        });
+                        setCargandoProceso(false);
+                        resolve();
+                    }
+                } catch (error) {
+                    detenerPollingProgreso();
+                    console.error('Error al consultar el progreso:', error);
+                    setErrorImportacion({
+                        mensaje: 'Se perdió la conexión con el servidor mientras se procesaba el archivo.'
+                    });
+                    setCargandoProceso(false);
+                    resolve();
+                }
+            };
+
+            consultar();
+            intervaloProgresoRef.current = setInterval(consultar, 500);
+        });
+    };
+
+    // Enviar el archivo Excel al backend para que lo lea en memoria y lo inserte
+    const subirArchivoExcel = async () => {
+        if (!archivoSeleccionado) return;
+
+        detenerPollingProgreso();
+        setCargandoProceso(true);
+        setErrorImportacion(null);
+        setResultadoImportacion(null);
+        setPanelProgresoVisible(true);
+        setProgresoImportacion({
+            porcentaje: 0,
+            paso: 'Subiendo archivo',
+            mensaje: `Enviando "${archivoSeleccionado.name}" al servidor...`,
+            datos: {}
+        });
+
+        const datosFormulario = new FormData();
+        datosFormulario.append('archivo', archivoSeleccionado);
+
+        try {
+            const respuesta = await fetch('http://localhost:3000/api/mallas/importar-excel?progreso=1', {
+                method: 'POST',
+                body: datosFormulario
+            });
+
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok || !datos.jobId) {
+                setPanelProgresoVisible(false);
+                setErrorImportacion({
+                    mensaje: datos.mensaje || 'Error al procesar el archivo',
+                    detalle: datos.detalle,
+                    tipo: datos.tipo,
+                    carrerasFaltantes: datos.carrerasFaltantes || []
+                });
+                setCargandoProceso(false);
+                return;
+            }
+
+            // El modal se cierra y el avance sigue visible en el panel flotante.
+            setModalImportarAbierto(false);
+            await seguirProgresoImportacion(datos.jobId);
+        } catch (error) {
+            console.error('Error al subir archivo:', error);
+            detenerPollingProgreso();
+            setPanelProgresoVisible(false);
+            setErrorImportacion({
+                mensaje: error.message || 'No se pudo conectar con el servidor.'
+            });
+            setCargandoProceso(false);
+        }
+    };
+
+    // Abre el modal de importación limpio (no permite abrirlo mientras hay un proceso activo)
+    const abrirModalImportacion = () => {
+        if (cargandoProceso) return;
+
+        setArchivoSeleccionado(null);
+        setResultadoImportacion(null);
+        setErrorImportacion(null);
+        setProgresoImportacion(null);
+        setPanelProgresoVisible(false);
+        setModalImportarAbierto(true);
+    };
+
+    // Cierra el modal. Si hay una importación en curso, el panel flotante sigue visible.
+    const cerrarModal = () => {
+        setModalImportarAbierto(false);
+
+        if (!cargandoProceso) {
+            detenerPollingProgreso();
+            setArchivoSeleccionado(null);
+            setResultadoImportacion(null);
+            setErrorImportacion(null);
+            setProgresoImportacion(null);
+            setPanelProgresoVisible(false);
+        }
+    };
+
+    // Cierra el panel flotante cuando la importación ya terminó (éxito o error).
+    const cerrarPanelProgreso = () => {
+        if (cargandoProceso) return;
+
+        detenerPollingProgreso();
+        setPanelProgresoVisible(false);
+        setArchivoSeleccionado(null);
+        setResultadoImportacion(null);
+        setErrorImportacion(null);
+        setProgresoImportacion(null);
+    };
+
+    // Estados para el Modal "Agregar Nueva Carrera" (Equipo 3)
+    const [modalNuevaCarreraAbierto, setModalNuevaCarreraAbierto] = useState(false);
+    const [codigoNuevaCarrera, setCodigoNuevaCarrera] = useState('');
+    const [nombreNuevaCarrera, setNombreNuevaCarrera] = useState('');
+    const [guardandoCarrera, setGuardandoCarrera] = useState(false);
+    const [mensajeNuevaCarrera, setMensajeNuevaCarrera] = useState(null);
+
+    // Función para registrar una nueva carrera con su código y nombre institucional
+    const guardarNuevaCarrera = async (e) => {
+        if (e) e.preventDefault();
+        if (!codigoNuevaCarrera.trim() || !nombreNuevaCarrera.trim()) return;
+
+        setGuardandoCarrera(true);
+        setMensajeNuevaCarrera(null);
+
+        try {
+            const res = await fetch('http://localhost:3000/api/carreras', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    codigo_carrera: codigoNuevaCarrera.trim().toUpperCase(),
+                    nombre_carrera: nombreNuevaCarrera.trim()
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.mensaje || 'Error al guardar la carrera');
+            }
+
+            setMensajeNuevaCarrera({ tipo: 'success', texto: data.mensaje });
+            setCodigoNuevaCarrera('');
+            setNombreNuevaCarrera('');
+            setErrorImportacion(null);
+        } catch (err) {
+            setMensajeNuevaCarrera({ tipo: 'error', texto: err.message });
+        } finally {
+            setGuardandoCarrera(false);
+        }
+    };
+//----------------------------------Fin de agregados CONST EQUIPO 4-------------------------------------------------
 
     // Títulos de pestaña por sección
     const sectionTitles = {
@@ -37,6 +306,7 @@ function App() {
     // Cambia el título de la pestaña al cambiar de sección
     useEffect(() => {
         document.title = sectionTitles[activeView] || 'SENATI - Gestión Académica';
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeView]);
 
     const carrerasFiltradas = (carreras || []).filter(c => {
@@ -44,6 +314,12 @@ function App() {
         return nombre.toLowerCase().includes(searchCarrera.toLowerCase().trim());
     });
 
+    // ---------Datos derivados para el panel flotante de progreso - Equipo 4 SECCION CURSOS)------------------------------------------------------------
+    const datosProgreso = (progresoImportacion && progresoImportacion.datos) || {};
+    const porcentajeProgreso = Math.max(0, Math.min(100, progresoImportacion?.porcentaje ?? (resultadoImportacion ? 100 : 0)));
+    const panelConError = !cargandoProceso && !!errorImportacion;
+    const panelCompletado = !cargandoProceso && !!resultadoImportacion;
+    // ----------------------------------------------------------------------------------------------------------------------------------
     return (
         <div className="app-container">
             {/* [GRUPO 4 - CAMBIO 3]: COMPONENTE VISUAL DE ALERTA TOAST FLOTANTE */}
@@ -200,20 +476,51 @@ function App() {
                 {/* =============================================================== */}
                 {/*      [ÁREA DE TRABAJO] EQUIPO 4: MOTOR, MATRIZ Y EXPORTADOR     */}
                 {/* =============================================================== */}
-                <section id="horario-view" className={`view ${activeView === 'horario-view' ? 'active' : ''}`}>
-                    {/* El Equipo 4 colocará aquí la Matriz Semanal, la visualización de Bloques y el Motor Global */}
-                </section>
+
+
+
                 {/* ===================== FIN SECCIÓN EQUIPO 4 ==================== */}
 
 
                 {/* =============================================================== */}
-                {/*    [ÁREA DE TRABAJO] EQUIPO 3: CARRERAS Y MALLAS CURRICULARES   */}
+                {/*    [ÁREA DE TRABAJO] EQUIPO 4: CARRERAS Y MALLAS CURRICULARES   */}
                 {/* =============================================================== */}
+                <section id="carreras-view" className={`view ${activeView === 'carreras-view' ? 'active' : ''}`}>
+                    {/* Encabezado con Botón para Cargar Mallas Curriculares */}
+                    <header className="eq4-view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                        <div className="eq4-header-title-area">
+                            <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-dark)' }}>Directorio Institucional de Carreras y Mallas</h1>
+                            <p className="eq4-subtitle" style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
+                                Estructura oficial de programas académicos y asignaturas formativas del 1.º al 6.º semestre.
+                            </p>
+                        </div>
+                        <div className="eq4-header-actions" style={{ display: 'flex', gap: '10px' }}>
+                            <button 
+                                className="eq4-btn eq4-btn-secondary"
+                                onClick={() => {
+                                    setMensajeNuevaCarrera(null);
+                                    setModalNuevaCarreraAbierto(true);
+                                }}
+                            >
+                                <i className="fas fa-plus-circle" style={{ color: 'var(--senati-blue)' }}></i> Agregar Nueva Carrera
+                            </button>
+                            <button 
+                                className="eq4-btn eq4-btn-primary"
+                                onClick={abrirModalImportacion}
+                                disabled={cargandoProceso}
+                                title={cargandoProceso ? 'Espera a que termine la importación en curso' : 'Cargar mallas curriculares desde Excel'}
+                            >
+                                <i className="fas fa-file-excel" style={{ color: '#A7F3D0' }}></i> Cargar Mallas Curriculares (Excel)
+                            </button>
+                        </div>
+                    </header>
+
+                </section>
+
                 {/* [GRUPO 4 - CAMBIO 5]: ENVÍO DE PERIODOGLOBAL Y TRIGGERTOAST COMO PROPS */}
                 <CarrerasModulo 
                     activeView={activeView} 
                     setActiveView={setActiveView} 
-                    periodoGlobal={periodoGlobal} 
                     triggerToast={triggerToast}
                 />
                     
@@ -221,6 +528,8 @@ function App() {
                 <section id="feriados-view" className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}>
                     {/* El Equipo 3 colocará aquí el Módulo de Calendario y Fechas Inamovibles */}
                 </section>
+
+                
                 {/* ===================== FIN SECCIÓN EQUIPO 3 ==================== */}
 
 
@@ -252,6 +561,490 @@ function App() {
                 />
 
             </main>
+
+            {/* ================================================================= */}
+            {/*        MODAL DE IMPORTACIÓN DRAG & DROP (EXCEL) - EQUIPO 3        */}
+            {/* ================================================================= */}
+            {modalImportarAbierto && (
+                <div className="eq4-modal-overlay" onClick={cerrarModal}>
+                    <div className="eq4-modal-content-custom" onClick={(e) => e.stopPropagation()}>
+                        <div className="eq4-modal-header-custom">
+                            <h3>
+                                <i className="fas fa-file-excel" style={{ color: '#10B981' }}></i>
+                                Importar y Depurar Tabla Excel
+                            </h3>
+                            <button className="eq4-modal-close-btn" onClick={cerrarModal}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div className="eq4-modal-body-custom">
+                            {!resultadoImportacion ? (
+                                <>
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-dark)', marginBottom: '6px' }}>
+                                            Estructura / Tabla Destino
+                                        </label>
+                                        <select 
+                                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px', background: 'white' }}
+                                            defaultValue="mallas"
+                                        >
+                                            <option value="mallas">Cargar Mallas Curriculares</option>
+                                            <option value="docentes" disabled>Cargar Instructores (Docentes)</option>
+                                            <option value="aulas" disabled>Cargar Ambientes (Aulas/Laboratorios)</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Zona Drag and Drop para arrastrar y soltar */}
+                                    <div 
+                                        className={`eq4-upload-zone-custom ${arrastrandoArchivo ? 'eq4-dragover' : ''}`}
+                                        onDragOver={manejarArrastreSobre}
+                                        onDragLeave={manejarSalidaArrastre}
+                                        onDrop={manejarSoltarArchivo}
+                                        onClick={() => document.getElementById('input-archivo-excel').click()}
+                                        style={{
+                                            pointerEvents: cargandoProceso ? 'none' : 'auto',
+                                            opacity: cargandoProceso ? 0.55 : 1
+                                        }}
+                                    >
+                                        <i className="fas fa-cloud-upload-alt eq4-upload-icon-custom"></i>
+                                        <span className="eq4-upload-title-custom">Arrastre el archivo (.xlsx / .csv) aquí</span>
+                                        <span className="eq4-upload-subtitle-custom">o haga clic para examinar sus archivos</span>
+                                        <input 
+                                            type="file" 
+                                            id="input-archivo-excel" 
+                                            accept=".xlsx, .xls, .csv" 
+                                            style={{ display: 'none' }}
+                                            onChange={manejarCambioArchivo}
+                                        />
+                                    </div>
+
+                                    {/* Vista previa de la estructura del Excel aceptado - Equipo 3 */}
+                                    <div style={{ marginTop: '16px', border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', background: 'white' }}>
+                                        <div style={{ padding: '10px 12px', background: '#F8FAFC', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                            <strong style={{ fontSize: '11px', color: 'var(--text-dark)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <i className="fas fa-table" style={{ color: 'var(--senati-blue)' }}></i>
+                                                Vista previa de la estructura aceptada
+                                            </strong>
+                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                                Fila 1: título · Fila 2: encabezados · Fila 3 en adelante: cursos
+                                            </span>
+                                        </div>
+
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ borderCollapse: 'collapse', minWidth: '960px', width: '100%', fontSize: '10px' }}>
+                                                <thead>
+                                                    <tr>
+                                                        {columnasExcelCursos.map((columna) => (
+                                                            <th
+                                                                key={columna.nombre}
+                                                                style={{
+                                                                    padding: '7px 6px',
+                                                                    borderBottom: '1px solid var(--border)',
+                                                                    borderRight: '1px solid var(--border-light)',
+                                                                    textAlign: 'left',
+                                                                    verticalAlign: 'top',
+                                                                    minWidth: '82px',
+                                                                    background: columna.omitida ? '#FEF2F2' : '#EFF6FF',
+                                                                    color: columna.omitida ? '#991B1B' : '#1E3A8A',
+                                                                    fontWeight: '700',
+                                                                    lineHeight: '1.25'
+                                                                }}
+                                                            >
+                                                                <span style={{ textDecoration: columna.omitida ? 'line-through' : 'none' }}>
+                                                                    {columna.nombre}
+                                                                </span>
+                                                                {columna.omitida && (
+                                                                    <span style={{
+                                                                        display: 'block',
+                                                                        marginTop: '3px',
+                                                                        fontSize: '8px',
+                                                                        fontWeight: '700',
+                                                                        color: '#B91C1C',
+                                                                        background: '#FEE2E2',
+                                                                        border: '1px solid #FECACA',
+                                                                        borderRadius: '999px',
+                                                                        padding: '1px 5px',
+                                                                        width: 'fit-content',
+                                                                        textDecoration: 'none'
+                                                                    }}>
+                                                                        SE OMITIRÁ
+                                                                    </span>
+                                                                )}
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        {columnasExcelCursos.map((columna) => (
+                                                            <td
+                                                                key={columna.nombre}
+                                                                style={{
+                                                                    padding: '7px 6px',
+                                                                    borderBottom: '1px solid var(--border-light)',
+                                                                    borderRight: '1px solid var(--border-light)',
+                                                                    background: columna.omitida ? '#FEF2F2' : 'white',
+                                                                    color: columna.omitida ? '#B91C1C' : 'var(--text-normal)',
+                                                                    textDecoration: columna.omitida ? 'line-through' : 'none',
+                                                                    whiteSpace: 'nowrap'
+                                                                }}
+                                                            >
+                                                                {columna.ejemplo}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', background: '#FFFBEB', fontSize: '10px', color: '#92400E', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                                            <i className="fas fa-info-circle" style={{ marginTop: '2px' }}></i>
+                                            <span>
+                                                Las columnas <strong>CATALOGO</strong> y <strong>CLASIFICACIÓN BLACKBOARD</strong> pueden venir en el Excel, pero el sistema <strong>no las insertará</strong> en la base de datos. Los cursos se leen desde la <strong>fila 3</strong>.
+                                                <br />
+                                                <span style={{ color: '#B45309' }}>Desliza horizontalmente la tabla para ver todas las columnas.</span>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {archivoSeleccionado && (
+                                        <div className="eq4-file-selected-badge">
+                                            <span>
+                                                <i className="fas fa-file-excel" style={{ marginRight: '8px', color: '#10B981' }}></i>
+                                                {archivoSeleccionado.name} ({(archivoSeleccionado.size / 1024).toFixed(1)} KB)
+                                            </span>
+                                            <span style={{ color: '#059669', fontSize: '12px' }}>
+                                                <i className="fas fa-check-circle"></i> Listo para procesar
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {errorImportacion && (
+                                        <div style={{ marginTop: '14px', padding: '14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#991B1B', fontSize: '13px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                                <i className="fas fa-exclamation-triangle" style={{ fontSize: '16px', marginTop: '2px' }}></i>
+                                                <div style={{ flex: 1 }}>
+                                                    <strong>{errorImportacion.mensaje || errorImportacion}</strong>
+                                                    {errorImportacion.detalle && (
+                                                        <p style={{ margin: '6px 0 10px 0', fontSize: '12px', color: '#7F1D1D' }}>
+                                                            {errorImportacion.detalle}
+                                                        </p>
+                                                    )}
+                                                    {errorImportacion.carrerasFaltantes && errorImportacion.carrerasFaltantes.length > 0 && (
+                                                        <button 
+                                                            type="button"
+                                                            className="eq4-btn eq4-btn-sm eq4-btn-primary"
+                                                            style={{ marginTop: '4px' }}
+                                                            onClick={() => {
+                                                                setCodigoNuevaCarrera(errorImportacion.carrerasFaltantes[0] || '');
+                                                                setMensajeNuevaCarrera(null);
+                                                                cerrarModal();
+                                                                setModalNuevaCarreraAbierto(true);
+                                                            }}
+                                                        >
+                                                            <i className="fas fa-plus"></i> Registrar Carrera {errorImportacion.carrerasFaltantes[0]} Ahora
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div>
+                                    <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
+                                        <strong style={{ color: '#065F46', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <i className="fas fa-check-circle" style={{ fontSize: '16px' }}></i> {resultadoImportacion.mensaje}
+                                        </strong>
+                                        <p style={{ fontSize: '12px', color: '#047857', marginTop: '6px' }}>
+                                            Archivo procesado: <strong>{resultadoImportacion.nombreArchivo}</strong>
+                                        </p>
+                                    </div>
+
+                                    <div style={{ background: '#F8FAFC', border: '1px solid var(--border)', borderRadius: '8px', padding: '14px', fontSize: '13px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            <div>Filas leídas: <strong>{resultadoImportacion.reporte?.totalFilasLeidas}</strong></div>
+                                            <div>Carreras verificadas: <strong>{resultadoImportacion.reporte?.carrerasVerificadas}</strong></div>
+                                            <div>Semestres nuevos: <strong>{resultadoImportacion.reporte?.semestresCreados}</strong></div>
+                                            <div>Cursos insertados: <strong style={{ color: '#059669' }}>{resultadoImportacion.reporte?.cursosInsertados}</strong></div>
+                                            <div>Duplicados por carrera ignorados: <strong style={{ color: '#D97706' }}>{resultadoImportacion.reporte?.filasIgnoradasPorRepetido}</strong></div>
+                                        </div>
+                                        <div style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '8px', lineHeight: '1.5' }}>
+                                            <i className="fas fa-shield-alt"></i> Se ignoraron automáticamente las columnas: <strong>CATALOGO</strong> y <strong>CLASIFICACION BLACKBOARD</strong>.
+                                            <br />
+                                            <i className="fas fa-copy"></i> {resultadoImportacion.reglaDuplicados || 'Un mismo curso se registra una sola vez por carrera, pero sí puede pertenecer a carreras diferentes.'}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="eq4-modal-footer-custom">
+                            <button className="eq4-btn eq4-btn-secondary" onClick={cerrarModal}>
+                                {resultadoImportacion ? 'Cerrar' : 'Cancelar'}
+                            </button>
+                            {!resultadoImportacion && (
+                                <button 
+                                    className="eq4-btn eq4-btn-primary"
+                                    disabled={!archivoSeleccionado || cargandoProceso}
+                                    onClick={subirArchivoExcel}
+                                >
+                                    <i className={cargandoProceso ? "fas fa-spinner fa-spin" : "fas fa-sync-alt"}></i>
+                                    {cargandoProceso
+                                        ? `Procesando... ${progresoImportacion?.porcentaje || 0}%`
+                                        : 'Analizar y Cargar Datos'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ================================================================= */}
+            {/*      MODAL PARA REGISTRAR NUEVA CARRERA OFICIAL - EQUIPO 3        */}
+            {/* ================================================================= */}
+            {modalNuevaCarreraAbierto && (
+                <div className="eq4-modal-overlay" onClick={() => setModalNuevaCarreraAbierto(false)}>
+                    <div className="eq4-modal-content-custom" onClick={(e) => e.stopPropagation()} style={{ width: '480px' }}>
+                        <div className="eq4-modal-header-custom">
+                            <h3>
+                                <i className="fas fa-graduation-cap" style={{ color: 'var(--senati-blue)' }}></i>
+                                Agregar Nueva Carrera
+                            </h3>
+                            <button className="eq4-modal-close-btn" onClick={() => setModalNuevaCarreraAbierto(false)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={guardarNuevaCarrera}>
+                            <div className="eq4-modal-body-custom">
+                                {mensajeNuevaCarrera && (
+                                    <div style={{
+                                        padding: '12px',
+                                        borderRadius: '8px',
+                                        marginBottom: '16px',
+                                        fontSize: '13px',
+                                        background: mensajeNuevaCarrera.tipo === 'success' ? '#ECFDF5' : '#FEF2F2',
+                                        border: `1px solid ${mensajeNuevaCarrera.tipo === 'success' ? '#A7F3D0' : '#FECACA'}`,
+                                        color: mensajeNuevaCarrera.tipo === 'success' ? '#065F46' : '#991B1B'
+                                    }}>
+                                        {mensajeNuevaCarrera.texto}
+                                    </div>
+                                )}
+
+                                <div style={{ marginBottom: '14px' }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-dark)', marginBottom: '6px' }}>
+                                        Código de Carrera (Sigla oficial) *
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Ej. MTRX, PIAD, PCBD"
+                                        value={codigoNuevaCarrera}
+                                        onChange={(e) => setCodigoNuevaCarrera(e.target.value.toUpperCase())}
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px' }}
+                                        required
+                                    />
+                                </div>
+
+                                <div style={{ marginBottom: '14px' }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-dark)', marginBottom: '6px' }}>
+                                        Nombre Institucional de la Carrera *
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Ej. Mecatrónica Industrial"
+                                        value={nombreNuevaCarrera}
+                                        onChange={(e) => setNombreNuevaCarrera(e.target.value)}
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px' }}
+                                        required
+                                    />
+                                </div>
+                                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
+                                    <i className="fas fa-info-circle"></i> Al registrar la carrera, el sistema asegurará automáticamente los 6 semestres oficiales (I al VI).
+                                </p>
+                            </div>
+
+                            <div className="eq4-modal-footer-custom">
+                                <button type="button" className="eq4-btn eq4-btn-secondary" onClick={() => setModalNuevaCarreraAbierto(false)}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="eq4-btn eq4-btn-primary" disabled={guardandoCarrera}>
+                                    <i className={guardandoCarrera ? "fas fa-spinner fa-spin" : "fas fa-save"}></i>
+                                    {guardandoCarrera ? 'Guardando...' : 'Guardar Carrera'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ================================================================= */}
+            {/*   PANEL FLOTANTE DE PROGRESO DE IMPORTACIÓN - EQUIPO 3             */}
+            {/*   Se mantiene abajo a la derecha aunque se cierre el modal.       */}
+            {/* ================================================================= */}
+            {panelProgresoVisible && !modalImportarAbierto && (
+                <div style={{
+                    position: 'fixed',
+                    right: '22px',
+                    bottom: '22px',
+                    width: '390px',
+                    maxWidth: 'calc(100vw - 32px)',
+                    background: 'white',
+                    borderRadius: '14px',
+                    border: '1px solid var(--border)',
+                    boxShadow: '0 18px 45px rgba(15, 23, 42, 0.30)',
+                    zIndex: 2100,
+                    overflow: 'hidden',
+                    animation: 'modalIn 0.2s ease-out'
+                }}>
+                    <div style={{
+                        padding: '12px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                        background: panelConError
+                            ? '#FEF2F2'
+                            : panelCompletado
+                                ? '#ECFDF5'
+                                : 'linear-gradient(135deg, #0A33A6, #1D4ED8)',
+                        color: panelConError ? '#991B1B' : panelCompletado ? '#065F46' : 'white'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '700' }}>
+                            <i className={
+                                cargandoProceso
+                                    ? 'fas fa-circle-notch fa-spin'
+                                    : panelCompletado
+                                        ? 'fas fa-check-circle'
+                                        : 'fas fa-exclamation-triangle'
+                            }></i>
+                            {cargandoProceso
+                                ? 'Importando cursos...'
+                                : panelCompletado
+                                    ? 'Importación completada'
+                                    : 'Importación con errores'}
+                        </div>
+                        {!cargandoProceso && (
+                            <button
+                                type="button"
+                                onClick={cerrarPanelProgreso}
+                                title="Cerrar panel"
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '16px', color: 'inherit', padding: '2px 4px' }}
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        )}
+                    </div>
+
+                    <div style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '7px', fontSize: '12px', fontWeight: '600', color: 'var(--text-dark)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <i className="fas fa-tasks" style={{ color: 'var(--senati-blue)' }}></i>
+                                {progresoImportacion?.paso || (panelCompletado ? 'Finalizado' : 'Procesando')}
+                            </span>
+                            <span style={{ color: panelConError ? '#B91C1C' : '#1D4ED8', fontSize: '14px', fontWeight: '700' }}>
+                                {porcentajeProgreso}%
+                            </span>
+                        </div>
+
+                        <div style={{ width: '100%', height: '9px', background: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
+                            <div style={{
+                                width: `${porcentajeProgreso}%`,
+                                height: '100%',
+                                background: panelConError
+                                    ? '#DC2626'
+                                    : panelCompletado
+                                        ? '#10B981'
+                                        : 'linear-gradient(90deg, #2563EB, #10B981)',
+                                borderRadius: '999px',
+                                transition: 'width 0.35s ease'
+                            }}></div>
+                        </div>
+
+                        <p style={{ margin: '9px 0 0 0', fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.45' }}>
+                            {progresoImportacion?.mensaje || (panelCompletado ? 'El archivo fue procesado correctamente.' : 'Preparando el proceso...')}
+                        </p>
+
+                        {cargandoProceso && (
+                            <div style={{ marginTop: '9px', padding: '7px 9px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', fontSize: '11px', color: '#1E40AF', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                                <i className="fas fa-info-circle" style={{ marginTop: '2px' }}></i>
+                                <span>El proceso continúa en segundo plano. Puedes seguir usando el sistema mientras termina.</span>
+                            </div>
+                        )}
+
+                        {datosProgreso.totalFilas > 0 && !panelCompletado && !panelConError && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 12px', marginTop: '10px', paddingTop: '9px', borderTop: '1px solid var(--border-light)', fontSize: '11px', color: 'var(--text-normal)' }}>
+                                <span>Filas revisadas: <strong>{datosProgreso.filasProcesadas || 0} / {datosProgreso.totalFilas || 0}</strong></span>
+                                <span>Cursos insertados: <strong style={{ color: '#059669' }}>{datosProgreso.cursosInsertados || 0}</strong></span>
+                                <span>Duplicados ignorados: <strong style={{ color: '#D97706' }}>{datosProgreso.filasIgnoradas || 0}</strong></span>
+                                <span>Semestres nuevos: <strong>{datosProgreso.semestresCreados || 0}</strong></span>
+                            </div>
+                        )}
+
+                        {panelCompletado && (
+                            <div style={{ marginTop: '11px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 12px', fontSize: '11px', color: 'var(--text-normal)' }}>
+                                    <span>Cursos insertados: <strong style={{ color: '#059669' }}>{resultadoImportacion.reporte?.cursosInsertados}</strong></span>
+                                    <span>Duplicados ignorados: <strong style={{ color: '#D97706' }}>{resultadoImportacion.reporte?.filasIgnoradasPorRepetido}</strong></span>
+                                    <span>Semestres nuevos: <strong>{resultadoImportacion.reporte?.semestresCreados}</strong></span>
+                                    <span>Filas leídas: <strong>{resultadoImportacion.reporte?.totalFilasLeidas}</strong></span>
+                                </div>
+                                <div style={{ marginTop: '11px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => setModalImportarAbierto(true)}
+                                    >
+                                        <i className="fas fa-list-alt"></i> Ver detalle
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={cerrarPanelProgreso}
+                                    >
+                                        <i className="fas fa-check"></i> Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {panelConError && (
+                            <div style={{ marginTop: '11px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#991B1B', fontWeight: '600', lineHeight: '1.45' }}>
+                                    {errorImportacion.mensaje}
+                                </p>
+                                {errorImportacion.detalle && (
+                                    <p style={{ margin: '6px 0 0 0', fontSize: '11px', color: '#7F1D1D', lineHeight: '1.45' }}>
+                                        {errorImportacion.detalle}
+                                    </p>
+                                )}
+                                {errorImportacion.carrerasFaltantes && errorImportacion.carrerasFaltantes.length > 0 && (
+                                    <p style={{ margin: '7px 0 0 0', fontSize: '11px', color: '#991B1B' }}>
+                                        <strong>Carreras no registradas:</strong> {errorImportacion.carrerasFaltantes.join(', ')}
+                                    </p>
+                                )}
+                                <div style={{ marginTop: '11px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => setModalImportarAbierto(true)}
+                                    >
+                                        <i className="fas fa-list-alt"></i> Ver detalle
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={cerrarPanelProgreso}
+                                    >
+                                        <i className="fas fa-times"></i> Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -546,7 +1339,7 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
 // ===============================================================
 //   MÓDULO AUTÓNOMO: CARRERAS Y CANDADOS VISUALES (GRUPO 4)
 // ===============================================================
-function CarrerasModulo({ activeView, setActiveView, periodoGlobal, triggerToast }) {
+function CarrerasModulo({ activeView, setActiveView, triggerToast }) {
     const [carreras, setCarreras] = useState([
         { id: '1', nombre: 'Ingeniería de Software con IA', semestres: 6, estado: 'activa' },
         { id: '2', nombre: 'Ciberseguridad', semestres: 6, estado: 'activa' },
@@ -570,13 +1363,6 @@ function CarrerasModulo({ activeView, setActiveView, periodoGlobal, triggerToast
 
     return (
         <section id="carreras-view" className={`view ${activeView === 'carreras-view' ? 'active' : ''}`}>
-            <header className="view-header">
-                <div className="header-title-area">
-                    <h1>Directorio Institucional de Carreras (8)</h1>
-                    <p className="subtitle">Estructura oficial de mallas formativas del 1.º al 6.º semestre.</p>
-                </div>
-            </header>
-
             <div className="carreras-grid">
                 {carreras.map((carrera) => {
                     const isLocked = carrera.estado !== 'activa';
@@ -648,136 +1434,129 @@ function CarrerasModulo({ activeView, setActiveView, periodoGlobal, triggerToast
 //   MÓDULO AUTÓNOMO: INFRAESTRUCTURA, AULAS Y AMBIENTES (EQUIPO 2)
 // ===============================================================
 function AmbientesModulo() {
-    const [tipoAmbiente, setTipoAmbiente] = useState([]);
-    const [ambientes, setAmbientes] = useState([]);
+    // Mock data basado en las tablas futuras: tipo_ambiente, ambientes, ambiente_apto_carreras
+    const [tipoAmbiente] = useState([
+        { id_tipo: 1, descripcion: 'Taller' },
+        { id_tipo: 2, descripcion: 'Laboratorio' },
+        { id_tipo: 3, descripcion: 'Teoría' },
+        { id_tipo: 4, descripcion: 'Auditorio' }
+    ]);
+
+    const [ambientes] = useState([
+        {
+            id_ambiente: 1,
+            codigo_ambiente: 'T-101',
+            id_tipo_ambiente: 1,
+            descripcion: 'Taller de Mecánica',
+            aforo_maximo: 20,
+            piso_ubicacion: '1er Piso',
+            pabellón: 'Pabellón A',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 2,
+            codigo_ambiente: 'LAB-201',
+            id_tipo_ambiente: 2,
+            descripcion: 'Laboratorio de Electrónica',
+            aforo_maximo: 16,
+            piso_ubicacion: '2do Piso',
+            pabellón: 'Pabellón B',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 3,
+            codigo_ambiente: 'T-102',
+            id_tipo_ambiente: 1,
+            descripcion: 'Taller de Soldadura',
+            aforo_maximo: 12,
+            piso_ubicacion: '1er Piso',
+            pabellón: 'Pabellón A',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 4,
+            codigo_ambiente: 'AULA-301',
+            id_tipo_ambiente: 3,
+            descripcion: 'Aula de Teoría - General',
+            aforo_maximo: 40,
+            piso_ubicacion: '3er Piso',
+            pabellón: 'Pabellón C',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 5,
+            codigo_ambiente: 'LAB-202',
+            id_tipo_ambiente: 2,
+            descripcion: 'Laboratorio de Redes',
+            aforo_maximo: 15,
+            piso_ubicacion: '2do Piso',
+            pabellón: 'Pabellón B',
+            estado: 'mantenimiento'
+        },
+        {
+            id_ambiente: 6,
+            codigo_ambiente: 'T-103',
+            id_tipo_ambiente: 1,
+            descripcion: 'Taller de Carpintería',
+            aforo_maximo: 18,
+            piso_ubicacion: '1er Piso',
+            pabellón: 'Pabellón A',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 7,
+            codigo_ambiente: 'AULA-302',
+            id_tipo_ambiente: 3,
+            descripcion: 'Aula Multimedia',
+            aforo_maximo: 35,
+            piso_ubicacion: '3er Piso',
+            pabellón: 'Pabellón C',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 8,
+            codigo_ambiente: 'AUD-001',
+            id_tipo_ambiente: 4,
+            descripcion: 'Auditorio Principal',
+            aforo_maximo: 150,
+            piso_ubicacion: 'Planta Baja',
+            pabellón: 'Pabellón Central',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 9,
+            codigo_ambiente: 'LAB-203',
+            id_tipo_ambiente: 2,
+            descripcion: 'Laboratorio de Computación',
+            aforo_maximo: 14,
+            piso_ubicacion: '2do Piso',
+            pabellón: 'Pabellón B',
+            estado: 'disponible'
+        }
+    ]);
+
     const [filtroTipo, setFiltroTipo] = useState('todos');
 
-    // Estados para el Modal (Crear / Editar)
-    const [showModal, setShowModal] = useState(false);
-    const [editId, setEditId] = useState(null);
-    const [formData, setFormData] = useState({
-        codigo_ambiente: '',
-        id_tipo_ambiente: '',
-        aforo_maximo: '',
-        piso_ubicacion: '',
-        pabellon: '',
-        estado: 'DISPONIBLE'
-    });
-
+    // Umbral para considerar aforo restringido (menor a 18 personas)
     const UMBRAL_AFRO_RESTRINGIDO = 18;
 
-    const cargarAmbientes = () => {
-        fetch('http://localhost:3000/api/ambientes')
-            .then(res => res.json())
-            .then(data => setAmbientes(data))
-            .catch(err => console.error('Error cargando ambientes:', err));
-    };
-
-    useEffect(() => {
-        fetch('http://localhost:3000/api/tipos-ambiente')
-            .then(res => res.json())
-            .then(data => setTipoAmbiente(data))
-            .catch(err => console.error('Error cargando tipos de ambiente:', err));
-        
-        cargarAmbientes();
-    }, []);
-
-    // Funciones del Formulario
-    const handleOpenModal = (ambiente = null) => {
-        if (ambiente) {
-            setEditId(ambiente.id);
-            setFormData({
-                codigo_ambiente: ambiente.codigo_ambiente,
-                id_tipo_ambiente: ambiente.id_tipo_ambiente,
-                aforo_maximo: ambiente.aforo_maximo,
-                piso_ubicacion: ambiente.piso_ubicacion,
-                pabellon: ambiente.pabellon || ambiente.pabellón,
-                estado: ambiente.estado
-            });
-        } else {
-            setEditId(null);
-            setFormData({
-                codigo_ambiente: '',
-                id_tipo_ambiente: tipoAmbiente.length > 0 ? tipoAmbiente[0].id_tipo_ambiente : '',
-                aforo_maximo: '',
-                piso_ubicacion: '',
-                pabellon: '',
-                estado: 'DISPONIBLE'
-            });
-        }
-        setShowModal(true);
-    };
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const url = editId 
-            ? `http://localhost:3000/api/ambientes/${editId}` 
-            : 'http://localhost:3000/api/ambientes';
-        
-        const method = editId ? 'PUT' : 'POST';
-
-        // Aseguramos que los números sean enviados como enteros para que el backend no rechace la validación
-        const dataToSend = {
-            ...formData,
-            id_tipo_ambiente: parseInt(formData.id_tipo_ambiente),
-            aforo_maximo: parseInt(formData.aforo_maximo),
-            piso_ubicacion: parseInt(formData.piso_ubicacion)
-        };
-
-        try {
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSend)
-            });
-
-            if (response.ok) {
-                setShowModal(false);
-                cargarAmbientes(); // Recargamos la lista
-            } else {
-                const errorData = await response.json();
-                alert(`Error: ${errorData.mensaje}`);
-            }
-        } catch (error) {
-            console.error('Error al guardar el ambiente:', error);
-        }
-    };
-
-    const handleDelete = async (id, codigo) => {
-        if (window.confirm(`¿Estás seguro de eliminar el ambiente ${codigo}?`)) {
-            try {
-                const response = await fetch(`http://localhost:3000/api/ambientes/${id}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    cargarAmbientes();
-                }
-            } catch (error) {
-                console.error('Error al eliminar:', error);
-            }
-        }
-    };
-
     const getTipoAmbiente = (idTipo) => {
-        const tipo = tipoAmbiente.find(t => t.id_tipo_ambiente === idTipo);
-        return tipo ? tipo.nombre_tipo_ambiente : 'Sin Tipo';
+        const tipo = tipoAmbiente.find(t => t.id_tipo === idTipo);
+        return tipo ? tipo.descripcion : 'Sin Tipo';
     };
 
     const ambientesFiltrados = filtroTipo === 'todos' 
         ? ambientes 
         : ambientes.filter(a => a.id_tipo_ambiente === parseInt(filtroTipo));
 
+    // Contadores por tipo
     const contarPorTipo = (idTipo) => {
         if (idTipo === 'todos') return ambientes.length;
         return ambientes.filter(a => a.id_tipo_ambiente === parseInt(idTipo)).length;
     };
 
     const totalAforos = ambientes.reduce((sum, a) => sum + a.aforo_maximo, 0);
-    const ambientesDisponibles = ambientes.filter(a => a.estado.toLowerCase() === 'disponible' || a.estado.toLowerCase() === 'activo').length;
+    const ambientesDisponibles = ambientes.filter(a => a.estado === 'disponible').length;
     const ambientesRestringidos = ambientes.filter(a => a.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO).length;
 
     return (
@@ -787,38 +1566,41 @@ function AmbientesModulo() {
                     <h1>Infraestructura y Ambientes</h1>
                     <p className="subtitle">Gestión de aulas, talleres, laboratorios y espacios académicos</p>
                 </div>
-                <div className="header-actions">
-                    <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-                        <i className="fas fa-plus"></i> Nuevo Ambiente
-                    </button>
-                </div>
             </header>
 
             {/* Resumen de Infraestructura */}
             <div className="ambientes-resumen">
                 <div className="resumen-card">
-                    <div className="resumen-icon"><i className="fas fa-door-open"></i></div>
+                    <div className="resumen-icon">
+                        <i className="fas fa-door-open"></i>
+                    </div>
                     <div className="resumen-info">
                         <span className="resumen-valor">{ambientes.length}</span>
                         <span className="resumen-label">Total de Ambientes</span>
                     </div>
                 </div>
                 <div className="resumen-card">
-                    <div className="resumen-icon"><i className="fas fa-check-circle"></i></div>
+                    <div className="resumen-icon">
+                        <i className="fas fa-check-circle"></i>
+                    </div>
                     <div className="resumen-info">
                         <span className="resumen-valor">{ambientesDisponibles}</span>
                         <span className="resumen-label">Disponibles</span>
                     </div>
                 </div>
                 <div className="resumen-card">
-                    <div className="resumen-icon"><i className="fas fa-users"></i></div>
+                    <div className="resumen-icon">
+                        <i className="fas fa-users"></i>
+                    </div>
                     <div className="resumen-info">
                         <span className="resumen-valor">{totalAforos}</span>
                         <span className="resumen-label">Capacidad Total</span>
                     </div>
                 </div>
                 <div className="resumen-card">
-                    <div className="resumen-icon" style={{ background: '#fef3c7', color: '#d97706' }}><i className="fas fa-exclamation-triangle"></i></div>
+                    <div className="resumen-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
+                        <i className="fas fa-exclamation-triangle"></i>
+                    </div>
                     <div className="resumen-info">
                         <span className="resumen-valor" style={{ color: '#b45309' }}>{ambientesRestringidos}</span>
                         <span className="resumen-label">Aforo Restringido (&lt;{UMBRAL_AFRO_RESTRINGIDO})</span>
@@ -826,63 +1608,90 @@ function AmbientesModulo() {
                 </div>
             </div>
 
-            {/* Filtros */}
+            {/* Filtros rápidos por tipo de ambiente */}
             <div className="ambientes-filtros">
-                <button className={`ambiente-filter-chip ${filtroTipo === 'todos' ? 'active' : ''}`} onClick={() => setFiltroTipo('todos')}>
-                    <i className="fas fa-th"></i> Todos <span className="chip-count">{contarPorTipo('todos')}</span>
+                <button
+                    className={`ambiente-filter-chip ${filtroTipo === 'todos' ? 'active' : ''}`}
+                    onClick={() => setFiltroTipo('todos')}
+                >
+                    <i className="fas fa-th"></i>
+                    Todos
+                    <span className="chip-count">{contarPorTipo('todos')}</span>
                 </button>
                 {tipoAmbiente.map(tipo => (
-                    <button key={tipo.id_tipo_ambiente} className={`ambiente-filter-chip ${filtroTipo === tipo.id_tipo_ambiente.toString() ? 'active' : ''}`} onClick={() => setFiltroTipo(tipo.id_tipo_ambiente.toString())}>
-                        <i className={tipo.nombre_tipo_ambiente.toLowerCase().includes('taller') ? 'fas fa-wrench' : tipo.nombre_tipo_ambiente.toLowerCase().includes('laboratorio') ? 'fas fa-flask' : tipo.nombre_tipo_ambiente.toLowerCase().includes('aula') ? 'fas fa-chalkboard-teacher' : 'fas fa-users'}></i>
-                        {tipo.nombre_tipo_ambiente} <span className="chip-count">{contarPorTipo(tipo.id_tipo_ambiente)}</span>
+                    <button
+                        key={tipo.id_tipo}
+                        className={`ambiente-filter-chip ${filtroTipo === tipo.id_tipo.toString() ? 'active' : ''}`}
+                        onClick={() => setFiltroTipo(tipo.id_tipo.toString())}
+                    >
+                        <i className={tipo.descripcion === 'Taller' ? 'fas fa-wrench' : 
+                                      tipo.descripcion === 'Laboratorio' ? 'fas fa-flask' :
+                                      tipo.descripcion === 'Teoría' ? 'fas fa-chalkboard-teacher' :
+                                      'fas fa-users'}></i>
+                        {tipo.descripcion}
+                        <span className="chip-count">{contarPorTipo(tipo.id_tipo)}</span>
                     </button>
                 ))}
             </div>
 
-            {/* Grilla */}
+            {/* Grilla de Aulas / Ambientes */}
             <div className="ambientes-grid">
                 {ambientesFiltrados.map(ambiente => {
                     const esAforoRestringido = ambiente.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO;
-                    const estadoStyle = ambiente.estado.toLowerCase() === 'disponible' ? 'disponible' : ambiente.estado.toLowerCase().includes('mantenimiento') ? 'mantenimiento' : 'ocupado';
                     return (
-                        <div key={ambiente.id} className={`aula-card ${esAforoRestringido ? 'aforo-restringido' : ''}`}>
+                        <div 
+                            key={ambiente.id_ambiente} 
+                            className={`aula-card ${esAforoRestringido ? 'aforo-restringido' : ''}`}
+                        >
                             <div className="aula-card-header">
                                 <div className="aula-codigo">
                                     <i className="far fa-building"></i>
                                     {ambiente.codigo_ambiente}
                                 </div>
-                                <div className="aula-actions">
-                                    <button className="btn-icon edit" onClick={() => handleOpenModal(ambiente)} title="Editar"><i className="fas fa-pen"></i></button>
-                                    <button className="btn-icon delete" onClick={() => handleDelete(ambiente.id, ambiente.codigo_ambiente)} title="Eliminar"><i className="fas fa-trash"></i></button>
-                                </div>
+                                <span className="aula-tipo-badge">
+                                    {getTipoAmbiente(ambiente.id_tipo_ambiente)}
+                                </span>
                             </div>
-                            <span className="aula-tipo-badge">{getTipoAmbiente(ambiente.id_tipo_ambiente)}</span>
 
-                            <div className="aula-info-grid" style={{ marginTop: '15px' }}>
+                            <div style={{ marginBottom: '10px', fontSize: '13px', color: 'var(--text-normal)', fontWeight: '500' }}>
+                                {ambiente.descripcion}
+                            </div>
+
+                            <div className="aula-info-grid">
                                 <div className="aula-info-item">
                                     <span className="aula-info-label">Pabellón</span>
-                                    <span className="aula-info-value"><i className="fas fa-map-marker-alt" style={{ color: 'var(--text-muted)', marginRight: '4px' }}></i>{ambiente.pabellon || ambiente.pabellón}</span>
+                                    <span className="aula-info-value">
+                                        <i className="fas fa-map-marker-alt" style={{ color: 'var(--text-muted)', marginRight: '4px' }}></i>
+                                        {ambiente.pabellón}
+                                    </span>
                                 </div>
                                 <div className="aula-info-item">
-                                    <span className="aula-info-label">Piso</span>
+                                    <span className="aula-info-label">Ubicación</span>
                                     <span className="aula-info-value">{ambiente.piso_ubicacion}</span>
                                 </div>
                             </div>
 
                             <div className="aula-aforo">
-                                <span className="aula-aforo-label"><i className="fas fa-users"></i> Aforo Máximo</span>
+                                <span className="aula-aforo-label">
+                                    <i className="fas fa-users"></i>
+                                    Aforo Máximo
+                                </span>
                                 <span className="aula-aforo-valor">{ambiente.aforo_maximo} personas</span>
                             </div>
 
                             {esAforoRestringido && (
                                 <div className="aula-alerta-restringido">
-                                    <i className="fas fa-exclamation-circle"></i><span>Capacidad Limitada</span>
+                                    <i className="fas fa-exclamation-circle"></i>
+                                    <span>Aforo Restringido - Capacidad Limitada</span>
                                 </div>
                             )}
 
                             <div style={{ marginTop: '12px' }}>
-                                <span className={`aula-estado ${estadoStyle}`}>
-                                    <span className="estado-dot"></span>{ambiente.estado}
+                                <span className={`aula-estado ${ambiente.estado}`}>
+                                    <span className="estado-dot"></span>
+                                    {ambiente.estado === 'disponible' ? 'Disponible' : 
+                                     ambiente.estado === 'mantenimiento' ? 'En Mantenimiento' : 
+                                     'Ocupado'}
                                 </span>
                             </div>
                         </div>
@@ -893,84 +1702,7 @@ function AmbientesModulo() {
             {ambientesFiltrados.length === 0 && (
                 <div className="workspace-card">
                     <h2>No hay ambientes</h2>
-                    <p>No se encontraron ambientes registrados.</p>
-                </div>
-            )}
-
-            {/* MODAL FORMULARIO MEJORADO TIPO CARD */}
-            {showModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content card-modal">
-                        
-                        {/* Nuevo Encabezado */}
-                        <div className="modal-header-modern">
-                            <div className="modal-title-area">
-                                <div className="modal-icon-bg">
-                                    <i className={`fas ${editId ? 'fa-pen' : 'fa-plus'}`}></i>
-                                </div>
-                                <div>
-                                    <h3>{editId ? 'Editar Ambiente' : 'Nuevo Ambiente'}</h3>
-                                    <p>Ingrese los detalles del espacio académico</p>
-                                </div>
-                            </div>
-                            <button className="btn-close" onClick={() => setShowModal(false)}>
-                                <i className="fas fa-times"></i>
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="modal-form-modern">
-                            {/* Layout de grilla para agrupar campos */}
-                            <div className="form-grid">
-                                
-                                <div className="form-group col-span-2">
-                                    <label><i className="fas fa-qrcode"></i> Código del Ambiente</label>
-                                    <input type="text" name="codigo_ambiente" className="input-modern" value={formData.codigo_ambiente} onChange={handleChange} required placeholder="Ej: LAB-101" />
-                                </div>
-                                
-                                <div className="form-group col-span-2">
-                                    <label><i className="fas fa-tags"></i> Tipo de Ambiente</label>
-                                    <select name="id_tipo_ambiente" className="input-modern" value={formData.id_tipo_ambiente} onChange={handleChange} required>
-                                        <option value="" disabled>Seleccione un tipo</option>
-                                        {tipoAmbiente.map(tipo => (
-                                            <option key={tipo.id_tipo_ambiente} value={tipo.id_tipo_ambiente}>{tipo.nombre_tipo_ambiente}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="form-group">
-                                    <label><i className="fas fa-users"></i> Aforo Máximo</label>
-                                    <input type="number" name="aforo_maximo" className="input-modern" value={formData.aforo_maximo} onChange={handleChange} required placeholder="Ej: 30" />
-                                </div>
-
-                                <div className="form-group">
-                                    <label><i className="fas fa-layer-group"></i> Piso</label>
-                                    <input type="number" name="piso_ubicacion" className="input-modern" value={formData.piso_ubicacion} onChange={handleChange} required placeholder="Ej: 1" />
-                                </div>
-
-                                <div className="form-group">
-                                    <label><i className="far fa-building"></i> Pabellón</label>
-                                    <input type="text" name="pabellon" className="input-modern" value={formData.pabellon} onChange={handleChange} required placeholder="Ej: Pabellón 1" />
-                                </div>
-
-                                <div className="form-group">
-                                    <label><i className="fas fa-toggle-on"></i> Estado</label>
-                                    <select name="estado" className="input-modern" value={formData.estado} onChange={handleChange}>
-                                        <option value="DISPONIBLE">Disponible</option>
-                                        <option value="EN MANTENIMIENTO">En Mantenimiento</option>
-                                        <option value="OCUPADO">Ocupado</option>
-                                    </select>
-                                </div>
-
-                            </div>
-
-                            <div className="modal-footer-modern">
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary">
-                                    <i className="fas fa-save"></i> Guardar Ambiente
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                    <p>No se encontraron ambientes con el filtro seleccionado.</p>
                 </div>
             )}
         </>
