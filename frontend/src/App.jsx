@@ -181,7 +181,7 @@ function App() {
         datosFormulario.append('archivo', archivoSeleccionado);
 
         try {
-            const respuesta = await fetch(`${urlBase}}/api/mallas/importar-excel?progreso=1`, {
+            const respuesta = await fetch(`${urlBase}/api/mallas/importar-excel?progreso=1`, {
                 method: 'POST',
                 body: datosFormulario
             });
