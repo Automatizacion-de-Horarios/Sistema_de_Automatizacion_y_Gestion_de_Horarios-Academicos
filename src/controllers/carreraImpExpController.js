@@ -5,7 +5,7 @@ const db = require('../config/db');
  * Permite registrar nuevas carreras con su código y nombre institucional,
  * asegurando la creación de sus ciclos I al VI.
  */
-const carrerasController = {
+const carrerasImpExpController = {
 
     /**
      * Obtener listado de todas las carreras activas
@@ -106,4 +106,4 @@ const carrerasController = {
     }
 };
 
-module.exports = carrerasController;
+module.exports = carrerasImpExpController;

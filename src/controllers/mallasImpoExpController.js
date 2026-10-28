@@ -373,7 +373,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
     }
 };
 
-const mallasController = {
+const mallasImpExpController = {
 
     /**
      * Procesa e importa el archivo Excel enviado por el usuario.
@@ -529,4 +529,4 @@ const mallasController = {
     }
 };
 
-module.exports = mallasController;
+module.exports = mallasImpExpController;
