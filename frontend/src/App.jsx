@@ -237,7 +237,7 @@ function App() {
                 {/*    [ÁREA DE TRABAJO] EQUIPO 2: INFRAESTRUCTURA Y AMBIENTES       */}
                 {/* =============================================================== */}
                 <section id="aulas-view" className={`view ${activeView === 'aulas-view' ? 'active' : ''}`}>
-                    {/* El Equipo 2 colocará aquí el Módulo de Infraestructura, Aulas y Plazas Libres */}
+                    <AmbientesModulo />
                 </section>
                 {/* ===================== FIN SECCIÓN EQUIPO 2 ==================== */}
 
@@ -641,6 +641,339 @@ function CarrerasModulo({ activeView, setActiveView, periodoGlobal, triggerToast
                 })}
             </div>
         </section>
+    );
+}
+
+// ===============================================================
+//   MÓDULO AUTÓNOMO: INFRAESTRUCTURA, AULAS Y AMBIENTES (EQUIPO 2)
+// ===============================================================
+function AmbientesModulo() {
+    const [tipoAmbiente, setTipoAmbiente] = useState([]);
+    const [ambientes, setAmbientes] = useState([]);
+    const [filtroTipo, setFiltroTipo] = useState('todos');
+
+    // Estados para el Modal (Crear / Editar)
+    const [showModal, setShowModal] = useState(false);
+    const [editId, setEditId] = useState(null);
+    const [formData, setFormData] = useState({
+        codigo_ambiente: '',
+        id_tipo_ambiente: '',
+        aforo_maximo: '',
+        piso_ubicacion: '',
+        pabellon: '',
+        estado: 'DISPONIBLE'
+    });
+
+    const UMBRAL_AFRO_RESTRINGIDO = 18;
+
+    const cargarAmbientes = () => {
+        fetch('http://localhost:3000/api/ambientes')
+            .then(res => res.json())
+            .then(data => setAmbientes(data))
+            .catch(err => console.error('Error cargando ambientes:', err));
+    };
+
+    useEffect(() => {
+        fetch('http://localhost:3000/api/tipos-ambiente')
+            .then(res => res.json())
+            .then(data => setTipoAmbiente(data))
+            .catch(err => console.error('Error cargando tipos de ambiente:', err));
+        
+        cargarAmbientes();
+    }, []);
+
+    // Funciones del Formulario
+    const handleOpenModal = (ambiente = null) => {
+        if (ambiente) {
+            setEditId(ambiente.id);
+            setFormData({
+                codigo_ambiente: ambiente.codigo_ambiente,
+                id_tipo_ambiente: ambiente.id_tipo_ambiente,
+                aforo_maximo: ambiente.aforo_maximo,
+                piso_ubicacion: ambiente.piso_ubicacion,
+                pabellon: ambiente.pabellon || ambiente.pabellón,
+                estado: ambiente.estado
+            });
+        } else {
+            setEditId(null);
+            setFormData({
+                codigo_ambiente: '',
+                id_tipo_ambiente: tipoAmbiente.length > 0 ? tipoAmbiente[0].id_tipo_ambiente : '',
+                aforo_maximo: '',
+                piso_ubicacion: '',
+                pabellon: '',
+                estado: 'DISPONIBLE'
+            });
+        }
+        setShowModal(true);
+    };
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const url = editId 
+            ? `http://localhost:3000/api/ambientes/${editId}` 
+            : 'http://localhost:3000/api/ambientes';
+        
+        const method = editId ? 'PUT' : 'POST';
+
+        // Aseguramos que los números sean enviados como enteros para que el backend no rechace la validación
+        const dataToSend = {
+            ...formData,
+            id_tipo_ambiente: parseInt(formData.id_tipo_ambiente),
+            aforo_maximo: parseInt(formData.aforo_maximo),
+            piso_ubicacion: parseInt(formData.piso_ubicacion)
+        };
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataToSend)
+            });
+
+            if (response.ok) {
+                setShowModal(false);
+                cargarAmbientes(); // Recargamos la lista
+            } else {
+                const errorData = await response.json();
+                alert(`Error: ${errorData.mensaje}`);
+            }
+        } catch (error) {
+            console.error('Error al guardar el ambiente:', error);
+        }
+    };
+
+    const handleDelete = async (id, codigo) => {
+        if (window.confirm(`¿Estás seguro de eliminar el ambiente ${codigo}?`)) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/ambientes/${id}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    cargarAmbientes();
+                }
+            } catch (error) {
+                console.error('Error al eliminar:', error);
+            }
+        }
+    };
+
+    const getTipoAmbiente = (idTipo) => {
+        const tipo = tipoAmbiente.find(t => t.id_tipo_ambiente === idTipo);
+        return tipo ? tipo.nombre_tipo_ambiente : 'Sin Tipo';
+    };
+
+    const ambientesFiltrados = filtroTipo === 'todos' 
+        ? ambientes 
+        : ambientes.filter(a => a.id_tipo_ambiente === parseInt(filtroTipo));
+
+    const contarPorTipo = (idTipo) => {
+        if (idTipo === 'todos') return ambientes.length;
+        return ambientes.filter(a => a.id_tipo_ambiente === parseInt(idTipo)).length;
+    };
+
+    const totalAforos = ambientes.reduce((sum, a) => sum + a.aforo_maximo, 0);
+    const ambientesDisponibles = ambientes.filter(a => a.estado.toLowerCase() === 'disponible' || a.estado.toLowerCase() === 'activo').length;
+    const ambientesRestringidos = ambientes.filter(a => a.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO).length;
+
+    return (
+        <>
+            <header className="view-header">
+                <div className="header-title-area">
+                    <h1>Infraestructura y Ambientes</h1>
+                    <p className="subtitle">Gestión de aulas, talleres, laboratorios y espacios académicos</p>
+                </div>
+                <div className="header-actions">
+                    <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+                        <i className="fas fa-plus"></i> Nuevo Ambiente
+                    </button>
+                </div>
+            </header>
+
+            {/* Resumen de Infraestructura */}
+            <div className="ambientes-resumen">
+                <div className="resumen-card">
+                    <div className="resumen-icon"><i className="fas fa-door-open"></i></div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor">{ambientes.length}</span>
+                        <span className="resumen-label">Total de Ambientes</span>
+                    </div>
+                </div>
+                <div className="resumen-card">
+                    <div className="resumen-icon"><i className="fas fa-check-circle"></i></div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor">{ambientesDisponibles}</span>
+                        <span className="resumen-label">Disponibles</span>
+                    </div>
+                </div>
+                <div className="resumen-card">
+                    <div className="resumen-icon"><i className="fas fa-users"></i></div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor">{totalAforos}</span>
+                        <span className="resumen-label">Capacidad Total</span>
+                    </div>
+                </div>
+                <div className="resumen-card">
+                    <div className="resumen-icon" style={{ background: '#fef3c7', color: '#d97706' }}><i className="fas fa-exclamation-triangle"></i></div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor" style={{ color: '#b45309' }}>{ambientesRestringidos}</span>
+                        <span className="resumen-label">Aforo Restringido (&lt;{UMBRAL_AFRO_RESTRINGIDO})</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Filtros */}
+            <div className="ambientes-filtros">
+                <button className={`ambiente-filter-chip ${filtroTipo === 'todos' ? 'active' : ''}`} onClick={() => setFiltroTipo('todos')}>
+                    <i className="fas fa-th"></i> Todos <span className="chip-count">{contarPorTipo('todos')}</span>
+                </button>
+                {tipoAmbiente.map(tipo => (
+                    <button key={tipo.id_tipo_ambiente} className={`ambiente-filter-chip ${filtroTipo === tipo.id_tipo_ambiente.toString() ? 'active' : ''}`} onClick={() => setFiltroTipo(tipo.id_tipo_ambiente.toString())}>
+                        <i className={tipo.nombre_tipo_ambiente.toLowerCase().includes('taller') ? 'fas fa-wrench' : tipo.nombre_tipo_ambiente.toLowerCase().includes('laboratorio') ? 'fas fa-flask' : tipo.nombre_tipo_ambiente.toLowerCase().includes('aula') ? 'fas fa-chalkboard-teacher' : 'fas fa-users'}></i>
+                        {tipo.nombre_tipo_ambiente} <span className="chip-count">{contarPorTipo(tipo.id_tipo_ambiente)}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Grilla */}
+            <div className="ambientes-grid">
+                {ambientesFiltrados.map(ambiente => {
+                    const esAforoRestringido = ambiente.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO;
+                    const estadoStyle = ambiente.estado.toLowerCase() === 'disponible' ? 'disponible' : ambiente.estado.toLowerCase().includes('mantenimiento') ? 'mantenimiento' : 'ocupado';
+                    return (
+                        <div key={ambiente.id} className={`aula-card ${esAforoRestringido ? 'aforo-restringido' : ''}`}>
+                            <div className="aula-card-header">
+                                <div className="aula-codigo">
+                                    <i className="far fa-building"></i>
+                                    {ambiente.codigo_ambiente}
+                                </div>
+                                <div className="aula-actions">
+                                    <button className="btn-icon edit" onClick={() => handleOpenModal(ambiente)} title="Editar"><i className="fas fa-pen"></i></button>
+                                    <button className="btn-icon delete" onClick={() => handleDelete(ambiente.id, ambiente.codigo_ambiente)} title="Eliminar"><i className="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                            <span className="aula-tipo-badge">{getTipoAmbiente(ambiente.id_tipo_ambiente)}</span>
+
+                            <div className="aula-info-grid" style={{ marginTop: '15px' }}>
+                                <div className="aula-info-item">
+                                    <span className="aula-info-label">Pabellón</span>
+                                    <span className="aula-info-value"><i className="fas fa-map-marker-alt" style={{ color: 'var(--text-muted)', marginRight: '4px' }}></i>{ambiente.pabellon || ambiente.pabellón}</span>
+                                </div>
+                                <div className="aula-info-item">
+                                    <span className="aula-info-label">Piso</span>
+                                    <span className="aula-info-value">{ambiente.piso_ubicacion}</span>
+                                </div>
+                            </div>
+
+                            <div className="aula-aforo">
+                                <span className="aula-aforo-label"><i className="fas fa-users"></i> Aforo Máximo</span>
+                                <span className="aula-aforo-valor">{ambiente.aforo_maximo} personas</span>
+                            </div>
+
+                            {esAforoRestringido && (
+                                <div className="aula-alerta-restringido">
+                                    <i className="fas fa-exclamation-circle"></i><span>Capacidad Limitada</span>
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: '12px' }}>
+                                <span className={`aula-estado ${estadoStyle}`}>
+                                    <span className="estado-dot"></span>{ambiente.estado}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {ambientesFiltrados.length === 0 && (
+                <div className="workspace-card">
+                    <h2>No hay ambientes</h2>
+                    <p>No se encontraron ambientes registrados.</p>
+                </div>
+            )}
+
+            {/* MODAL FORMULARIO MEJORADO TIPO CARD */}
+            {showModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card-modal">
+                        
+                        {/* Nuevo Encabezado */}
+                        <div className="modal-header-modern">
+                            <div className="modal-title-area">
+                                <div className="modal-icon-bg">
+                                    <i className={`fas ${editId ? 'fa-pen' : 'fa-plus'}`}></i>
+                                </div>
+                                <div>
+                                    <h3>{editId ? 'Editar Ambiente' : 'Nuevo Ambiente'}</h3>
+                                    <p>Ingrese los detalles del espacio académico</p>
+                                </div>
+                            </div>
+                            <button className="btn-close" onClick={() => setShowModal(false)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="modal-form-modern">
+                            {/* Layout de grilla para agrupar campos */}
+                            <div className="form-grid">
+                                
+                                <div className="form-group col-span-2">
+                                    <label><i className="fas fa-qrcode"></i> Código del Ambiente</label>
+                                    <input type="text" name="codigo_ambiente" className="input-modern" value={formData.codigo_ambiente} onChange={handleChange} required placeholder="Ej: LAB-101" />
+                                </div>
+                                
+                                <div className="form-group col-span-2">
+                                    <label><i className="fas fa-tags"></i> Tipo de Ambiente</label>
+                                    <select name="id_tipo_ambiente" className="input-modern" value={formData.id_tipo_ambiente} onChange={handleChange} required>
+                                        <option value="" disabled>Seleccione un tipo</option>
+                                        {tipoAmbiente.map(tipo => (
+                                            <option key={tipo.id_tipo_ambiente} value={tipo.id_tipo_ambiente}>{tipo.nombre_tipo_ambiente}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label><i className="fas fa-users"></i> Aforo Máximo</label>
+                                    <input type="number" name="aforo_maximo" className="input-modern" value={formData.aforo_maximo} onChange={handleChange} required placeholder="Ej: 30" />
+                                </div>
+
+                                <div className="form-group">
+                                    <label><i className="fas fa-layer-group"></i> Piso</label>
+                                    <input type="number" name="piso_ubicacion" className="input-modern" value={formData.piso_ubicacion} onChange={handleChange} required placeholder="Ej: 1" />
+                                </div>
+
+                                <div className="form-group">
+                                    <label><i className="far fa-building"></i> Pabellón</label>
+                                    <input type="text" name="pabellon" className="input-modern" value={formData.pabellon} onChange={handleChange} required placeholder="Ej: Pabellón 1" />
+                                </div>
+
+                                <div className="form-group">
+                                    <label><i className="fas fa-toggle-on"></i> Estado</label>
+                                    <select name="estado" className="input-modern" value={formData.estado} onChange={handleChange}>
+                                        <option value="DISPONIBLE">Disponible</option>
+                                        <option value="EN MANTENIMIENTO">En Mantenimiento</option>
+                                        <option value="OCUPADO">Ocupado</option>
+                                    </select>
+                                </div>
+
+                            </div>
+
+                            <div className="modal-footer-modern">
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
+                                <button type="submit" className="btn btn-primary">
+                                    <i className="fas fa-save"></i> Guardar Ambiente
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }
 
