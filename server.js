@@ -9,8 +9,8 @@ const feriadoRoutes = require('./src/routes/feriado.routes'); // 👈 Nueva ruta
 
 // Opcionales (asegúrate de que existan en src/routes/, si no, coméntalos temporalmente)
 let carrerasRoutes, mallasRoutes;
-try { carrerasRoutes = require('./src/routes/carreras.routes'); } catch (e) {}
-try { mallasRoutes = require('./src/routes/mallas.routes'); } catch (e) {}
+try { carrerasRoutes = require('./src/routes/carrerasImpExp.routes'); } catch (e) {}
+try { mallasRoutes = require('./src/routes/mallasImpExp.routes'); } catch (e) {}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
