@@ -602,6 +602,392 @@ body {
     color: var(--text-muted);
 }
 
+
+/* ========================================================================== */
+/*                [ESTILOS DEL EQUIPO 2] FERIADOS                             */
+/* ========================================================================== */
+
+/* --- Cabecera de Feriados --- */
+.feriados-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.feriados-header-info h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.feriados-header-info .subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.feriados-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* --- Resumen de Feriados --- */
+.feriados-resumen {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.feriado-resumen-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.feriado-resumen-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.feriado-resumen-icon.total {
+    background: var(--active-bg);
+    color: var(--active-color);
+}
+
+.feriado-resumen-icon.activos {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.feriado-resumen-icon.inhabilitados {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.feriado-resumen-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.feriado-resumen-valor {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.feriado-resumen-label {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* --- Lista de Feriados --- */
+.feriados-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.feriado-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    transition: all 0.2s ease;
+}
+
+.feriado-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e1;
+}
+
+.feriado-card.inhabilitado {
+    background: #f8fafc;
+    opacity: 0.9;
+}
+
+.feriado-card-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
+}
+
+.feriado-fecha-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    background: var(--active-bg);
+    border: 1px solid rgba(37, 99, 235, 0.25);
+    text-align: center;
+}
+
+.feriado-card.inhabilitado .feriado-fecha-badge {
+    background: #f1f5f9;
+    border-color: var(--border);
+}
+
+.feriado-fecha-dia {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--active-color);
+    line-height: 1;
+}
+
+.feriado-card.inhabilitado .feriado-fecha-dia {
+    color: var(--text-muted);
+}
+
+.feriado-fecha-mes {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--active-color);
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+.feriado-card.inhabilitado .feriado-fecha-mes {
+    color: var(--text-muted);
+}
+
+.feriado-detalles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.feriado-descripcion {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.feriado-card.inhabilitado .feriado-descripcion {
+    color: var(--text-muted);
+}
+
+.feriado-fecha-completa {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.feriado-acciones {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.feriado-estado-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.feriado-estado-badge.activo {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.feriado-estado-badge.inhabilitado {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.feriado-estado-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.feriado-estado-badge.activo .feriado-estado-dot {
+    background: #22c55e;
+}
+
+.feriado-estado-badge.inhabilitado .feriado-estado-dot {
+    background: #ef4444;
+}
+
+.btn-toggle-estado {
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-normal);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-toggle-estado:hover {
+    background: var(--border-light);
+}
+
+.btn-toggle-estado.activar {
+    color: #166534;
+}
+
+.btn-toggle-estado.desactivar {
+    color: #991b1b;
+}
+
+/* --- Modal Nuevo Feriado --- */
+.feriado-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.feriado-modal-backdrop.active {
+    display: flex;
+}
+
+.feriado-modal {
+    width: min(460px, 92vw);
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+    overflow: hidden;
+    animation: feriadoFadeIn 0.2s ease-in-out;
+}
+
+.feriado-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.feriado-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.feriado-modal-title i {
+    color: var(--senati-blue);
+}
+
+.feriado-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.feriado-modal-close:hover {
+    color: var(--text-dark);
+}
+
+.feriado-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 22px 24px;
+}
+
+.feriado-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.feriado-form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.feriado-input {
+    width: 100%;
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    color: var(--text-dark);
+    background: #ffffff;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.feriado-input:focus {
+    border-color: var(--active-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.feriado-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-light);
+    background: #f8fafc;
+}
+
+@keyframes feriadoFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
 /* ========================================================================== */
 /*          [ESTILOS DEL EQUIPO 3]: CARRERAS, MALLAS Y FERIADOS               */
 /* ========================================================================== */
