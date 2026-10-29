@@ -8,8 +8,19 @@ const ambienteRoutes = require('./src/routes/ambiente.routes');
 const feriadoRoutes = require('./src/routes/feriado.routes'); // 👈 Nueva ruta de Feriados (Equipo 2)
 const authRoutes = require('./src/routes/authRoutes');
 const { verifyJWT } = require('./src/middlewares/authMiddleware');
-const carrerasRoutes = require('./src/routes/carrerasImpExp.routes');
-const mallasRoutes = require('./src/routes/mallasImpExp.routes');
+
+// Opcionales (si falta alguno, se avisa en consola en lugar de romper el arranque)
+let carrerasRoutes, mallasRoutes;
+try {
+    carrerasRoutes = require('./src/routes/carrerasImpExp.routes');
+} catch (e) {
+    console.error('No se pudieron cargar las rutas de carreras:', e.message);
+}
+try {
+    mallasRoutes = require('./src/routes/mallasImpExp.routes');
+} catch (e) {
+    console.error('No se pudieron cargar las rutas de mallas/cursos:', e.message);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
