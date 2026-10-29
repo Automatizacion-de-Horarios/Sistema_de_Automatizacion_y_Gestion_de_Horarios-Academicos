@@ -2,6 +2,8 @@
 
 El login acepta DNI o correo institucional, compara la contraseña con su hash bcrypt y entrega un JWT con vencimiento de ocho horas.
 
+El endpoint de inicio de sesión limita a 10 intentos de credenciales incorrectas por dirección IP en 15 minutos. Los accesos exitosos no cuentan para el límite. El contador usa memoria local del proceso; al reiniciar el backend se restablece, y si se ejecutan varias instancias se necesita un almacén compartido para aplicar el mismo límite entre todas. Si el backend está detrás de un proxy, configura Express para confiar solo en ese proxy y así obtener la IP real del visitante.
+
 ## Configurar variables
 
 1. Copia `.env.example` a `.env` en la raíz del repositorio.
