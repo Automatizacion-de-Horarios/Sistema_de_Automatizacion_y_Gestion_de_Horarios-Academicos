@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const carrerasImpExpController = require('../controllers/carreraImpExpController');
+const carrerasImpExpController = require('../controllers/carrerasImpExpController');
 
 // Obtener todas las carreras registradas
 router.get('/', carrerasImpExpController.obtenerCarreras);

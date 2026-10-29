@@ -17,7 +17,7 @@ const recibirArchivo = (req, res, next) => {
     });
 };
 
-const mallasImpExpController = require('../controllers/mallasImpoExpController');
+const mallasImpExpController = require('../controllers/mallasImpExpController');
 
 // Ruta POST para recibir el archivo arrastrado/seleccionado por el usuario.
 // Con ?progreso=1 responde con un jobId para consultar el avance en tiempo real.
