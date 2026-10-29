@@ -48,6 +48,7 @@ async function main() {
     rl.close();
 
     if (!dni || !correo || !nombres || !apellidos) throw new Error('DNI, correo, nombres y apellidos son obligatorios.');
+    if (!['ADMIN', 'COORDINADOR'].includes(rol)) throw new Error('El rol debe ser ADMIN o COORDINADOR.');
     const password = await pedirPasswordOculta();
     if (password.length < 8) throw new Error('Usa una contraseña de al menos 8 caracteres.');
 
