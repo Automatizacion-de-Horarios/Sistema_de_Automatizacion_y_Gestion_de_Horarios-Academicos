@@ -22,6 +22,10 @@ jobs:
             APP_DIR="/home/senati/apps/sistema-horarios"
             REPO="https://github.com/Automatizacion-de-Horarios/Sistema_de_Automatizacion_y_Gestion_de_Horarios-Academicos.git"
 
+            echo "=========================================="
+            echo "1. ACTUALIZANDO CÓDIGO"
+            echo "=========================================="
+
             mkdir -p "$APP_DIR"
 
             if [ ! -d "$APP_DIR/.git" ]; then
@@ -33,9 +37,62 @@ jobs:
               git clean -fd
             fi
 
-            echo "=================================="
-            echo "DEPLOY COMPLETADO"
-            echo "=================================="
+            cd "$APP_DIR"
+
+            echo "Commit desplegado:"
+            git log -1 --oneline
+
+            echo "=========================================="
+            echo "2. INSTALANDO DEPENDENCIAS DEL BACKEND"
+            echo "=========================================="
+
+            npm ci
+
+            echo "=========================================="
+            echo "3. INSTALANDO DEPENDENCIAS DEL FRONTEND"
+            echo "=========================================="
+
+            cd "$APP_DIR/frontend"
+
+            npm ci
+
+            echo "=========================================="
+            echo "4. COMPILANDO REACT"
+            echo "=========================================="
+
+            npm run build
+
+            echo "=========================================="
+            echo "5. REINICIANDO BACKEND"
+            echo "=========================================="
 
             cd "$APP_DIR"
+
+            pm2 restart horarios-backend
+
+            echo "=========================================="
+            echo "6. GUARDANDO ESTADO DE PM2"
+            echo "=========================================="
+
+            pm2 save
+
+            echo "=========================================="
+            echo "7. VERIFICACIÓN FINAL"
+            echo "=========================================="
+
+            echo ""
+            echo "Commit:"
             git log -1 --oneline
+
+            echo ""
+            echo "Frontend compilado:"
+            ls -lah "$APP_DIR/frontend/dist"
+
+            echo ""
+            echo "Estado PM2:"
+            pm2 status
+
+            echo ""
+            echo "=========================================="
+            echo "DEPLOY COMPLETADO CORRECTAMENTE"
+            echo "=========================================="

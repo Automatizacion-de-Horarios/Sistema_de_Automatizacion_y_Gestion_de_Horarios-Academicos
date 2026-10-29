@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import senatiLogo from './assets/logo-senati.png';
+import { AuthProvider, authFetch, useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 //--------Estructura referencial del Excel de cursos aceptado - EQUIPO 4 SECCION CURSOS ---------------
 // La fila 1 es un título general, la fila 2 son los encabezados y desde la fila 3 vienen los cursos.
@@ -24,6 +26,16 @@ const urlBase = import.meta.env.VITE_API_URL;
 
 
 function App() {
+    return (
+        <AuthProvider>
+            <ProtectedRoute>
+                <Dashboard />
+            </ProtectedRoute>
+        </AuthProvider>
+    );
+}
+
+function Dashboard() {
     // Control de navegación entre vistas
     const [activeView, setActiveView] = useState('horario-view');
     const [searchCarrera, setSearchCarrera] = useState('');
@@ -45,7 +57,12 @@ function App() {
     // eslint-disable-next-line no-unused-vars
     const [carreras, setCarreras] = useState([]);
     // eslint-disable-next-line no-unused-vars
-    const [currentUser, setCurrentUser] = useState(null);
+    const { user, logout } = useAuth();
+    const currentUser = user ? {
+        name: user.nombre,
+        role: user.rol,
+        avatar: user.nombre.split(/\s+/).slice(0, 2).map((parte) => parte[0]).join('').toUpperCase()
+    } : null;
 
 
 // ------------------------Nuevas CONST  (Equipo 4 CURSOS )--------------------------------------
@@ -107,7 +124,7 @@ function App() {
         return new Promise((resolve) => {
             const consultar = async () => {
                 try {
-                    const respuesta = await fetch(`${urlBase}/api/mallas/importar-excel/progreso/${jobId}`);
+                    const respuesta = await authFetch(`${urlBase}/api/mallas/importar-excel/progreso/${jobId}`);
                     const datos = await respuesta.json();
 
                     if (!respuesta.ok) {
@@ -181,7 +198,7 @@ function App() {
         datosFormulario.append('archivo', archivoSeleccionado);
 
         try {
-            const respuesta = await fetch(`${urlBase}/api/mallas/importar-excel?progreso=1`, {
+            const respuesta = await authFetch(`${urlBase}/api/mallas/importar-excel?progreso=1`, {
                 method: 'POST',
                 body: datosFormulario
             });
@@ -268,7 +285,7 @@ function App() {
         setMensajeNuevaCarrera(null);
 
         try {
-            const res = await fetch(`${urlBase}/api/carreras`, {
+            const res = await authFetch(`${urlBase}/api/carreras`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -445,6 +462,9 @@ function App() {
                                 <span className="role">{currentUser.role}</span>
                             </div>
                             <i className="fas fa-shield-alt text-senati" title="Usuario con permisos de auditoría activos"></i>
+                            <button className="logout-button" type="button" onClick={logout} title="Cerrar sesión" aria-label="Cerrar sesión">
+                                <i className="fas fa-sign-out-alt" />
+                            </button>
                         </>
                     )}
                 </div>
@@ -528,9 +548,6 @@ function App() {
                 />
                     
                 
-                <section id="feriados-view" className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}>
-                    {/* El Equipo 3 colocará aquí el Módulo de Calendario y Fechas Inamovibles */}
-                </section>
 
                 
                 {/* ===================== FIN SECCIÓN EQUIPO 3 ==================== */}
@@ -549,8 +566,15 @@ function App() {
                 {/*    [ÁREA DE TRABAJO] EQUIPO 2: INFRAESTRUCTURA Y AMBIENTES       */}
                 {/* =============================================================== */}
                 <section id="aulas-view" className={`view ${activeView === 'aulas-view' ? 'active' : ''}`}>
-                    {/* El Equipo 2 colocará aquí el Módulo de Infraestructura, Aulas y Plazas Libres */}
+                    <AmbientesModulo />
                 </section>
+
+
+
+                <section id="feriados-view" className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}>
+                    <FeriadosModulo triggerToast={triggerToast} />
+                </section>
+
                 {/* ===================== FIN SECCIÓN EQUIPO 2 ==================== */}
 
                 {/* =============================================================== */}
@@ -1430,6 +1454,618 @@ function CarrerasModulo({ activeView, setActiveView, triggerToast }) {
                 })}
             </div>
         </section>
+    );
+}
+
+// ===============================================================
+//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2)
+// ===============================================================
+function FeriadosModulo({ triggerToast }) {
+    // 1. Iniciamos con un arreglo vacío; los datos vendrán de la base de datos
+    const [feriados, setFeriados] = useState([]);
+
+    const [mostrarModal, setMostrarModal] = useState(false);
+    const [nuevoFeriado, setNuevoFeriado] = useState({
+        fecha: '',
+        descripcion: '',
+        estado: 'activo'
+    });
+
+    // 2. CONEXIÓN CON BD: Cargar feriados al montar el componente (GET)
+    useEffect(() => {
+        const obtenerFeriadosBD = async () => {
+            try {
+                const response = await authFetch(`${urlBase}/api/feriados`);
+                if (!response.ok) throw new Error('Error al obtener feriados');
+                const data = await response.json();
+                setFeriados(data);
+            } catch (error) {
+                console.error(error);
+                if (typeof triggerToast === 'function') {
+                    triggerToast('No se pudo conectar con la base de datos.');
+                }
+            }
+        };
+        obtenerFeriadosBD();
+    }, []);
+
+    const formatearFecha = (fechaStr) => {
+        // Limpiamos la hora si viene con formato ISO de la BD
+        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+        const partes = soloFecha.split('-'); // [año, mes, día]
+        if (partes.length === 3) {
+            // Mostramos solo el Día y el Mes de manera legible, indicando que se repite anualmente
+            const fechaTemp = new Date(soloFecha + 'T00:00:00');
+            const mesNombre = fechaTemp.toLocaleDateString('es-PE', { month: 'long' });
+            return `${partes[2]} de ${mesNombre} (Todos los años)`;
+        }
+        return '';
+    };
+
+    const obtenerDiaMes = (fechaStr) => {
+        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+        const fecha = new Date(soloFecha + 'T00:00:00');
+        return {
+            dia: fecha.toLocaleDateString('es-PE', { day: '2-digit' }),
+            mes: fecha.toLocaleDateString('es-PE', { month: 'short' }).toUpperCase().replace('.', '')
+        };
+    };
+
+    const feriadosOrdenados = [...feriados].sort((a, b) => {
+        const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; // Extrae 'MM-DD'
+        const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; // Extrae 'MM-DD'
+        return fechaA.localeCompare(fechaB);
+    });
+
+    const totalFeriados = feriados.length;
+    const feriadosActivos = feriados.filter(f => f.estado === 'activo').length;
+    const feriadosInhabilitados = feriados.filter(f => f.estado === 'inhabilitado').length;
+
+    // 3. CONEXIÓN CON BD: Cambiar estado en la base de datos (PUT)
+    const toggleEstadoFeriado = async (idFeriado) => {
+        const feriadoActual = feriados.find(f => f.id_feriado === idFeriado);
+        if (!feriadoActual) return;
+
+        const nuevoEstado = feriadoActual.estado === 'activo' ? 'inhabilitado' : 'activo';
+
+        try {
+            const response = await authFetch(`${urlBase}/api/feriados/${idFeriado}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fecha: feriadoActual.fecha.split('T')[0],
+                    descripcion: feriadoActual.descripcion,
+                    estado: nuevoEstado
+                })
+            });
+
+            if (!response.ok) throw new Error('Error al actualizar estado');
+
+            // Actualizamos el estado localmente solo si el backend respondió con éxito
+            setFeriados(prev =>
+                prev.map(feriado => {
+                    if (feriado.id_feriado === idFeriado) {
+                        return { ...feriado, estado: nuevoEstado };
+                    }
+                    return feriado;
+                })
+            );
+
+            if (typeof triggerToast === 'function') {
+                triggerToast(
+                    nuevoEstado === 'activo'
+                        ? `Feriado "${feriadoActual.descripcion}" activado correctamente.`
+                        : `Feriado "${feriadoActual.descripcion}" inhabilitado correctamente.`
+                );
+            }
+        } catch (error) {
+            console.error(error);
+            if (typeof triggerToast === 'function') {
+                triggerToast('Error al actualizar el estado en la base de datos.');
+            }
+        }
+    };
+
+    const abrirModal = () => {
+        setNuevoFeriado({
+            fecha: '',
+            descripcion: '',
+            estado: 'activo'
+        });
+        setMostrarModal(true);
+    };
+
+    const cerrarModal = () => {
+        setMostrarModal(false);
+    };
+
+    // 4. CONEXIÓN CON BD: Guardar nuevo feriado en la base de datos (POST)
+    const agregarFeriado = async () => {
+        if (!nuevoFeriado.fecha) {
+            if (typeof triggerToast === 'function') {
+                triggerToast('Debe seleccionar una fecha para el feriado.');
+            }
+            return;
+        }
+        if (!nuevoFeriado.descripcion.trim()) {
+            if (typeof triggerToast === 'function') {
+                triggerToast('Debe ingresar una descripción para el feriado.');
+            }
+            return;
+        }
+
+        try {
+            const response = await authFetch(`${urlBase}/api/feriados`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fecha: nuevoFeriado.fecha,
+                    descripcion: nuevoFeriado.descripcion.trim(),
+                    estado: nuevoFeriado.estado
+                })
+            });
+
+            if (!response.ok) throw new Error('Error al registrar el feriado');
+
+            const feriadoCreado = await response.json();
+
+            // Añadimos el feriado devuelto por la BD (con su ID real autoincrementable)
+            setFeriados(prev => [...prev, feriadoCreado]);
+
+            if (typeof triggerToast === 'function') {
+                triggerToast('Feriado registrado correctamente en la base de datos.');
+            }
+
+            setMostrarModal(false);
+        } catch (error) {
+            console.error(error);
+            if (typeof triggerToast === 'function') {
+                triggerToast('Error al guardar el feriado en el servidor.');
+            }
+        }
+    };
+
+    const manejarCambioInput = (e) => {
+        const { name, value } = e.target;
+        setNuevoFeriado(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    return (
+        <>
+            <header className="feriados-header">
+                <div className="feriados-header-info">
+                    <h1>Gestión de Feriados</h1>
+                    <p className="subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
+                </div>
+                <div className="feriados-actions">
+                    <button className="btn btn-primary" onClick={abrirModal}>
+                        <i className="fas fa-plus"></i>
+                        Nuevo Feriado
+                    </button>
+                </div>
+            </header>
+
+            <div className="feriados-resumen">
+                <div className="feriado-resumen-card">
+                    <div className="feriado-resumen-icon total">
+                        <i className="fas fa-calendar-day"></i>
+                    </div>
+                    <div className="feriado-resumen-info">
+                        <span className="feriado-resumen-valor">{totalFeriados}</span>
+                        <span className="feriado-resumen-label">Total de Feriados</span>
+                    </div>
+                </div>
+                <div className="feriado-resumen-card">
+                    <div className="feriado-resumen-icon activos">
+                        <i className="fas fa-check-circle"></i>
+                    </div>
+                    <div className="feriado-resumen-info">
+                        <span className="feriado-resumen-valor">{feriadosActivos}</span>
+                        <span className="feriado-resumen-label">Activos</span>
+                    </div>
+                </div>
+                <div className="feriado-resumen-card">
+                    <div className="feriado-resumen-icon inhabilitados">
+                        <i className="fas fa-ban"></i>
+                    </div>
+                    <div className="feriado-resumen-info">
+                        <span className="feriado-resumen-valor">{feriadosInhabilitados}</span>
+                        <span className="feriado-resumen-label">Inhabilitados</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="feriados-lista">
+                {feriadosOrdenados.map(feriado => {
+                    const { dia, mes } = obtenerDiaMes(feriado.fecha);
+                    const esInhabilitado = feriado.estado === 'inhabilitado';
+                    return (
+                        <div
+                            key={feriado.id_feriado}
+                            className={`feriado-card ${esInhabilitado ? 'inhabilitado' : ''}`}
+                        >
+                            <div className="feriado-card-info">
+                                <div className="feriado-fecha-badge">
+                                    <span className="feriado-fecha-dia">{dia}</span>
+                                    <span className="feriado-fecha-mes">{mes}</span>
+                                </div>
+                                <div className="feriado-detalles">
+                                    <span className="feriado-descripcion">{feriado.descripcion}</span>
+                                    <span className="feriado-fecha-completa">
+                                        <i className="far fa-calendar-alt"></i>
+                                        {formatearFecha(feriado.fecha)}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="feriado-acciones">
+                                <span className={`feriado-estado-badge ${feriado.estado}`}>
+                                    <span className="feriado-estado-dot"></span>
+                                    {feriado.estado === 'activo' ? 'Activo' : 'Inhabilitado'}
+                                </span>
+                                <button
+                                    className={`btn-toggle-estado ${feriado.estado === 'activo' ? 'desactivar' : 'activar'}`}
+                                    onClick={() => toggleEstadoFeriado(feriado.id_feriado)}
+                                >
+                                    <i className={`fas ${feriado.estado === 'activo' ? 'fa-toggle-off' : 'fa-toggle-on'}`}></i>
+                                    {feriado.estado === 'activo' ? 'Inhabilitar' : 'Activar'}
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {feriadosOrdenados.length === 0 && (
+                <div className="workspace-card">
+                    <h2>No hay feriados registrados</h2>
+                    <p>Agrega un nuevo feriado utilizando el botón "Nuevo Feriado".</p>
+                </div>
+            )}
+
+            <div className={`feriado-modal-backdrop ${mostrarModal ? 'active' : ''}`}>
+                <div className="feriado-modal">
+                    <div className="feriado-modal-header">
+                        <div className="feriado-modal-title">
+                            <i className="fas fa-flag"></i>
+                            Registrar Nuevo Feriado
+                        </div>
+                        <button className="feriado-modal-close" onClick={cerrarModal}>
+                            <i className="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div className="feriado-modal-body">
+                        <div className="feriado-form-group">
+                            <label htmlFor="feriado-fecha">Fecha</label>
+                            <input
+                                id="feriado-fecha"
+                                type="date"
+                                className="feriado-input"
+                                name="fecha"
+                                value={nuevoFeriado.fecha}
+                                onChange={manejarCambioInput}
+                            />
+                        </div>
+                        <div className="feriado-form-group">
+                            <label htmlFor="feriado-descripcion">Descripción</label>
+                            <input
+                                id="feriado-descripcion"
+                                type="text"
+                                className="feriado-input"
+                                name="descripcion"
+                                placeholder="Ej. Día de la Independencia"
+                                value={nuevoFeriado.descripcion}
+                                onChange={manejarCambioInput}
+                                maxLength={255}
+                            />
+                        </div>
+                        <div className="feriado-form-group">
+                            <label htmlFor="feriado-estado">Estado inicial</label>
+                            <select
+                                id="feriado-estado"
+                                className="feriado-input"
+                                name="estado"
+                                value={nuevoFeriado.estado}
+                                onChange={manejarCambioInput}
+                            >
+                                <option value="activo">Activo</option>
+                                <option value="inhabilitado">Inhabilitado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="feriado-modal-footer">
+                        <button className="btn btn-secondary" onClick={cerrarModal}>
+                            Cancelar
+                        </button>
+                        <button className="btn btn-primary" onClick={agregarFeriado}>
+                            <i className="fas fa-save"></i>
+                            Guardar Feriado
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}
+
+// ===============================================================
+//   MÓDULO AUTÓNOMO: INFRAESTRUCTURA, AULAS Y AMBIENTES (EQUIPO 2)
+// ===============================================================
+function AmbientesModulo() {
+    // Mock data basado en las tablas futuras: tipo_ambiente, ambientes, ambiente_apto_carreras
+    const [tipoAmbiente] = useState([
+        { id_tipo: 1, descripcion: 'Taller' },
+        { id_tipo: 2, descripcion: 'Laboratorio' },
+        { id_tipo: 3, descripcion: 'Teoría' },
+        { id_tipo: 4, descripcion: 'Auditorio' }
+    ]);
+
+    const [ambientes] = useState([
+        {
+            id_ambiente: 1,
+            codigo_ambiente: 'T-101',
+            id_tipo_ambiente: 1,
+            descripcion: 'Taller de Mecánica',
+            aforo_maximo: 20,
+            piso_ubicacion: '1er Piso',
+            pabellón: 'Pabellón A',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 2,
+            codigo_ambiente: 'LAB-201',
+            id_tipo_ambiente: 2,
+            descripcion: 'Laboratorio de Electrónica',
+            aforo_maximo: 16,
+            piso_ubicacion: '2do Piso',
+            pabellón: 'Pabellón B',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 3,
+            codigo_ambiente: 'T-102',
+            id_tipo_ambiente: 1,
+            descripcion: 'Taller de Soldadura',
+            aforo_maximo: 12,
+            piso_ubicacion: '1er Piso',
+            pabellón: 'Pabellón A',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 4,
+            codigo_ambiente: 'AULA-301',
+            id_tipo_ambiente: 3,
+            descripcion: 'Aula de Teoría - General',
+            aforo_maximo: 40,
+            piso_ubicacion: '3er Piso',
+            pabellón: 'Pabellón C',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 5,
+            codigo_ambiente: 'LAB-202',
+            id_tipo_ambiente: 2,
+            descripcion: 'Laboratorio de Redes',
+            aforo_maximo: 15,
+            piso_ubicacion: '2do Piso',
+            pabellón: 'Pabellón B',
+            estado: 'mantenimiento'
+        },
+        {
+            id_ambiente: 6,
+            codigo_ambiente: 'T-103',
+            id_tipo_ambiente: 1,
+            descripcion: 'Taller de Carpintería',
+            aforo_maximo: 18,
+            piso_ubicacion: '1er Piso',
+            pabellón: 'Pabellón A',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 7,
+            codigo_ambiente: 'AULA-302',
+            id_tipo_ambiente: 3,
+            descripcion: 'Aula Multimedia',
+            aforo_maximo: 35,
+            piso_ubicacion: '3er Piso',
+            pabellón: 'Pabellón C',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 8,
+            codigo_ambiente: 'AUD-001',
+            id_tipo_ambiente: 4,
+            descripcion: 'Auditorio Principal',
+            aforo_maximo: 150,
+            piso_ubicacion: 'Planta Baja',
+            pabellón: 'Pabellón Central',
+            estado: 'disponible'
+        },
+        {
+            id_ambiente: 9,
+            codigo_ambiente: 'LAB-203',
+            id_tipo_ambiente: 2,
+            descripcion: 'Laboratorio de Computación',
+            aforo_maximo: 14,
+            piso_ubicacion: '2do Piso',
+            pabellón: 'Pabellón B',
+            estado: 'disponible'
+        }
+    ]);
+
+    const [filtroTipo, setFiltroTipo] = useState('todos');
+
+    // Umbral para considerar aforo restringido (menor a 18 personas)
+    const UMBRAL_AFRO_RESTRINGIDO = 18;
+
+    const getTipoAmbiente = (idTipo) => {
+        const tipo = tipoAmbiente.find(t => t.id_tipo === idTipo);
+        return tipo ? tipo.descripcion : 'Sin Tipo';
+    };
+
+    const ambientesFiltrados = filtroTipo === 'todos' 
+        ? ambientes 
+        : ambientes.filter(a => a.id_tipo_ambiente === parseInt(filtroTipo));
+
+    // Contadores por tipo
+    const contarPorTipo = (idTipo) => {
+        if (idTipo === 'todos') return ambientes.length;
+        return ambientes.filter(a => a.id_tipo_ambiente === parseInt(idTipo)).length;
+    };
+
+    const totalAforos = ambientes.reduce((sum, a) => sum + a.aforo_maximo, 0);
+    const ambientesDisponibles = ambientes.filter(a => a.estado === 'disponible').length;
+    const ambientesRestringidos = ambientes.filter(a => a.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO).length;
+
+    return (
+        <>
+            <header className="view-header">
+                <div className="header-title-area">
+                    <h1>Infraestructura y Ambientes</h1>
+                    <p className="subtitle">Gestión de aulas, talleres, laboratorios y espacios académicos</p>
+                </div>
+            </header>
+
+            {/* Resumen de Infraestructura */}
+            <div className="ambientes-resumen">
+                <div className="resumen-card">
+                    <div className="resumen-icon">
+                        <i className="fas fa-door-open"></i>
+                    </div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor">{ambientes.length}</span>
+                        <span className="resumen-label">Total de Ambientes</span>
+                    </div>
+                </div>
+                <div className="resumen-card">
+                    <div className="resumen-icon">
+                        <i className="fas fa-check-circle"></i>
+                    </div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor">{ambientesDisponibles}</span>
+                        <span className="resumen-label">Disponibles</span>
+                    </div>
+                </div>
+                <div className="resumen-card">
+                    <div className="resumen-icon">
+                        <i className="fas fa-users"></i>
+                    </div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor">{totalAforos}</span>
+                        <span className="resumen-label">Capacidad Total</span>
+                    </div>
+                </div>
+                <div className="resumen-card">
+                    <div className="resumen-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
+                        <i className="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div className="resumen-info">
+                        <span className="resumen-valor" style={{ color: '#b45309' }}>{ambientesRestringidos}</span>
+                        <span className="resumen-label">Aforo Restringido (&lt;{UMBRAL_AFRO_RESTRINGIDO})</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Filtros rápidos por tipo de ambiente */}
+            <div className="ambientes-filtros">
+                <button
+                    className={`ambiente-filter-chip ${filtroTipo === 'todos' ? 'active' : ''}`}
+                    onClick={() => setFiltroTipo('todos')}
+                >
+                    <i className="fas fa-th"></i>
+                    Todos
+                    <span className="chip-count">{contarPorTipo('todos')}</span>
+                </button>
+                {tipoAmbiente.map(tipo => (
+                    <button
+                        key={tipo.id_tipo}
+                        className={`ambiente-filter-chip ${filtroTipo === tipo.id_tipo.toString() ? 'active' : ''}`}
+                        onClick={() => setFiltroTipo(tipo.id_tipo.toString())}
+                    >
+                        <i className={tipo.descripcion === 'Taller' ? 'fas fa-wrench' : 
+                                      tipo.descripcion === 'Laboratorio' ? 'fas fa-flask' :
+                                      tipo.descripcion === 'Teoría' ? 'fas fa-chalkboard-teacher' :
+                                      'fas fa-users'}></i>
+                        {tipo.descripcion}
+                        <span className="chip-count">{contarPorTipo(tipo.id_tipo)}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Grilla de Aulas / Ambientes */}
+            <div className="ambientes-grid">
+                {ambientesFiltrados.map(ambiente => {
+                    const esAforoRestringido = ambiente.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO;
+                    return (
+                        <div 
+                            key={ambiente.id_ambiente} 
+                            className={`aula-card ${esAforoRestringido ? 'aforo-restringido' : ''}`}
+                        >
+                            <div className="aula-card-header">
+                                <div className="aula-codigo">
+                                    <i className="far fa-building"></i>
+                                    {ambiente.codigo_ambiente}
+                                </div>
+                                <span className="aula-tipo-badge">
+                                    {getTipoAmbiente(ambiente.id_tipo_ambiente)}
+                                </span>
+                            </div>
+
+                            <div style={{ marginBottom: '10px', fontSize: '13px', color: 'var(--text-normal)', fontWeight: '500' }}>
+                                {ambiente.descripcion}
+                            </div>
+
+                            <div className="aula-info-grid">
+                                <div className="aula-info-item">
+                                    <span className="aula-info-label">Pabellón</span>
+                                    <span className="aula-info-value">
+                                        <i className="fas fa-map-marker-alt" style={{ color: 'var(--text-muted)', marginRight: '4px' }}></i>
+                                        {ambiente.pabellón}
+                                    </span>
+                                </div>
+                                <div className="aula-info-item">
+                                    <span className="aula-info-label">Ubicación</span>
+                                    <span className="aula-info-value">{ambiente.piso_ubicacion}</span>
+                                </div>
+                            </div>
+
+                            <div className="aula-aforo">
+                                <span className="aula-aforo-label">
+                                    <i className="fas fa-users"></i>
+                                    Aforo Máximo
+                                </span>
+                                <span className="aula-aforo-valor">{ambiente.aforo_maximo} personas</span>
+                            </div>
+
+                            {esAforoRestringido && (
+                                <div className="aula-alerta-restringido">
+                                    <i className="fas fa-exclamation-circle"></i>
+                                    <span>Aforo Restringido - Capacidad Limitada</span>
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: '12px' }}>
+                                <span className={`aula-estado ${ambiente.estado}`}>
+                                    <span className="estado-dot"></span>
+                                    {ambiente.estado === 'disponible' ? 'Disponible' : 
+                                     ambiente.estado === 'mantenimiento' ? 'En Mantenimiento' : 
+                                     'Ocupado'}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {ambientesFiltrados.length === 0 && (
+                <div className="workspace-card">
+                    <h2>No hay ambientes</h2>
+                    <p>No se encontraron ambientes con el filtro seleccionado.</p>
+                </div>
+            )}
+        </>
     );
 }
 
