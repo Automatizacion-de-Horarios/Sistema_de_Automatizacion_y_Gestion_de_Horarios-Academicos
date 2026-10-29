@@ -1,15 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-
-const AuthContext = createContext(null);
-const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '');
-const tokenKey = 'senati_auth_token';
-
-export function authFetch(url, options = {}) {
-    const token = localStorage.getItem(tokenKey);
-    const headers = new Headers(options.headers || {});
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-    return fetch(url, { ...options, headers });
-}
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { API_BASE_URL } from '../config/api';
+import { AuthContext, tokenKey } from './authContext';
 
 export function AuthProvider({ children }) {
     const [token, setToken] = useState(() => localStorage.getItem(tokenKey));
@@ -24,7 +15,7 @@ export function AuthProvider({ children }) {
                 return;
             }
             try {
-                const response = await fetch(`${apiBase}/api/auth/verify`, {
+                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const data = await response.json();
@@ -45,7 +36,7 @@ export function AuthProvider({ children }) {
     }, [token]);
 
     const login = useCallback(async (identificador, password) => {
-        const response = await fetch(`${apiBase}/api/auth/login`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ identificador, password })
@@ -67,10 +58,4 @@ export function AuthProvider({ children }) {
 
     const value = useMemo(() => ({ token, user, ready, login, logout }), [token, user, ready, login, logout]);
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-    const context = useContext(AuthContext);
-    if (!context) throw new Error('useAuth debe usarse dentro de AuthProvider.');
-    return context;
 }

@@ -12,11 +12,4 @@ const verifyJWT = (req, res, next) => {
     }
 };
 
-const requireRole = (...rolesPermitidos) => (req, res, next) => {
-    if (!req.user || !rolesPermitidos.includes(req.user.rol)) {
-        return res.status(403).json({ mensaje: 'No tienes permiso para realizar esta acción.' });
-    }
-    return next();
-};
-
-module.exports = { verifyJWT, requireRole };
+module.exports = { verifyJWT };

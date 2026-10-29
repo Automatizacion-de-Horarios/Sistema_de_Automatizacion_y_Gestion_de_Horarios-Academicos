@@ -1,4 +1,4 @@
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import LoginView from '../views/LoginView';
 
 export default function ProtectedRoute({ children }) {
