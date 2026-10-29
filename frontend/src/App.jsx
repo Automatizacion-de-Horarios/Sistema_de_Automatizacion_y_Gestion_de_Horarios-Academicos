@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import senatiLogo from './assets/logo-senati.png';
+import { AuthProvider, authFetch, useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 //--------Estructura referencial del Excel de cursos aceptado - EQUIPO 4 SECCION CURSOS ---------------
 // La fila 1 es un título general, la fila 2 son los encabezados y desde la fila 3 vienen los cursos.
@@ -24,6 +26,16 @@ const urlBase = import.meta.env.VITE_API_URL;
 
 
 function App() {
+    return (
+        <AuthProvider>
+            <ProtectedRoute>
+                <Dashboard />
+            </ProtectedRoute>
+        </AuthProvider>
+    );
+}
+
+function Dashboard() {
     // Control de navegación entre vistas
     const [activeView, setActiveView] = useState('horario-view');
     const [searchCarrera, setSearchCarrera] = useState('');
@@ -45,7 +57,12 @@ function App() {
     // eslint-disable-next-line no-unused-vars
     const [carreras, setCarreras] = useState([]);
     // eslint-disable-next-line no-unused-vars
-    const [currentUser, setCurrentUser] = useState(null);
+    const { user, logout } = useAuth();
+    const currentUser = user ? {
+        name: user.nombre,
+        role: user.rol,
+        avatar: user.nombre.split(/\s+/).slice(0, 2).map((parte) => parte[0]).join('').toUpperCase()
+    } : null;
 
 
 // ------------------------Nuevas CONST  (Equipo 4 CURSOS )--------------------------------------
@@ -107,7 +124,7 @@ function App() {
         return new Promise((resolve) => {
             const consultar = async () => {
                 try {
-                    const respuesta = await fetch(`${urlBase}/api/mallas/importar-excel/progreso/${jobId}`);
+                    const respuesta = await authFetch(`${urlBase}/api/mallas/importar-excel/progreso/${jobId}`);
                     const datos = await respuesta.json();
 
                     if (!respuesta.ok) {
@@ -181,7 +198,7 @@ function App() {
         datosFormulario.append('archivo', archivoSeleccionado);
 
         try {
-            const respuesta = await fetch(`${urlBase}/api/mallas/importar-excel?progreso=1`, {
+            const respuesta = await authFetch(`${urlBase}/api/mallas/importar-excel?progreso=1`, {
                 method: 'POST',
                 body: datosFormulario
             });
@@ -268,7 +285,7 @@ function App() {
         setMensajeNuevaCarrera(null);
 
         try {
-            const res = await fetch(`${urlBase}/api/carreras`, {
+            const res = await authFetch(`${urlBase}/api/carreras`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -445,6 +462,9 @@ function App() {
                                 <span className="role">{currentUser.role}</span>
                             </div>
                             <i className="fas fa-shield-alt text-senati" title="Usuario con permisos de auditoría activos"></i>
+                            <button className="logout-button" type="button" onClick={logout} title="Cerrar sesión" aria-label="Cerrar sesión">
+                                <i className="fas fa-sign-out-alt" />
+                            </button>
                         </>
                     )}
                 </div>
@@ -1455,7 +1475,7 @@ function FeriadosModulo({ triggerToast }) {
     useEffect(() => {
         const obtenerFeriadosBD = async () => {
             try {
-                const response = await fetch('http://localhost:3000/api/feriados');
+                const response = await authFetch(`${urlBase}/api/feriados`);
                 if (!response.ok) throw new Error('Error al obtener feriados');
                 const data = await response.json();
                 setFeriados(data);
@@ -1509,7 +1529,7 @@ function FeriadosModulo({ triggerToast }) {
         const nuevoEstado = feriadoActual.estado === 'activo' ? 'inhabilitado' : 'activo';
 
         try {
-            const response = await fetch(`http://localhost:3000/api/feriados/${idFeriado}`, {
+            const response = await authFetch(`${urlBase}/api/feriados/${idFeriado}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1575,7 +1595,7 @@ function FeriadosModulo({ triggerToast }) {
         }
 
         try {
-            const response = await fetch('http://localhost:3000/api/feriados', {
+            const response = await authFetch(`${urlBase}/api/feriados`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
