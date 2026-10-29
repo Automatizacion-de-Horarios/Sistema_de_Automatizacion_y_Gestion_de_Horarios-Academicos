@@ -1056,8 +1056,7 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
     // [GRUPO 4 - CAMBIO 7]: ESTADO DE SEDES POR ZONAL. TACNA INICIA CON CIUDAD NUEVA Y CONO SUR
     const [sedesPorZonal, setSedesPorZonal] = useState({
         "Dirección Zonal Moquegua - Tacna": [
-            { codigo: "56P", nombre: "56P - CFP Tacna (Ciudad Nueva)" },
-            { codigo: "56CS", nombre: "56CS - UPC Tacna (Cono Sur)" }
+            { codigo: "56P", nombre: "56P - CFP Tacna (Cono Sur)" },
         ]
     });
 
@@ -1154,17 +1153,17 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                         <div className="form-group">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                 <label style={{ margin: 0 }}>Sede / Campus (CAMP)</label>
-                                <button 
-                                    type="button"
-                                    className="btn btn-secondary btn-sm"
-                                    style={{ padding: '2px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                    onClick={() => {
-                                        setNuevaZonal(zonalActiva);
-                                        document.getElementById('modal-nueva-sede').style.display = 'flex';
-                                    }}
-                                >
-                                    <i className="fas fa-plus" style={{ color: 'var(--senati-blue)' }}></i> Nueva Sede
-                                </button>
+                            <button 
+                                type="button"
+                                className="eq4-btn eq4-btn-secondary"
+                                style={{ padding: '6px 12px', fontSize: '12px' }}
+                                onClick={() => {
+                                    setNuevaZonal(zonalActiva);
+                                    document.getElementById('modal-nueva-sede').style.display = 'flex';
+                                }}
+                            >
+                                <i className="fas fa-plus-circle" style={{ color: 'var(--senati-blue)' }}></i> Nueva Sede
+                            </button>
                             </div>
                             
                             <select 
@@ -1216,11 +1215,11 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                     </div>
 
                     {/* GUARDAR AJUSTES */}
-                    <div className="form-actions" style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
-                        <button className="btn btn-primary btn-lg">
-                            <i className="fas fa-check"></i> Guardar Ajustes
-                        </button>
-                    </div>
+                <div className="form-actions" style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+                    <button type="button" className="eq4-btn eq4-btn-primary" onClick={() => triggerToast("Ajustes guardados correctamente.")}>
+                        <i className="fas fa-check"></i> Guardar Ajustes
+                    </button>
+                </div>
                 </div>
             </section>
 
@@ -1317,14 +1316,14 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
                         <button 
                             type="button"
-                            className="btn btn-secondary" 
+                            className="eq4-btn eq4-btn-secondary" 
                             onClick={() => document.getElementById('modal-nueva-sede').style.display = 'none'}
                         >
                             Cancelar
                         </button>
                         <button 
                             type="button"
-                            className="btn btn-primary"
+                            className="eq4-btn eq4-btn-primary"
                             onClick={handleRegistrarSede}
                         >
                             <i className="fas fa-save"></i> Registrar Sede
