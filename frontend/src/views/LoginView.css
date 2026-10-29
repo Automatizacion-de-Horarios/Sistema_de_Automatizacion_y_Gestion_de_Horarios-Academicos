@@ -93,8 +93,7 @@
 .login-input-wrap input { width: 100%; min-width: 0; border: 0; outline: 0; color: #1e293b; background: transparent; font-size: 14px; }
 .login-input-wrap input::placeholder { color: #929daf; }
 .password-toggle { padding: 6px; border: 0; color: #8490a3; background: transparent; cursor: pointer; }
-.login-options { min-height: 25px; margin: -2px 0 20px; display: flex; justify-content: flex-end; }
-.login-help { color: #2148b6; font-size: 12px; font-weight: 600; }
+.login-help-text { margin: -2px 0 20px; color: #53627a; text-align: right; font-size: 12px; }
 .login-submit { width: 100%; height: 50px; border: 0; border-radius: 9px; color: #fff; background: #1b45c6; box-shadow: 0 7px 16px rgba(27,69,198,.18); font-size: 15px; font-weight: 700; cursor: pointer; transition: background .18s, transform .18s; }
 .login-submit:hover:not(:disabled) { background: #1438a8; transform: translateY(-1px); }
 .login-submit:disabled { opacity: .7; cursor: wait; }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import senatiLogo from '../assets/logo-senati.png';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import './LoginView.css';
 
 export default function LoginView() {
@@ -67,7 +67,7 @@ export default function LoginView() {
                                     <i className={mostrarPassword ? 'far fa-eye-slash' : 'far fa-eye'} />
                                 </button>
                             </label>
-                            <div className="login-options"><span /> <span className="login-help">¿Olvidaste tu contraseña?</span></div>
+                            <p className="login-help-text">¿Olvidaste tu contraseña? Contacta al administrador del sistema.</p>
                             {error && <p className="login-error" role="alert">{error}</p>}
                             <button className="login-submit" type="submit" disabled={cargando}>
                                 {cargando ? 'Ingresando…' : 'Iniciar sesión'}

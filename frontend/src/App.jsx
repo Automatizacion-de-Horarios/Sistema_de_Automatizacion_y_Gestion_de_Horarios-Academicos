@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import senatiLogo from './assets/logo-senati.png';
-import { AuthProvider, authFetch, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/useAuth';
+import { authFetch } from './lib/authFetch';
+import { API_BASE_URL } from './config/api';
 import ProtectedRoute from './components/ProtectedRoute';
 
 //--------Estructura referencial del Excel de cursos aceptado - EQUIPO 4 SECCION CURSOS ---------------
@@ -21,9 +24,6 @@ const columnasExcelCursos = [
     { nombre: 'TOTAL HORAS', ejemplo: '85', omitida: false }
 ];
 //------------------------------------------------------------------------------------------------------
-
-const urlBase = import.meta.env.VITE_API_URL; 
-
 
 function App() {
     return (
@@ -46,17 +46,16 @@ function Dashboard() {
     // [GRUPO 4 - CAMBIO 2]: ESTADO Y FUNCIÓN PARA MOSTRAR ALERTAS TOAST FLOTANTES EN LA ESQUINA SUPERIOR DERECHA
     const [toast, setToast] = useState({ show: false, mensaje: '' });
 
-    const triggerToast = (mensaje) => {
+    const triggerToast = useCallback((mensaje) => {
         setToast({ show: true, mensaje });
         setTimeout(() => {
             setToast({ show: false, mensaje: '' });
         }, 3000); // SE OCULTA AUTOMÁTICAMENTE A LOS 3 SEGUNDOS
-    };
+    }, []);
 
     // Datos dinámicos (se cargarán desde la base de datos)
     // eslint-disable-next-line no-unused-vars
     const [carreras, setCarreras] = useState([]);
-    // eslint-disable-next-line no-unused-vars
     const { user, logout } = useAuth();
     const currentUser = user ? {
         name: user.nombre,
@@ -124,7 +123,7 @@ function Dashboard() {
         return new Promise((resolve) => {
             const consultar = async () => {
                 try {
-                    const respuesta = await authFetch(`${urlBase}/api/mallas/importar-excel/progreso/${jobId}`);
+                    const respuesta = await authFetch(`${API_BASE_URL}/api/mallas/importar-excel/progreso/${jobId}`);
                     const datos = await respuesta.json();
 
                     if (!respuesta.ok) {
@@ -198,7 +197,7 @@ function Dashboard() {
         datosFormulario.append('archivo', archivoSeleccionado);
 
         try {
-            const respuesta = await authFetch(`${urlBase}/api/mallas/importar-excel?progreso=1`, {
+            const respuesta = await authFetch(`${API_BASE_URL}/api/mallas/importar-excel?progreso=1`, {
                 method: 'POST',
                 body: datosFormulario
             });
@@ -285,7 +284,7 @@ function Dashboard() {
         setMensajeNuevaCarrera(null);
 
         try {
-            const res = await authFetch(`${urlBase}/api/carreras`, {
+            const res = await authFetch(`${API_BASE_URL}/api/carreras`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -461,7 +460,7 @@ function Dashboard() {
                                 <span className="name">{currentUser.name}</span>
                                 <span className="role">{currentUser.role}</span>
                             </div>
-                            <i className="fas fa-shield-alt text-senati" title="Usuario con permisos de auditoría activos"></i>
+                            <i className="fas fa-shield-alt text-senati" title="Sesión autenticada"></i>
                             <button className="logout-button" type="button" onClick={logout} title="Cerrar sesión" aria-label="Cerrar sesión">
                                 <i className="fas fa-sign-out-alt" />
                             </button>
@@ -1475,7 +1474,7 @@ function FeriadosModulo({ triggerToast }) {
     useEffect(() => {
         const obtenerFeriadosBD = async () => {
             try {
-                const response = await authFetch(`${urlBase}/api/feriados`);
+                const response = await authFetch(`${API_BASE_URL}/api/feriados`);
                 if (!response.ok) throw new Error('Error al obtener feriados');
                 const data = await response.json();
                 setFeriados(data);
@@ -1487,7 +1486,7 @@ function FeriadosModulo({ triggerToast }) {
             }
         };
         obtenerFeriadosBD();
-    }, []);
+    }, [triggerToast]);
 
     const formatearFecha = (fechaStr) => {
         // Limpiamos la hora si viene con formato ISO de la BD
@@ -1529,7 +1528,7 @@ function FeriadosModulo({ triggerToast }) {
         const nuevoEstado = feriadoActual.estado === 'activo' ? 'inhabilitado' : 'activo';
 
         try {
-            const response = await authFetch(`${urlBase}/api/feriados/${idFeriado}`, {
+            const response = await authFetch(`${API_BASE_URL}/api/feriados/${idFeriado}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1595,7 +1594,7 @@ function FeriadosModulo({ triggerToast }) {
         }
 
         try {
-            const response = await authFetch(`${urlBase}/api/feriados`, {
+            const response = await authFetch(`${API_BASE_URL}/api/feriados`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -1,19 +1,28 @@
 # Preparar el módulo de login
 
-El módulo sigue la especificación del proyecto: acceso con DNI o correo institucional, contraseña almacenada con bcrypt y JWT con vencimiento de ocho horas.
+El login acepta DNI o correo institucional, compara la contraseña con su hash bcrypt y entrega un JWT con vencimiento de ocho horas.
 
-## 1. Crear la tabla
+## Configurar variables
 
-En el administrador de MySQL conectado a la misma base que usa el backend, abre y ejecuta `database/auth.sql`.
+1. Copia `.env.example` a `.env` en la raíz del repositorio.
+2. Configura `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DB`, `MYSQL_PORT` y una clave aleatoria propia para `JWT_SECRET`.
+3. Copia `frontend/.env.example` a `frontend/.env` y establece `VITE_API_URL`. En desarrollo suele ser `http://localhost:3000`.
+4. Si frontend y backend usan dominios distintos, agrega el origen del frontend a `CORS_ORIGINS`.
 
-## 2. Crear una cuenta
+No compartas ni subas los archivos `.env` ni la contraseña de los usuarios.
 
-Desde la carpeta raíz del proyecto, ejecuta `node scripts/crear-usuario.js`. El asistente pide DNI, correo, nombres, apellidos y rol. La contraseña se solicita de forma oculta y se almacena con bcrypt; no se escribe en el repositorio. La cuenta se crea como `ACTIVO`.
+## Crear la tabla y una cuenta
 
-Usa solo una cuenta autorizada por el equipo. No publiques datos personales ni contraseñas.
+En MySQL, selecciona la base indicada por `MYSQL_DB` y ejecuta `database/auth.sql`. Después, desde la raíz del proyecto, ejecuta:
 
-## 3. Iniciar
+```bash
+node scripts/crear-usuario.js
+```
 
-La clave `JWT_SECRET` ya se agregó únicamente al `.env` local del backend y ese archivo está ignorado por Git. Mantén esa clave fuera del repositorio. El frontend usa `VITE_API_URL` del `frontend/.env` para llegar al backend.
+El asistente solicita DNI, correo, nombres, apellidos, rol y contraseña. La contraseña se oculta en una terminal interactiva, se valida que tenga al menos ocho caracteres y se guarda con bcrypt. Solo deben registrarse cuentas autorizadas por el equipo.
 
-El primer login se podrá completar después de crear la tabla y registrar una cuenta válida.
+Los roles disponibles son `ADMIN` y `COORDINADOR`. Ambos tienen los mismos permisos en esta versión; las rutas de datos requieren una sesión iniciada.
+
+## Iniciar el sistema
+
+Ejecuta `npm run dev` en la raíz para iniciar el backend y `npm run dev` dentro de `frontend/` para iniciar Vite. El backend verifica primero la conexión con MySQL y no abre el puerto si la base de datos no está disponible.
