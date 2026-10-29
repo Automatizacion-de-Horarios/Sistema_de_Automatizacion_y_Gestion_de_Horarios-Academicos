@@ -9,10 +9,18 @@ const feriadoRoutes = require('./src/routes/feriado.routes'); // 👈 Nueva ruta
 const authRoutes = require('./src/routes/authRoutes');
 const { verifyJWT } = require('./src/middlewares/authMiddleware');
 
-// Opcionales (asegúrate de que existan en src/routes/, si no, coméntalos temporalmente)
+// Opcionales (si falta alguno, se avisa en consola en lugar de romper el arranque)
 let carrerasRoutes, mallasRoutes;
-try { carrerasRoutes = require('./src/routes/carrerasImpExp.routes'); } catch (e) {}
-try { mallasRoutes = require('./src/routes/mallasImpExp.routes'); } catch (e) {}
+try {
+    carrerasRoutes = require('./src/routes/carrerasImpExp.routes');
+} catch (e) {
+    console.error('No se pudieron cargar las rutas de carreras:', e.message);
+}
+try {
+    mallasRoutes = require('./src/routes/mallasImpExp.routes');
+} catch (e) {
+    console.error('No se pudieron cargar las rutas de mallas/cursos:', e.message);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,11 +29,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Rutas del sistema
-const mallasRoutes = require('./src/routes/mallasImpExp.routes');
-const carrerasRoutes = require('./src/routes/carrerasImpExp.routes');
-app.use('/api/mallas', mallasRoutes);
-app.use('/api/carreras', carrerasRoutes);
 // Montaje de rutas de la API
 app.use('/api/ambientes', verifyJWT, ambienteRoutes);
 app.use('/api/feriados', verifyJWT, feriadoRoutes); // 👈 Endpoint montado en /api/feriados

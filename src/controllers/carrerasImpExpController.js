@@ -13,7 +13,7 @@ const carrerasImpExpController = {
     obtenerCarreras: async (req, res) => {
         try {
             const [carreras] = await db.query(
-                'SELECT id_carrera, codigo_carrera, nombre_carrera, estado FROM carreras WHERE estado = "A" ORDER BY codigo_carrera ASC'
+                "SELECT id_carrera, codigo_carrera, nombre_carrera, estado FROM carreras WHERE estado = 'A' ORDER BY codigo_carrera ASC"
             );
             return res.json({
                 status: 'ok',
@@ -65,18 +65,33 @@ const carrerasImpExpController = {
 
             // 2. Insertar la nueva carrera
             const [resultadoCarrera] = await connection.query(
-                'INSERT INTO carreras (codigo_carrera, nombre_carrera, estado) VALUES (?, ?, "A")',
+                "INSERT INTO carreras (codigo_carrera, nombre_carrera, estado) VALUES (?, ?, 'A')",
                 [codigoLimpio, nombreLimpio]
             );
 
             const nuevoIdCarrera = resultadoCarrera.insertId;
 
-            // 3. Crear automáticamente los 6 semestres (I al VI) con la meta oficial de 510 hrs
+            // 3. Crear automáticamente los 6 semestres (I al VI) con la meta oficial de 510 hrs.
+            // Primero se consultan los semestres que ya existen para la carrera y solo se
+            // insertan los que faltan, tal como se valida en la importación de mallas.
             const ciclos = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+
+            const [semestresExistentes] = await connection.query(
+                'SELECT semestre FROM semestres WHERE id_carrera = ?',
+                [nuevoIdCarrera]
+            );
+
+            const semestresRegistrados = new Set(
+                semestresExistentes.map((fila) => String(fila.semestre).trim().toUpperCase())
+            );
+
             for (const ciclo of ciclos) {
+                // Si el semestre ya existe para esta carrera, no se vuelve a insertar.
+                if (semestresRegistrados.has(ciclo)) continue;
+
                 await connection.query(
-                    'INSERT IGNORE INTO semestres (id_carrera, semestre, horas_semestre_meta, estado) VALUES (?, ?, 510, "A")',
-                    [nuevoIdCarrera, ciclo]
+                    'INSERT INTO semestres (id_carrera, semestre, horas_semestre_meta, estado) VALUES (?, ?, ?, ?)',
+                    [nuevoIdCarrera, ciclo, 510, 'A']
                 );
             }
 
