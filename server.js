@@ -8,8 +8,8 @@ app.use(cors());
 app.use(express.json());
 
 // Rutas del sistema
-const mallasRoutes = require('./src/routes/mallas.routes');
-const carrerasRoutes = require('./src/routes/carreras.routes');
+const mallasRoutes = require('./src/routes/mallasImpExp.routes');
+const carrerasRoutes = require('./src/routes/carrerasImpExp.routes');
 app.use('/api/mallas', mallasRoutes);
 app.use('/api/carreras', carrerasRoutes);
 
