@@ -21,6 +21,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Rutas del sistema
+const mallasRoutes = require('./src/routes/mallasImpExp.routes');
+const carrerasRoutes = require('./src/routes/carrerasImpExp.routes');
+app.use('/api/mallas', mallasRoutes);
+app.use('/api/carreras', carrerasRoutes);
 // Montaje de rutas de la API
 app.use('/api/ambientes', verifyJWT, ambienteRoutes);
 app.use('/api/feriados', verifyJWT, feriadoRoutes); // 👈 Endpoint montado en /api/feriados
