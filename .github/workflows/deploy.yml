@@ -20,10 +20,10 @@ jobs:
             set -e
 
             APP_DIR="/home/senati/apps/sistema-horarios"
-            REPO="https://github.com/Automatizacion-de-Horarios/Sistema_de_Automatizacion_y_Gestion_de_Horarios-Academicos.git"
+            REPO="https://github.com"
 
             echo "=========================================="
-            echo "1. ACTUALIZANDO CÓDIGO"
+            echo "1. ACTUALIZANDO CÓDIGO (SIN BORRAR NADA)"
             echo "=========================================="
 
             mkdir -p "$APP_DIR"
@@ -34,7 +34,7 @@ jobs:
               cd "$APP_DIR"
               git fetch origin
               git reset --hard origin/main
-              git clean -fd
+              # 💡 Se eliminó 'git clean -fd' para proteger tus archivos .env locales
             fi
 
             cd "$APP_DIR"
@@ -46,7 +46,12 @@ jobs:
             echo "2. INSTALANDO DEPENDENCIAS DEL BACKEND"
             echo "=========================================="
 
-            npm ci
+            # Instalación limpia de las dependencias base
+            npm ci --omit=dev
+
+            # Asegurar la instalación explícita de los módulos requeridos
+            echo "Instalando módulos críticos de autenticación..."
+            npm install bcryptjs jsonwebtoken --omit=dev
 
             echo "=========================================="
             echo "3. INSTALANDO DEPENDENCIAS DEL FRONTEND"
@@ -54,7 +59,7 @@ jobs:
 
             cd "$APP_DIR/frontend"
 
-            npm ci
+            npm install
 
             echo "=========================================="
             echo "4. COMPILANDO REACT"
