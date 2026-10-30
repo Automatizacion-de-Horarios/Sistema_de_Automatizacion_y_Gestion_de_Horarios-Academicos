@@ -6,6 +6,7 @@ import { authFetch } from './lib/authFetch';
 import { API_BASE_URL } from './config/api';
 import ProtectedRoute from './components/ProtectedRoute';
 import CarrerasView from './views/CarrerasView';
+import DocentesView from './views/DocentesView';
 
 function App() {
     return (
@@ -258,8 +259,10 @@ function Dashboard() {
                 {/*      [ÁREA DE TRABAJO] EQUIPO 1: DOCENTES Y DISPONIBILIDAD      */}
                 {/* =============================================================== */}
                 <section id="docentes-view" className={`view ${activeView === 'docentes-view' ? 'active' : ''}`}>
-                    {/* El Equipo 1 colocará aquí el Módulo de Gestión de Instructores y Disponibilidad */}
+                     {activeView === 'docentes-view' && <DocentesView key={periodoGlobal} periodo={periodoGlobal} />}
+                     
                 </section>
+
                 {/* ===================== FIN SECCIÓN EQUIPO 1 ==================== */}
 
 
