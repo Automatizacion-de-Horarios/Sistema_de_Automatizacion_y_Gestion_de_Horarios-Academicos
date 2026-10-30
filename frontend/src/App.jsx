@@ -7,25 +7,6 @@ import { API_BASE_URL } from './config/api';
 import ProtectedRoute from './components/ProtectedRoute';
 import CarrerasView from './views/CarrerasView';
 
-//--------Estructura referencial del Excel de cursos aceptado - EQUIPO 4 SECCION CURSOS ---------------
-// La fila 1 es un título general, la fila 2 son los encabezados y desde la fila 3 vienen los cursos.
-const columnasExcelCursos = [
-    { nombre: 'CODIGO', ejemplo: 'PIAD', omitida: false },
-    { nombre: 'CATALOGO', ejemplo: '202610', omitida: true },
-    { nombre: 'MAT CUR', ejemplo: 'SCIU-185', omitida: false },
-    { nombre: 'HORARIO SINFO', ejemplo: 'TEC', omitida: false },
-    { nombre: 'CLASIFICACIÓN BLACKBOARD', ejemplo: 'TEC', omitida: true },
-    { nombre: 'SEMESTRE', ejemplo: 'I', omitida: false },
-    { nombre: 'DESCRIPCIÓN DE CURSO', ejemplo: 'MATEMÁTICA', omitida: false },
-    { nombre: 'SEMANAS', ejemplo: '16', omitida: false },
-    { nombre: 'TEORÍA / TECNOLOGÍA', ejemplo: '64', omitida: false },
-    { nombre: 'TALLER / EMPRESA', ejemplo: '—', omitida: false },
-    { nombre: 'VIRTUAL', ejemplo: '16', omitida: false },
-    { nombre: 'EVALUACIÓN SEMESTRAL', ejemplo: '5', omitida: false },
-    { nombre: 'TOTAL HORAS', ejemplo: '85', omitida: false }
-];
-//------------------------------------------------------------------------------------------------------
-
 function App() {
     return (
         <AuthProvider>
@@ -793,42 +774,6 @@ function FeriadosModulo({ triggerToast }) {
                 const response = await authFetch(`${API_BASE_URL}/api/feriados`);
                 if (!response.ok) throw new Error('Error al obtener feriados');
                 const data = await response.json();
-
-                const anioActual = new Date().getFullYear();
-                const { juevesSanto, viernesSanto } = calcularFechasSemanaSanta(anioActual);
-
-                // Revisamos si Semana Santa necesita actualizarse en la BD
-                for (let feriado of data) {
-                    const desc = feriado.descripcion ? feriado.descripcion.toLowerCase() : '';
-                    let fechaCalculada = null;
-
-                    if (desc.includes('jueves santo')) {
-                        fechaCalculada = juevesSanto;
-                    } else if (desc.includes('viernes santo')) {
-                        fechaCalculada = viernesSanto;
-                    }
-
-                    // Si es Semana Santa y la fecha en la BD no coincide con el año actual
-                    if (fechaCalculada && (!feriado.fecha || !feriado.fecha.startsWith(String(anioActual)))) {
-                        try {
-                            // Actualizamos automáticamente en la base de datos mediante PUT
-                            await fetch(`${API_BASE_URL}/api/feriados/${feriado.id_feriado}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    fecha: fechaCalculada,
-                                    descripcion: feriado.descripcion,
-                                    estado: feriado.estado
-                                })
-                            });
-                            // Actualizamos el objeto local para reflejarlo de inmediato
-                            feriado.fecha = fechaCalculada;
-                        } catch (err) {
-                            console.error('Error al sincronizar fecha de Semana Santa en BD:', err);
-                        }
-                    }
-                }
-
                 setFeriados(data);
             } catch (error) {
                 console.error(error);
