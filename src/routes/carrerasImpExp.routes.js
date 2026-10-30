@@ -26,5 +26,10 @@ router.put('/cursos/:id', carrerasImpExpController.actualizarCurso);
 // Eliminar un curso de la malla
 router.delete('/cursos/:id', carrerasImpExpController.eliminarCurso);
 
-module.exports = router;
+// Habilitar o inhabilitar un semestre específico de una carrera
+// Habilitar o inhabilitar un curso específico de la malla
+router.put('/cursos/:id/estado', carrerasImpExpController.actualizarEstadoCurso);
 
+router.put('/semestres/:id/estado', carrerasImpExpController.actualizarEstadoSemestre);
+
+module.exports = router;

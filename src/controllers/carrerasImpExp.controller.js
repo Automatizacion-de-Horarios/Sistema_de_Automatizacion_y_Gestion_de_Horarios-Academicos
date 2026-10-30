@@ -185,6 +185,7 @@ const carrerasImpExpController = {
                         id_semestre: f.id_semestre,
                         semestre: f.semestre,
                         horas_meta: f.horas_semestre_meta || 510,
+                        estado: f.estado_semestre || 'A',
                         total_horas: 0,
                         cursos: []
                     });
@@ -492,6 +493,86 @@ const carrerasImpExpController = {
             return res.status(500).json({
                 status: 'error',
                 mensaje: 'Error interno al eliminar el curso.',
+                detalle: error.message
+            });
+        }
+    },
+
+    /**
+     * Habilitar o inhabilitar un semestre específico de una carrera
+     */
+        /**
+     * Habilitar o inhabilitar un curso específico (estado 'A' o 'I')
+     */
+    actualizarEstadoCurso: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { estado } = req.body;
+
+            if (!id) {
+                return res.status(400).json({
+                    status: 'error',
+                    mensaje: 'Debe especificar el id del curso.'
+                });
+            }
+
+            const estadoLimpio = String(estado).toUpperCase() === 'I' ? 'I' : 'A';
+            const exito = await Carrera.actualizarEstadoCurso(id, estadoLimpio);
+
+            if (!exito) {
+                return res.status(404).json({
+                    status: 'error',
+                    mensaje: 'No se encontró el curso para actualizar.'
+                });
+            }
+
+            return res.json({
+                status: 'ok',
+                mensaje: `Curso ${estadoLimpio === 'A' ? 'activado' : 'inactivado'} exitosamente.`,
+                estado: estadoLimpio
+            });
+        } catch (error) {
+            console.error('Error al actualizar estado del curso:', error);
+            return res.status(500).json({
+                status: 'error',
+                mensaje: 'Error al actualizar el estado del curso en la base de datos.',
+                detalle: error.message
+            });
+        }
+    },
+
+actualizarEstadoSemestre: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { estado } = req.body;
+
+            if (!id) {
+                return res.status(400).json({
+                    status: 'error',
+                    mensaje: 'Debe especificar el id del semestre.'
+                });
+            }
+
+            const estadoLimpio = String(estado).toUpperCase() === 'I' ? 'I' : 'A';
+            const exito = await Carrera.actualizarEstadoSemestre(id, estadoLimpio);
+
+            if (!exito) {
+                return res.status(404).json({
+                    status: 'error',
+                    mensaje: 'No se encontró el semestre para actualizar.'
+                });
+            }
+
+            return res.json({
+                status: 'ok',
+                mensaje: `Semestre ${estadoLimpio === 'A' ? 'habilitado' : 'inhabilitado'} exitosamente.`,
+                estado: estadoLimpio
+            });
+        } catch (error) {
+            console.error('Error al actualizar estado del semestre:', error);
+            return res.status(500).json({
+                status: 'error',
+                mensaje: 'Error al actualizar el estado del semestre en la base de datos.',
                 detalle: error.message
             });
         }

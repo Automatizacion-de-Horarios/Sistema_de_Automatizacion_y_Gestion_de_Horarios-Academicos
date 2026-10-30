@@ -343,8 +343,8 @@ body {
     width: 48px;
     height: 48px;
     border-radius: 12px;
-    background: #f0f9ff;
-    color: #0284c7;
+    background: #edf2ff;
+    color: #1037bd;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -400,9 +400,9 @@ body {
 }
 
 .ambiente-filter-chip.active {
-    background: #0284c7;
+    background: #1037bd;
     color: #ffffff;
-    border-color: #0284c7;
+    border-color: #1037bd;
 }
 
 .chip-count {
@@ -420,36 +420,58 @@ body {
 }
 
 
-/* -- GRILLA PRINCIPAL DE AULAS (Las tarjetas de cada ambiente) -- */
+/* -- LISTA HORIZONTAL DE AMBIENTES -- */
 .ambientes-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .aula-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
+    border-left: 4px solid transparent;
     border-radius: 12px;
-    padding: 20px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .aula-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 8px rgba(15, 23, 42, 0.08);
 }
 
 .aula-card.aforo-restringido {
-    border-left: 4px solid #f59e0b; /* Borde naranja de advertencia de espacio pequeño */
+    border-left-color: #f59e0b;
 }
 
-.aula-card-header {
+.aula-card-info {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    gap: 28px;
+    flex: 1;
+    min-width: 0;
+}
+
+.aula-card-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 190px;
+}
+
+.aula-card-details {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px 28px;
+    min-width: 0;
 }
 
 .aula-codigo {
@@ -462,37 +484,27 @@ body {
 }
 
 .aula-codigo i {
-    color: #0284c7;
+    color: #1037bd;
 }
 
 .aula-tipo-badge {
-    background: #f1f5f9;
-    color: #475569;
+    background: #eff4ff;
+    color: #1037bd;
     font-size: 11px;
     font-weight: 600;
     padding: 4px 10px;
     border-radius: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
-
-/* -- INFORMACIÓN INTERNA DE LA TARJETA DEL AULA (Pabellón y Piso) -- */
-.aula-info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    background: #f8fafc;
-    padding: 12px;
-    border-radius: 8px;
-    margin-top: 16px;
-    margin-bottom: 16px;
-}
 
 .aula-info-item {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 70px;
 }
 
 .aula-info-label {
@@ -509,13 +521,12 @@ body {
 }
 
 
-/* -- SECCIÓN DE AFORO Y ALERTAS -- */
+/* -- AFORO Y ALERTAS -- */
 .aula-aforo {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 16px;
-    border-top: 1px solid #e2e8f0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
 }
 
 .aula-aforo-label {
@@ -537,13 +548,13 @@ body {
     background: #fef3c7;
     color: #b45309;
     font-size: 12px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    margin-top: 12px;
-    display: flex;
+    padding: 5px 9px;
+    border-radius: 20px;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 
@@ -580,6 +591,64 @@ body {
     gap: 8px;
 }
 
+.aula-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+    .aula-card {
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .aula-card-info {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .aula-card-heading {
+        min-width: 0;
+    }
+
+    .aula-card-details {
+        gap: 12px 20px;
+    }
+
+    .aula-card-actions {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .aula-card {
+        flex-direction: column;
+        gap: 12px;
+        padding: 14px 16px;
+    }
+
+    .aula-card-info {
+        width: 100%;
+    }
+
+    .aula-card-details {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .aula-card-actions {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
 .btn-icon {
     background: transparent;
     border: none;
@@ -593,8 +662,8 @@ body {
     justify-content: center;
 }
 
-.btn-icon.edit { color: #0284c7; }
-.btn-icon.edit:hover { background: #e0f2fe; }
+.btn-icon.edit { color: #1037bd; }
+.btn-icon.edit:hover { background: #dfe8ff; }
 
 .btn-icon.delete { color: #dc2626; }
 .btn-icon.delete:hover { background: #fee2e2; }
@@ -645,8 +714,8 @@ body {
 .modal-icon-bg {
     width: 48px;
     height: 48px;
-    background: #e0e7ff;
-    color: #0284c7;
+    background: #e5eaff;
+    color: #1037bd;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -722,8 +791,8 @@ body {
 
 .input-modern:focus {
     background-color: #ffffff;
-    border-color: #0284c7;
-    box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15);
+    border-color: #1037bd;
+    box-shadow: 0 0 0 4px rgba(16, 55, 189, 0.15);
     outline: none;
 }
 
@@ -736,6 +805,70 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
+}
+
+.ambiente-action-btn {
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.ambiente-action-btn:hover {
+    transform: translateY(-1px);
+}
+
+.ambiente-action-btn:focus-visible {
+    outline: 3px solid rgba(16, 55, 189, 0.28);
+    outline-offset: 2px;
+}
+
+.ambiente-action-btn-primary {
+    background: #1037bd;
+    border-color: #1037bd;
+    color: #ffffff;
+    box-shadow: 0 3px 8px rgba(16, 55, 189, 0.22);
+}
+
+.ambiente-action-btn-primary:hover {
+    background: #0c2d9e;
+    border-color: #0c2d9e;
+    box-shadow: 0 5px 12px rgba(12, 45, 158, 0.28);
+}
+
+.ambiente-action-btn-secondary {
+    background: #1037bd;
+    border-color: #1037bd;
+    color: #ffffff;
+}
+
+.ambiente-action-btn-secondary:hover {
+    background: #0c2d9e;
+    border-color: #0c2d9e;
+}
+
+.ambiente-new-btn {
+    min-height: 44px;
+    padding: 0 20px;
+}
+
+.ambiente-action-btn:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 600px) {
+    .modal-footer-modern .ambiente-action-btn {
+        flex: 1;
+    }
 }
 
 

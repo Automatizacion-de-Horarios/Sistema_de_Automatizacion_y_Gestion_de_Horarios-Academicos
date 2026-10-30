@@ -1245,9 +1245,15 @@ function AmbientesModulo() {
         return tipoEncontrado ? tipoEncontrado.nombre_tipo_ambiente : 'Sin Tipo';
     };
 
+    const coincideCategoria = (ambiente, categoria) => {
+        if (categoria === 'todos') return true;
+        const nombreTipo = obtenerNombreTipoAmbiente(ambiente.id_tipo_ambiente).toLowerCase();
+        return nombreTipo.includes(categoria);
+    };
+
     // Filtrar la lista de ambientes según el buscador y los botones
     const ambientesFiltrados = listaAmbientes.filter(ambiente => {
-        const coincideTipo = filtroTipo === 'todos' || ambiente.id_tipo_ambiente === parseInt(filtroTipo);
+        const coincideTipo = coincideCategoria(ambiente, filtroTipo);
         
         const textoBusqueda = terminoBusqueda.toLowerCase().trim();
         const coincideBusqueda = textoBusqueda === '' || 
@@ -1259,9 +1265,8 @@ function AmbientesModulo() {
     });
 
     // Contadores para las tarjetas de resumen
-    const contarPorTipo = (idTipo) => {
-        if (idTipo === 'todos') return listaAmbientes.length;
-        return listaAmbientes.filter(a => a.id_tipo_ambiente === parseInt(idTipo)).length;
+    const contarPorTipo = (categoria) => {
+        return listaAmbientes.filter(ambiente => coincideCategoria(ambiente, categoria)).length;
     };
 
     const capacidadTotal = listaAmbientes.reduce((suma, ambiente) => suma + ambiente.aforo_maximo, 0);
@@ -1289,7 +1294,7 @@ function AmbientesModulo() {
                             onChange={(e) => setTerminoBusqueda(e.target.value)}
                         />
                     </div>
-                    <button className="btn btn-primary" onClick={() => abrirModal()}>
+                    <button className="ambiente-action-btn ambiente-action-btn-primary ambiente-new-btn" onClick={() => abrirModal()}>
                         <i className="fas fa-plus"></i> Nuevo Ambiente
                     </button>
                 </div>
@@ -1332,12 +1337,12 @@ function AmbientesModulo() {
                 <button className={`ambiente-filter-chip ${filtroTipo === 'todos' ? 'active' : ''}`} onClick={() => setFiltroTipo('todos')}>
                     <i className="fas fa-th"></i> Todos <span className="chip-count">{contarPorTipo('todos')}</span>
                 </button>
-                {tiposDeAmbiente.map(tipo => (
-                    <button key={tipo.id_tipo_ambiente} className={`ambiente-filter-chip ${filtroTipo === tipo.id_tipo_ambiente.toString() ? 'active' : ''}`} onClick={() => setFiltroTipo(tipo.id_tipo_ambiente.toString())}>
-                        <i className={tipo.nombre_tipo_ambiente.toLowerCase().includes('taller') ? 'fas fa-wrench' : tipo.nombre_tipo_ambiente.toLowerCase().includes('laboratorio') ? 'fas fa-flask' : tipo.nombre_tipo_ambiente.toLowerCase().includes('aula') ? 'fas fa-chalkboard-teacher' : 'fas fa-users'}></i>
-                        {tipo.nombre_tipo_ambiente} <span className="chip-count">{contarPorTipo(tipo.id_tipo_ambiente)}</span>
-                    </button>
-                ))}
+                <button className={`ambiente-filter-chip ${filtroTipo === 'laboratorio' ? 'active' : ''}`} onClick={() => setFiltroTipo('laboratorio')}>
+                    <i className="fas fa-flask"></i> Laboratorio <span className="chip-count">{contarPorTipo('laboratorio')}</span>
+                </button>
+                <button className={`ambiente-filter-chip ${filtroTipo === 'aula' ? 'active' : ''}`} onClick={() => setFiltroTipo('aula')}>
+                    <i className="fas fa-chalkboard-teacher"></i> Aula <span className="chip-count">{contarPorTipo('aula')}</span>
+                </button>
             </div>
 
             {/* GRILLA DE TARJETAS DE AULAS */}
@@ -1348,45 +1353,43 @@ function AmbientesModulo() {
                     
                     return (
                         <div key={ambiente.id} className={`aula-card ${esAforoPequeno ? 'aforo-restringido' : ''}`}>
-                            <div className="aula-card-header">
-                                <div className="aula-codigo">
-                                    <i className="far fa-building"></i>
-                                    {ambiente.codigo_ambiente}
+                            <div className="aula-card-info">
+                                <div className="aula-card-heading">
+                                    <div className="aula-codigo">
+                                        <i className="far fa-building"></i>
+                                        {ambiente.codigo_ambiente}
+                                    </div>
+                                    <span className="aula-tipo-badge">{obtenerNombreTipoAmbiente(ambiente.id_tipo_ambiente)}</span>
                                 </div>
+
+                                <div className="aula-card-details">
+                                    <div className="aula-info-item">
+                                        <span className="aula-info-label">Pabellón</span>
+                                        <span className="aula-info-value"><i className="fas fa-map-marker-alt" style={{ color: 'var(--text-muted)', marginRight: '4px' }}></i>{ambiente.pabellon || ambiente.pabellón}</span>
+                                    </div>
+                                    <div className="aula-info-item">
+                                        <span className="aula-info-label">Piso</span>
+                                        <span className="aula-info-value">{ambiente.piso_ubicacion}</span>
+                                    </div>
+                                    <div className="aula-aforo">
+                                        <span className="aula-aforo-label"><i className="fas fa-users"></i> Aforo Máximo</span>
+                                        <span className="aula-aforo-valor">{ambiente.aforo_maximo} personas</span>
+                                    </div>
+                                    {esAforoPequeno && (
+                                        <span className="aula-alerta-restringido">
+                                            <i className="fas fa-exclamation-circle"></i> Capacidad limitada
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="aula-card-actions">
+                                <span className={`aula-estado ${estiloEstado}`}>
+                                    <span className="estado-dot"></span>{ambiente.estado}
+                                </span>
                                 <div className="aula-actions">
                                     <button className="btn-icon edit" onClick={() => abrirModal(ambiente)} title="Editar"><i className="fas fa-pen"></i></button>
                                     <button className="btn-icon delete" onClick={() => eliminarAmbiente(ambiente.id, ambiente.codigo_ambiente)} title="Eliminar"><i className="fas fa-trash"></i></button>
                                 </div>
-                            </div>
-                            
-                            <span className="aula-tipo-badge">{obtenerNombreTipoAmbiente(ambiente.id_tipo_ambiente)}</span>
-
-                            <div className="aula-info-grid" style={{ marginTop: '15px' }}>
-                                <div className="aula-info-item">
-                                    <span className="aula-info-label">Pabellón</span>
-                                    <span className="aula-info-value"><i className="fas fa-map-marker-alt" style={{ color: 'var(--text-muted)', marginRight: '4px' }}></i>{ambiente.pabellon || ambiente.pabellón}</span>
-                                </div>
-                                <div className="aula-info-item">
-                                    <span className="aula-info-label">Piso</span>
-                                    <span className="aula-info-value">{ambiente.piso_ubicacion}</span>
-                                </div>
-                            </div>
-
-                            <div className="aula-aforo">
-                                <span className="aula-aforo-label"><i className="fas fa-users"></i> Aforo Máximo</span>
-                                <span className="aula-aforo-valor">{ambiente.aforo_maximo} personas</span>
-                            </div>
-
-                            {esAforoPequeno && (
-                                <div className="aula-alerta-restringido">
-                                    <i className="fas fa-exclamation-circle"></i><span>Capacidad Limitada</span>
-                                </div>
-                            )}
-
-                            <div style={{ marginTop: '12px' }}>
-                                <span className={`aula-estado ${estiloEstado}`}>
-                                    <span className="estado-dot"></span>{ambiente.estado}
-                                </span>
                             </div>
                         </div>
                     );
@@ -1466,8 +1469,8 @@ function AmbientesModulo() {
                             </div>
 
                             <div className="modal-footer-modern">
-                                <button type="button" className="btn btn-secondary" onClick={() => setMostrarModal(false)}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary">
+                                <button type="button" className="ambiente-action-btn ambiente-action-btn-secondary" onClick={() => setMostrarModal(false)}>Cancelar</button>
+                                <button type="submit" className="ambiente-action-btn ambiente-action-btn-primary">
                                     <i className="fas fa-save"></i> Guardar Ambiente
                                 </button>
                             </div>
