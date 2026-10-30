@@ -716,7 +716,7 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
 }
 
 // ===============================================================
-//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2)
+//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2) - CON FILTRO POR MES
 // ===============================================================
 function FeriadosModulo({ triggerToast }) {
     // 1. Iniciamos con un arreglo vacío; los datos vendrán de la base de datos
@@ -729,45 +729,10 @@ function FeriadosModulo({ triggerToast }) {
         estado: 'activo'
     });
 
-    // Función para calcular dinámicamente las fechas exactas de Semana Santa según el año
-    const calcularFechasSemanaSanta = (anio) => {
-        const a = anio % 19;
-        const b = Math.floor(anio / 100);
-        const c = anio % 100;
-        const d = Math.floor(b / 4);
-        const e = b % 4;
-        const f = Math.floor((b + 8) / 25);
-        const g = Math.floor((b - f + 1) / 3);
-        const h = (19 * a + b - d - g + 15) % 30;
-        const i = Math.floor(c / 4);
-        const k = c % 4;
-        const l = (32 + 2 * e + 2 * i - h - k) % 7;
-        const m = Math.floor((a + 11 * h + 22 * l) / 451);
-        const mes = Math.floor((h + l - 7 * m + 114) / 31);
-        const dia = ((h + l - 7 * m + 114) % 31) + 1;
+    // [NUEVO]: Estado para almacenar el mes seleccionado (vacío significa "Todos los meses")
+    const [filtroMes, setFiltroMes] = useState('todos');
 
-        const domingoPascua = new Date(anio, mes - 1, dia);
-        
-        const jueves = new Date(domingoPascua);
-        jueves.setDate(domingoPascua.getDate() - 3);
-
-        const viernes = new Date(domingoPascua);
-        viernes.setDate(domingoPascua.getDate() - 2);
-
-        const formatYMD = (d) => {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
-        };
-
-        return {
-            juevesSanto: formatYMD(jueves),
-            viernesSanto: formatYMD(viernes)
-        };
-    };
-
-    // Cargar feriados y sincronizar automáticamente las fechas móviles en la Base de Datos
+    // Cargar feriados desde la Base de Datos
     useEffect(() => {
         const obtenerFeriadosBD = async () => {
             try {
@@ -785,8 +750,6 @@ function FeriadosModulo({ triggerToast }) {
         obtenerFeriadosBD();
     }, [triggerToast]);
   
-    
-
     const formatearFecha = (fechaStr) => {
         const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
         const partes = soloFecha.split('-'); 
@@ -807,7 +770,15 @@ function FeriadosModulo({ triggerToast }) {
         };
     };
 
-    const feriadosOrdenados = [...feriados].sort((a, b) => {
+    // [MODIFICADO]: Filtrar por mes seleccionado además de ordenar cronológicamente
+    const feriadosFiltrados = feriados.filter(feriado => {
+        if (filtroMes === 'todos') return true;
+        if (!feriado.fecha) return false;
+        const mesFeriado = feriado.fecha.split('T')[0].split('-')[1]; // Extrae el "MM" de YYYY-MM-DD
+        return mesFeriado === filtroMes;
+    });
+
+    const feriadosOrdenados = [...feriadosFiltrados].sort((a, b) => {
         const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; 
         const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; 
         return fechaA.localeCompare(fechaB);
@@ -836,7 +807,6 @@ function FeriadosModulo({ triggerToast }) {
 
             if (!response.ok) throw new Error('Error al actualizar estado');
 
-            // Actualizamos el estado localmente solo si el backend respondió con éxito
             setFeriados(prev =>
                 prev.map(feriado => {
                     if (feriado.id_feriado === idFeriado) {
@@ -933,6 +903,31 @@ function FeriadosModulo({ triggerToast }) {
                     <p className="subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
                 </div>
                 <div className="feriados-actions">
+                    {/* [NUEVO]: Selector de filtro por mes integrado en la cabecera */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <i className="far fa-calendar-alt" style={{ color: 'var(--senati-blue)' }}></i>
+                        <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Filtrar mes:</span>
+                        <select 
+                            value={filtroMes} 
+                            onChange={(e) => setFiltroMes(e.target.value)}
+                            style={{ border: 'none', background: 'transparent', fontWeight: '600', fontSize: '13px', color: 'var(--text-dark)', cursor: 'pointer', outline: 'none' }}
+                        >
+                            <option value="todos">Todos los meses</option>
+                            <option value="01">Enero</option>
+                            <option value="02">Febrero</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Mayo</option>
+                            <option value="06">Junio</option>
+                            <option value="07">Julio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Setiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                    </div>
+
                     <button className="btn btn-primary" onClick={abrirModal}>
                         <i className="fas fa-plus"></i>
                         Nuevo Feriado
@@ -1012,8 +1007,8 @@ function FeriadosModulo({ triggerToast }) {
 
             {feriadosOrdenados.length === 0 && (
                 <div className="workspace-card">
-                    <h2>No hay feriados registrados</h2>
-                    <p>Agrega un nuevo feriado utilizando el botón "Nuevo Feriado".</p>
+                    <h2>No hay feriados registrados para este mes</h2>
+                    <p>Intenta seleccionando otro mes o agrega un nuevo feriado.</p>
                 </div>
             )}
 
