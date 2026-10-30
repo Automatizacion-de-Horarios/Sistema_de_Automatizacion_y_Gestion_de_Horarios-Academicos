@@ -716,7 +716,7 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
 }
 
 // ===============================================================
-//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2)
+//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2) - CON FILTRO POR MES
 // ===============================================================
 function FeriadosModulo({ triggerToast }) {
     // 1. Iniciamos con un arreglo vacío; los datos vendrán de la base de datos
@@ -729,7 +729,10 @@ function FeriadosModulo({ triggerToast }) {
         estado: 'activo'
     });
 
-    // 2. CONEXIÓN CON BD: Cargar feriados al montar el componente (GET)
+    // [NUEVO]: Estado para almacenar el mes seleccionado (vacío significa "Todos los meses")
+    const [filtroMes, setFiltroMes] = useState('todos');
+
+    // Cargar feriados desde la Base de Datos
     useEffect(() => {
         const obtenerFeriadosBD = async () => {
             try {
@@ -746,16 +749,14 @@ function FeriadosModulo({ triggerToast }) {
         };
         obtenerFeriadosBD();
     }, [triggerToast]);
-
+  
     const formatearFecha = (fechaStr) => {
-        // Limpiamos la hora si viene con formato ISO de la BD
         const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-        const partes = soloFecha.split('-'); // [año, mes, día]
+        const partes = soloFecha.split('-'); 
         if (partes.length === 3) {
-            // Mostramos solo el Día y el Mes de manera legible, indicando que se repite anualmente
             const fechaTemp = new Date(soloFecha + 'T00:00:00');
             const mesNombre = fechaTemp.toLocaleDateString('es-PE', { month: 'long' });
-            return `${partes[2]} de ${mesNombre} (Todos los años)`;
+            return `${partes[2]} de ${mesNombre}`;
         }
         return '';
     };
@@ -769,9 +770,17 @@ function FeriadosModulo({ triggerToast }) {
         };
     };
 
-    const feriadosOrdenados = [...feriados].sort((a, b) => {
-        const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; // Extrae 'MM-DD'
-        const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; // Extrae 'MM-DD'
+    // [MODIFICADO]: Filtrar por mes seleccionado además de ordenar cronológicamente
+    const feriadosFiltrados = feriados.filter(feriado => {
+        if (filtroMes === 'todos') return true;
+        if (!feriado.fecha) return false;
+        const mesFeriado = feriado.fecha.split('T')[0].split('-')[1]; // Extrae el "MM" de YYYY-MM-DD
+        return mesFeriado === filtroMes;
+    });
+
+    const feriadosOrdenados = [...feriadosFiltrados].sort((a, b) => {
+        const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; 
+        const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; 
         return fechaA.localeCompare(fechaB);
     });
 
@@ -779,7 +788,6 @@ function FeriadosModulo({ triggerToast }) {
     const feriadosActivos = feriados.filter(f => f.estado === 'activo').length;
     const feriadosInhabilitados = feriados.filter(f => f.estado === 'inhabilitado').length;
 
-    // 3. CONEXIÓN CON BD: Cambiar estado en la base de datos (PUT)
     const toggleEstadoFeriado = async (idFeriado) => {
         const feriadoActual = feriados.find(f => f.id_feriado === idFeriado);
         if (!feriadoActual) return;
@@ -799,7 +807,6 @@ function FeriadosModulo({ triggerToast }) {
 
             if (!response.ok) throw new Error('Error al actualizar estado');
 
-            // Actualizamos el estado localmente solo si el backend respondió con éxito
             setFeriados(prev =>
                 prev.map(feriado => {
                     if (feriado.id_feriado === idFeriado) {
@@ -837,7 +844,6 @@ function FeriadosModulo({ triggerToast }) {
         setMostrarModal(false);
     };
 
-    // 4. CONEXIÓN CON BD: Guardar nuevo feriado en la base de datos (POST)
     const agregarFeriado = async () => {
         if (!nuevoFeriado.fecha) {
             if (typeof triggerToast === 'function') {
@@ -866,8 +872,6 @@ function FeriadosModulo({ triggerToast }) {
             if (!response.ok) throw new Error('Error al registrar el feriado');
 
             const feriadoCreado = await response.json();
-
-            // Añadimos el feriado devuelto por la BD (con su ID real autoincrementable)
             setFeriados(prev => [...prev, feriadoCreado]);
 
             if (typeof triggerToast === 'function') {
@@ -899,6 +903,31 @@ function FeriadosModulo({ triggerToast }) {
                     <p className="subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
                 </div>
                 <div className="feriados-actions">
+                    {/* [NUEVO]: Selector de filtro por mes integrado en la cabecera */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <i className="far fa-calendar-alt" style={{ color: 'var(--senati-blue)' }}></i>
+                        <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Filtrar mes:</span>
+                        <select 
+                            value={filtroMes} 
+                            onChange={(e) => setFiltroMes(e.target.value)}
+                            style={{ border: 'none', background: 'transparent', fontWeight: '600', fontSize: '13px', color: 'var(--text-dark)', cursor: 'pointer', outline: 'none' }}
+                        >
+                            <option value="todos">Todos los meses</option>
+                            <option value="01">Enero</option>
+                            <option value="02">Febrero</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Mayo</option>
+                            <option value="06">Junio</option>
+                            <option value="07">Julio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Setiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                    </div>
+
                     <button className="btn btn-primary" onClick={abrirModal}>
                         <i className="fas fa-plus"></i>
                         Nuevo Feriado
@@ -978,8 +1007,8 @@ function FeriadosModulo({ triggerToast }) {
 
             {feriadosOrdenados.length === 0 && (
                 <div className="workspace-card">
-                    <h2>No hay feriados registrados</h2>
-                    <p>Agrega un nuevo feriado utilizando el botón "Nuevo Feriado".</p>
+                    <h2>No hay feriados registrados para este mes</h2>
+                    <p>Intenta seleccionando otro mes o agrega un nuevo feriado.</p>
                 </div>
             )}
 
@@ -1047,6 +1076,7 @@ function FeriadosModulo({ triggerToast }) {
         </>
     );
 }
+
 
 // ===============================================================
 //   MÓDULO AUTÓNOMO: INFRAESTRUCTURA, AULAS Y AMBIENTES (EQUIPO 2)
