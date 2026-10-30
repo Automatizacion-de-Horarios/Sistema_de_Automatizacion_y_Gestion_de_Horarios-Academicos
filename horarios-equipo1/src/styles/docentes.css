@@ -1,0 +1,30 @@
+/* Ajustes propios del módulo Equipo 1 (lo demás viene de global.css, copiado de la interfaz referencial) */
+.status-v { background: #F5F3FF; color: var(--vacation); }
+.status-badge { cursor: pointer; }
+
+.tabla-vacia { text-align: center; padding: 28px; color: var(--text-muted); font-size: 14px; }
+
+.form-error {
+  margin-top: 10px; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  background: var(--danger-bg); color: var(--danger); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.form-warning {
+  margin-bottom: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  background: #FFFBEB; color: #B45309; display: flex; align-items: center; gap: 8px;
+}
+.demo-banner {
+  margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; font-size: 13px;
+  background: #EFF6FF; color: var(--senati-blue); border: 1px solid #BFDBFE;
+}
+
+/* Aviso flotante (sobrescribe la posición absoluta de la referencia) */
+.alert-box { position: fixed; top: 20px; right: 24px; margin: 0; z-index: 3000; }
+
+/* Evita seleccionar texto al arrastrar sobre la cuadrícula */
+.disp-grid { user-select: none; -webkit-user-select: none; }
+.main-content { overflow-y: auto; }
+
+/* Clases usadas por la referencia que no estaban definidas en su CSS */
+.text-muted { color: var(--text-muted); }
+.badge-secondary { background: #F1F5F9; color: var(--text-normal); }
+.borderless-table td, .borderless-table th { border-bottom: none; }

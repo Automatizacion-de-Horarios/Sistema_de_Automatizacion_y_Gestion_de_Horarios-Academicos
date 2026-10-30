@@ -1,0 +1,20 @@
+{
+  "name": "horarios-senati-equipo1",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema Web de Automatización y Gestión de Horarios Académicos SENATI - Módulo Equipo 1 (Docentes y Disponibilidad)",
+  "source": "src/index.html",
+  "scripts": {
+    "start": "parcel src/index.html --open",
+    "build": "parcel build src/index.html --dist-dir dist --public-url ./",
+    "clean": "rm -rf dist .parcel-cache"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "parcel": "^2.12.0"
+  }
+}
