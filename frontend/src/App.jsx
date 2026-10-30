@@ -663,13 +663,87 @@ function FeriadosModulo({ triggerToast }) {
         estado: 'activo'
     });
 
-    // 2. CONEXIÓN CON BD: Cargar feriados al montar el componente (GET)
+    // Función para calcular dinámicamente las fechas exactas de Semana Santa según el año
+    const calcularFechasSemanaSanta = (anio) => {
+        const a = anio % 19;
+        const b = Math.floor(anio / 100);
+        const c = anio % 100;
+        const d = Math.floor(b / 4);
+        const e = b % 4;
+        const f = Math.floor((b + 8) / 25);
+        const g = Math.floor((b - f + 1) / 3);
+        const h = (19 * a + b - d - g + 15) % 30;
+        const i = Math.floor(c / 4);
+        const k = c % 4;
+        const l = (32 + 2 * e + 2 * i - h - k) % 7;
+        const m = Math.floor((a + 11 * h + 22 * l) / 451);
+        const mes = Math.floor((h + l - 7 * m + 114) / 31);
+        const dia = ((h + l - 7 * m + 114) % 31) + 1;
+
+        const domingoPascua = new Date(anio, mes - 1, dia);
+        
+        const jueves = new Date(domingoPascua);
+        jueves.setDate(domingoPascua.getDate() - 3);
+
+        const viernes = new Date(domingoPascua);
+        viernes.setDate(domingoPascua.getDate() - 2);
+
+        const formatYMD = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+
+        return {
+            juevesSanto: formatYMD(jueves),
+            viernesSanto: formatYMD(viernes)
+        };
+    };
+
+    // Cargar feriados y sincronizar automáticamente las fechas móviles en la Base de Datos
     useEffect(() => {
         const obtenerFeriadosBD = async () => {
             try {
-                const response = await fetch('http://localhost:3000/api/feriados');
+                const response = await fetch('${API_BASE_URL}/api/feriados');
                 if (!response.ok) throw new Error('Error al obtener feriados');
-                const data = await response.json();
+                let data = await response.json();
+
+                const anioActual = new Date().getFullYear();
+                const { juevesSanto, viernesSanto } = calcularFechasSemanaSanta(anioActual);
+
+                // Revisamos si Semana Santa necesita actualizarse en la BD
+                for (let feriado of data) {
+                    const desc = feriado.descripcion ? feriado.descripcion.toLowerCase() : '';
+                    let fechaCalculada = null;
+
+                    if (desc.includes('jueves santo')) {
+                        fechaCalculada = juevesSanto;
+                    } else if (desc.includes('viernes santo')) {
+                        fechaCalculada = viernesSanto;
+                    }
+
+                    // Si es Semana Santa y la fecha en la BD no coincide con el año actual
+                    if (fechaCalculada && (!feriado.fecha || !feriado.fecha.startsWith(String(anioActual)))) {
+                        try {
+                            // Actualizamos automáticamente en la base de datos mediante PUT
+                            await fetch(`${API_BASE_URL}/api/feriados/${feriado.id_feriado}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    fecha: fechaCalculada,
+                                    descripcion: feriado.descripcion,
+                                    estado: feriado.estado
+                                })
+                            });
+                            // Actualizamos el objeto local para reflejarlo de inmediato
+                            feriado.fecha = fechaCalculada;
+                        } catch (err) {
+                            console.error('Error al sincronizar fecha de Semana Santa en BD:', err);
+                        }
+                    }
+                }
+
                 setFeriados(data);
             } catch (error) {
                 console.error(error);
@@ -680,16 +754,16 @@ function FeriadosModulo({ triggerToast }) {
         };
         obtenerFeriadosBD();
     }, []);
+  
+    
 
     const formatearFecha = (fechaStr) => {
-        // Limpiamos la hora si viene con formato ISO de la BD
         const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-        const partes = soloFecha.split('-'); // [año, mes, día]
+        const partes = soloFecha.split('-'); 
         if (partes.length === 3) {
-            // Mostramos solo el Día y el Mes de manera legible, indicando que se repite anualmente
             const fechaTemp = new Date(soloFecha + 'T00:00:00');
             const mesNombre = fechaTemp.toLocaleDateString('es-PE', { month: 'long' });
-            return `${partes[2]} de ${mesNombre} (Todos los años)`;
+            return `${partes[2]} de ${mesNombre} de ${partes[0]}`;
         }
         return '';
     };
@@ -704,8 +778,8 @@ function FeriadosModulo({ triggerToast }) {
     };
 
     const feriadosOrdenados = [...feriados].sort((a, b) => {
-        const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; // Extrae 'MM-DD'
-        const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; // Extrae 'MM-DD'
+        const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; 
+        const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; 
         return fechaA.localeCompare(fechaB);
     });
 
@@ -713,7 +787,6 @@ function FeriadosModulo({ triggerToast }) {
     const feriadosActivos = feriados.filter(f => f.estado === 'activo').length;
     const feriadosInhabilitados = feriados.filter(f => f.estado === 'inhabilitado').length;
 
-    // 3. CONEXIÓN CON BD: Cambiar estado en la base de datos (PUT)
     const toggleEstadoFeriado = async (idFeriado) => {
         const feriadoActual = feriados.find(f => f.id_feriado === idFeriado);
         if (!feriadoActual) return;
@@ -721,7 +794,7 @@ function FeriadosModulo({ triggerToast }) {
         const nuevoEstado = feriadoActual.estado === 'activo' ? 'inhabilitado' : 'activo';
 
         try {
-            const response = await fetch(`http://localhost:3000/api/feriados/${idFeriado}`, {
+            const response = await fetch(`${API_BASE_URL}/api/feriados/${idFeriado}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -733,7 +806,6 @@ function FeriadosModulo({ triggerToast }) {
 
             if (!response.ok) throw new Error('Error al actualizar estado');
 
-            // Actualizamos el estado localmente solo si el backend respondió con éxito
             setFeriados(prev =>
                 prev.map(feriado => {
                     if (feriado.id_feriado === idFeriado) {
@@ -771,7 +843,6 @@ function FeriadosModulo({ triggerToast }) {
         setMostrarModal(false);
     };
 
-    // 4. CONEXIÓN CON BD: Guardar nuevo feriado en la base de datos (POST)
     const agregarFeriado = async () => {
         if (!nuevoFeriado.fecha) {
             if (typeof triggerToast === 'function') {
@@ -787,7 +858,7 @@ function FeriadosModulo({ triggerToast }) {
         }
 
         try {
-            const response = await fetch('http://localhost:3000/api/feriados', {
+            const response = await fetch('${API_BASE_URL}/api/feriados', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -800,8 +871,6 @@ function FeriadosModulo({ triggerToast }) {
             if (!response.ok) throw new Error('Error al registrar el feriado');
 
             const feriadoCreado = await response.json();
-
-            // Añadimos el feriado devuelto por la BD (con su ID real autoincrementable)
             setFeriados(prev => [...prev, feriadoCreado]);
 
             if (typeof triggerToast === 'function') {
