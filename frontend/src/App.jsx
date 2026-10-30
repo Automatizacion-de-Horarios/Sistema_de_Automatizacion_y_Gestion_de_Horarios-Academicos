@@ -705,7 +705,7 @@ function FeriadosModulo({ triggerToast }) {
     useEffect(() => {
         const obtenerFeriadosBD = async () => {
             try {
-                const response = await fetch('${API_BASE_URL}/api/feriados');
+                const response = await fetch(`${API_BASE_URL}/api/feriados`);
                 if (!response.ok) throw new Error('Error al obtener feriados');
                 let data = await response.json();
 
@@ -858,7 +858,7 @@ function FeriadosModulo({ triggerToast }) {
         }
 
         try {
-            const response = await fetch('${API_BASE_URL}/api/feriados', {
+            const response = await fetch(`${API_BASE_URL}/api/feriados`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
