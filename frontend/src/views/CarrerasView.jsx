@@ -6,6 +6,19 @@ import fondoCarreras from '../assets/fondoCarreras.png';
 import MallaSemestreView from './MallaSemestreView';
 import './MallaSemestreView.css';
 
+const MAPA_ROMANO_A_NUM = {
+    'I': 1, '1': 1,
+    'II': 2, '2': 2,
+    'III': 3, '3': 3,
+    'IV': 4, '4': 4,
+    'V': 5, '5': 5,
+    'VI': 6, '6': 6,
+    'VII': 7, '7': 7,
+    'VIII': 8, '8': 8,
+    'IX': 9, '9': 9,
+    'X': 10, '10': 10
+};
+
 // Lista de semestres oficiales para los botones de acceso rápido de cada carrera
 const SEMESTRES_CHIPS = [
     { num: 1, romano: 'I', label: 'Sem. 1' },
@@ -43,11 +56,24 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                     ? 'sin_datos'
                     : 'activa';
 
+            const listaSem = Array.isArray(carrera.semestres) && carrera.semestres.length > 0
+                ? carrera.semestres
+                : [
+                    { id_semestre: 1, semestre: 'I', estado: 'A' },
+                    { id_semestre: 2, semestre: 'II', estado: 'A' },
+                    { id_semestre: 3, semestre: 'III', estado: 'A' },
+                    { id_semestre: 4, semestre: 'IV', estado: 'A' },
+                    { id_semestre: 5, semestre: 'V', estado: 'A' },
+                    { id_semestre: 6, semestre: 'VI', estado: 'A' }
+                ];
+
             return {
                 id,
                 codigo: carrera.codigo_carrera || '',
                 nombre: carrera.nombre_carrera || carrera.nombre || '',
                 semestres: carrera.semestres ?? 6,
+                semestres: listaSem,
+                totalSemestres: listaSem.length,
                 estado: estadosLocales[id] ?? estadoBase
             };
         });
@@ -74,6 +100,12 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                 triggerToast('El 1.º Semestre (Estudios Generales) se cursa de manera transversal y no forma parte de la especialidad técnica.');
             }
             return;
+        }
+
+        if (sem.estado === 'I') {
+            if (typeof triggerToast === 'function') {
+                triggerToast(`El Semestre ${sem.romano} de "${carrera.nombre}" se encuentra inhabilitado.`);
+            }
         }
 
         setCarreraSeleccionada(carrera);
@@ -179,10 +211,14 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                     onVolver={() => {
                         setCarreraSeleccionada(null);
                         setSemestreObjetivo(null);
+                        if (typeof onRefrescarCarreras === 'function') {
+                            onRefrescarCarreras();
+                        }
                         if (typeof setActiveView === 'function') {
                             setActiveView('carreras-view');
                         }
                     }}
+                    onRefrescarCarreras={onRefrescarCarreras}
                     triggerToast={triggerToast}
                     onAbrirImportacion={() => cursosRef.current?.abrirImportacion()}
                     procesandoImportacion={procesandoImportacion}
@@ -303,7 +339,7 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                                                     {carrera.nombre}
                                                 </h3>
                                                 <span className="carrera-card-badge-semestres">
-                                                    6 Semestres
+                                                    {carrera.totalSemestres} Semestres
                                                 </span>
                                             </div>
 
@@ -311,19 +347,30 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                                                 Seleccione un semestre para ver su malla oficial y fichas curriculares:
                                             </p>
 
-                                            {/* Grilla de 6 botones de semestres (Sem. 1 a Sem. 6) */}
+                                            {/* Grilla dinámica con los semestres registrados para esta carrera */}
                                             <div className="carrera-semestres-grid">
-                                                {SEMESTRES_CHIPS.map((sem) => (
-                                                    <button
-                                                        key={sem.num}
-                                                        type="button"
-                                                        className="btn-semestre-chip"
-                                                        onClick={(e) => handleClicSemestre(e, carrera, sem)}
-                                                        title={`Ver asignaturas de ${carrera.nombre} - ${sem.label}`}
-                                                    >
-                                                        {sem.label}
-                                                    </button>
-                                                ))}
+                                                {carrera.semestres.map((sem) => {
+                                                    const num = MAPA_ROMANO_A_NUM[String(sem.semestre).trim().toUpperCase()] || sem.semestre;
+                                                    const isPrimerSemestre = Number(num) === 1 || String(sem.semestre).trim().toUpperCase() === 'I';
+                                                    const isSemLocked = sem.estado === 'I';
+                                                    return (
+                                                        <button
+                                                            key={sem.id_semestre || sem.semestre}
+                                                            type="button"
+                                                            className={`btn-semestre-chip ${isPrimerSemestre ? 'semestre-primer-ciclo' : isSemLocked ? 'semestre-disabled' : ''}`}
+                                                            onClick={(e) => handleClicSemestre(e, carrera, { num, romano: sem.semestre, estado: sem.estado, id_semestre: sem.id_semestre })}
+                                                            title={
+                                                                isPrimerSemestre
+                                                                    ? '1.er Semestre (Estudios Generales transversal - No forma parte de la especialidad técnica)'
+                                                                    : isSemLocked
+                                                                    ? `Semestre ${sem.semestre} Inhabilitado`
+                                                                    : `Ver asignaturas de ${carrera.nombre} - Sem. ${num}`
+                                                            }
+                                                        >
+                                                            Sem. {num}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>

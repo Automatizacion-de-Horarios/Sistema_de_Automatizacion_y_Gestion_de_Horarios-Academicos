@@ -41,9 +41,40 @@ const Carrera = {
      */
     async obtenerActivas(conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
-            "SELECT id_carrera, codigo_carrera, nombre_carrera, estado FROM carreras WHERE estado = 'A' ORDER BY codigo_carrera ASC"
+            `SELECT 
+                c.id_carrera, 
+                c.codigo_carrera, 
+                c.nombre_carrera, 
+                c.estado,
+                s.id_semestre,
+                s.semestre,
+                s.estado AS estado_semestre
+             FROM carreras c
+             LEFT JOIN semestres s ON s.id_carrera = c.id_carrera
+             WHERE c.estado = 'A'
+             ORDER BY c.nombre_carrera ASC, FIELD(s.semestre, 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X')`
         );
-        return filas;
+
+        const mapa = new Map();
+        for (const fila of filas) {
+            if (!mapa.has(fila.id_carrera)) {
+                mapa.set(fila.id_carrera, {
+                    id_carrera: fila.id_carrera,
+                    codigo_carrera: fila.codigo_carrera,
+                    nombre_carrera: fila.nombre_carrera,
+                    estado: fila.estado,
+                    semestres: []
+                });
+            }
+            if (fila.id_semestre) {
+                mapa.get(fila.id_carrera).semestres.push({
+                    id_semestre: fila.id_semestre,
+                    semestre: fila.semestre,
+                    estado: fila.estado_semestre || 'A'
+                });
+            }
+        }
+        return Array.from(mapa.values());
     },
 
     /**
@@ -118,6 +149,7 @@ const Carrera = {
                 s.id_semestre,
                 s.semestre,
                 s.horas_semestre_meta,
+                s.estado AS estado_semestre,
                 cur.id_curso,
                 cur.mat_cur,
                 cur.horario_sinfo,
@@ -133,7 +165,7 @@ const Carrera = {
                 cur.estado AS estado_curso
             FROM carreras c
             INNER JOIN semestres s ON s.id_carrera = c.id_carrera
-            LEFT JOIN cursos cur ON cur.id_semestre = s.id_semestre AND cur.estado = 'A'
+            LEFT JOIN cursos cur ON cur.id_semestre = s.id_semestre
             WHERE ${condicion} AND UPPER(TRIM(s.semestre)) NOT IN ('I', '1')
             ORDER BY 
                 FIELD(s.semestre, 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'),
@@ -397,6 +429,28 @@ const Carrera = {
             console.error('Error al consultar lista de docentes:', error.message);
             return [];
         }
+    },
+
+    /**
+     * Actualiza el estado (A=Activo, I=Inactivo) de un semestre de la carrera
+     */
+        /**
+     * Actualiza el estado (A=Activo, I=Inactivo) de un curso
+     */
+    async actualizarEstadoCurso(idCurso, nuevoEstado, conexion) {
+        const [resultado] = await obtenerEjecutor(conexion).query(
+            'UPDATE cursos SET estado = ?, fecha_modificacion = CURRENT_TIMESTAMP WHERE id_curso = ?',
+            [nuevoEstado, idCurso]
+        );
+        return resultado.affectedRows > 0;
+    },
+
+    async actualizarEstadoSemestre(idSemestre, nuevoEstado, conexion) {
+        const [resultado] = await obtenerEjecutor(conexion).query(
+            'UPDATE semestres SET estado = ? WHERE id_semestre = ?',
+            [nuevoEstado, idSemestre]
+        );
+        return resultado.affectedRows > 0;
     }
 };
 

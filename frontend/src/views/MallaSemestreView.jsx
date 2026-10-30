@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { API_BASE_URL } from '../config/api';
 import { authFetch } from '../lib/authFetch';
 import './MallaSemestreView.css';
@@ -37,7 +37,8 @@ export default function MallaSemestreView({
     triggerToast,
     onAbrirImportacion,
     procesandoImportacion,
-    onCambiosPendientesChange
+    onCambiosPendientesChange,
+    onRefrescarCarreras
 }) {
     const [cargando, setCargando] = useState(true);
     const [mallaData, setMallaData] = useState(null);
@@ -74,9 +75,92 @@ export default function MallaSemestreView({
     // Asignación de docentes para cursos individuales complementarios: { [id_curso]: { [id_turno]: idDocente } }
     const [asignacionesCursos, setAsignacionesCursos] = useState({});
 
+    // Cantidad de turnos configurados por cada semestre (1, 2 o 3 turnos): { [semestre]: 1 | 2 | 3 }
+    const [turnosPorSemestre, setTurnosPorSemestre] = useState({});
+
     // Control de modificaciones pendientes para alertar antes de salir de la carrera
     const [hayCambiosSinGuardar, setHayCambiosSinGuardar] = useState(false);
     const [modalAlertaVolver, setModalAlertaVolver] = useState(false);
+
+    // Instantánea base de la base de datos para comparar modificaciones reales
+    const baselineRef = useRef({
+        cargado: false,
+        turnosPorSemestre: {},
+        asignacionesDocentes: {},
+        asignacionesCursos: {}
+    });
+
+    // Evaluar de manera inteligente si hay modificaciones reales respecto a la base de datos
+    useEffect(() => {
+        if (!baselineRef.current.cargado) return;
+        const semestres = mallaData?.semestres || [];
+        const base = baselineRef.current;
+
+        let cambio = false;
+
+        // 1. CONDICIÓN DE TURNOS:
+        // Por defecto todos los semestres llevan 1 Turno (Turno 1).
+        // Si el usuario agrega Turno 2 o 3 (cant > 1), se considera como CAMBIOS.
+        // Si vuelve a 1 Turno (cant === 1), vuelve al valor por defecto y NO se considera cambio.
+        for (const s of semestres) {
+            const sem = s.semestre;
+            const cantActual = turnosPorSemestre[sem] || 1;
+            if (cantActual > 1) {
+                cambio = true;
+                break;
+            }
+        }
+
+        // 2. CONDICIÓN DE DOCENTES DE CARRERA (TEC / TAL):
+        // Solo revisamos asignaciones en los turnos actualmente activos (1..cantActual)
+        if (!cambio) {
+            for (const s of semestres) {
+                const sem = s.semestre;
+                const cant = turnosPorSemestre[sem] || 1;
+                for (let t = 1; t <= cant; t++) {
+                    const tecActual = String(asignacionesDocentes[sem]?.[t]?.tec || '');
+                    const tecBase = String(base.asignacionesDocentes[sem]?.[t]?.tec || '');
+                    if (tecActual !== tecBase) {
+                        cambio = true;
+                        break;
+                    }
+                    const talActual = String(asignacionesDocentes[sem]?.[t]?.tal || '');
+                    const talBase = String(base.asignacionesDocentes[sem]?.[t]?.tal || '');
+                    if (talActual !== talBase) {
+                        cambio = true;
+                        break;
+                    }
+                }
+                if (cambio) break;
+            }
+        }
+
+        // 3. CONDICIÓN DE DOCENTES DE CURSOS COMPLEMENTARIOS:
+        // Solo revisamos los turnos actualmente activos (1..cantActual)
+        if (!cambio) {
+            for (const s of semestres) {
+                const sem = s.semestre;
+                const cant = turnosPorSemestre[sem] || 1;
+                const cursos = s.cursos || [];
+                for (const c of cursos) {
+                    if (Number(c.is_carrera) === 0) {
+                        for (let t = 1; t <= cant; t++) {
+                            const curDocActual = String(asignacionesCursos[c.id_curso]?.[t] || '');
+                            const curDocBase = String(base.asignacionesCursos[c.id_curso]?.[t] || '');
+                            if (curDocActual !== curDocBase) {
+                                cambio = true;
+                                break;
+                            }
+                        }
+                        if (cambio) break;
+                    }
+                }
+                if (cambio) break;
+            }
+        }
+
+        setHayCambiosSinGuardar(cambio);
+    }, [turnosPorSemestre, asignacionesDocentes, asignacionesCursos, mallaData]);
 
     // Notificar al componente padre si hay cambios sin guardar
     useEffect(() => {
@@ -247,30 +331,58 @@ export default function MallaSemestreView({
         }
     };
 
-    const handleEliminarCurso = async (idCurso, nombreCurso) => {
-        if (!window.confirm(`¿Está seguro de eliminar el curso "${nombreCurso}" de la malla curricular?`)) {
-            return;
-        }
+    /**
+     * Regla: Habilitar o inhabilitar un curso específico de la malla curricular.
+     */
+    const handleToggleEstadoCurso = async (curso, semestre) => {
+        const nuevoEstado = curso.estado === 'I' ? 'A' : 'I';
+        const idCurso = curso.id_curso;
+
+        // Actualización optimista inmediata en la UI
+        setMallaData((prev) => {
+            if (!prev) return prev;
+            const semestresActualizados = (prev.semestres || []).map((s) => {
+                if (s.id_semestre === semestre.id_semestre || matchSemestre(s.semestre, semestre.semestre)) {
+                    const cursosActualizados = (s.cursos || []).map((c) =>
+                        c.id_curso === idCurso ? { ...c, estado: nuevoEstado } : c
+                    );
+                    const totalHorasActualizado = cursosActualizados
+                        .filter((c) => c.estado !== 'I')
+                        .reduce((acc, c) => acc + (Number(c.total_horas) || 0), 0);
+
+                    return {
+                        ...s,
+                        cursos: cursosActualizados,
+                        total_horas: totalHorasActualizado
+                    };
+                }
+                return s;
+            });
+            return { ...prev, semestres: semestresActualizados };
+        });
 
         try {
-            const res = await authFetch(`${API_BASE_URL}/api/carreras/cursos/${idCurso}`, {
-                method: 'DELETE'
+            const res = await authFetch(`${API_BASE_URL}/api/carreras/cursos/${idCurso}/estado`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: nuevoEstado })
             });
 
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.mensaje || 'Error al eliminar el curso.');
+                throw new Error(data.mensaje || 'Error al actualizar estado del curso.');
             }
 
             if (typeof triggerToast === 'function') {
-                triggerToast(`El curso "${nombreCurso}" fue eliminado.`);
+                triggerToast(
+                    `Curso "${curso.nombre_curso}" marcado como ${nuevoEstado === 'A' ? 'Activo' : 'Inactivo'}.`
+                );
             }
-
-            await cargarMalla();
         } catch (err) {
-            console.error('Error al eliminar curso:', err);
+            console.error('Error al actualizar estado del curso:', err);
+            await cargarMalla();
             if (typeof triggerToast === 'function') {
-                triggerToast(err.message || 'Error al eliminar el curso.');
+                triggerToast(err.message || 'Error al conectar con la base de datos.');
             }
         }
     };
@@ -307,10 +419,11 @@ export default function MallaSemestreView({
             }
 
             // 2. Restaurar asignaciones guardadas previamente en programacion_academica
-            if (data.programacion && Array.isArray(data.programacion) && data.programacion.length > 0) {
-                const mapaSem = {};
-                const mapaCur = {};
+            const mapaSem = {};
+            const mapaCur = {};
+            const turnosDetectados = {};
 
+            if (data.programacion && Array.isArray(data.programacion) && data.programacion.length > 0) {
                 for (const prog of data.programacion) {
                     const idT = prog.id_turno;
                     const sem = prog.semestre;
@@ -332,9 +445,34 @@ export default function MallaSemestreView({
                     }
                 }
 
-                setAsignacionesDocentes(mapaSem);
-                setAsignacionesCursos(mapaCur);
+                // Detectar cantidad de turnos que tenía configurado cada semestre
+                for (const prog of data.programacion) {
+                    const sem = prog.semestre;
+                    const idT = Number(prog.id_turno) || 1;
+                    if (sem) {
+                        turnosDetectados[sem] = Math.max(turnosDetectados[sem] || 1, idT);
+                    }
+                }
             }
+
+            setAsignacionesDocentes(mapaSem);
+            setAsignacionesCursos(mapaCur);
+
+            // Regla: Por defecto todos los semestres inician siempre en 1 Turno (Turno 1)
+            const turnosPorDefecto = {};
+            for (const s of data.semestres || []) {
+                turnosPorDefecto[s.semestre] = 1;
+            }
+            setTurnosPorSemestre(turnosPorDefecto);
+
+            // Guardar instantánea base inicial
+            baselineRef.current = {
+                cargado: true,
+                turnosPorSemestre: turnosPorDefecto,
+                asignacionesDocentes: JSON.parse(JSON.stringify(mapaSem)),
+                asignacionesCursos: JSON.parse(JSON.stringify(mapaCur))
+            };
+            setHayCambiosSinGuardar(false);
         } catch (err) {
             console.error('Error al cargar malla curricular:', err);
             setError(err.message);
@@ -356,6 +494,23 @@ export default function MallaSemestreView({
     }, [semestreFiltro]);
 
     // Semestres registrados de la carrera: si el usuario seleccionó un semestre específico, se muestra SOLO ese
+    
+    // Semestres técnicos registrados oficialmente en la BD para esta carrera (omitiendo Semestre I)
+    const semestresDisponiblesCarrera = useMemo(() => {
+        const lista = mallaData?.semestres || [];
+        return lista.filter((s) => !['I', '1'].includes(String(s.semestre).trim().toUpperCase()));
+    }, [mallaData]);
+
+    // Asegurar que el filtro inicial apunte a un semestre que realmente exista en esta carrera
+    useEffect(() => {
+        if (semestresDisponiblesCarrera.length > 0) {
+            const existe = semestresDisponiblesCarrera.some((s) => matchSemestre(s.semestre, semestreFiltro));
+            if (!existe) {
+                setSemestreFiltro(semestresDisponiblesCarrera[0].semestre);
+            }
+        }
+    }, [semestresDisponiblesCarrera, semestreFiltro]);
+
     const semestres = useMemo(() => {
         const lista = mallaData?.semestres || [];
         const base = lista.filter((s) => !['I', '1'].includes(String(s.semestre).trim().toUpperCase()));
@@ -387,6 +542,37 @@ export default function MallaSemestreView({
         ];
     }, [turnosBD]);
 
+    // Cantidad de turnos seleccionados para el semestre en pantalla (por defecto 1 turno)
+    const cantidadTurnosActual = turnosPorSemestre[semestreFiltro] || 1;
+
+    // Lista de turnos (cuadros) visibles para el ciclo actual según la cantidad elegida (1, 2 o 3)
+    const turnosCicloActual = useMemo(() => {
+        const cant = turnosPorSemestre[semestreFiltro] || 1;
+        return turnosDisponibles.slice(0, cant);
+    }, [turnosDisponibles, turnosPorSemestre, semestreFiltro]);
+
+    // Manejar cambio en el combobox de turnos del semestre (1 turno, 2 turnos o 3 turnos)
+    const handleCambiarCantidadTurnos = (nuevaCantidad) => {
+        const cant = Math.max(1, Math.min(3, parseInt(nuevaCantidad, 10) || 1));
+        setTurnosPorSemestre((prev) => ({
+            ...prev,
+            [semestreFiltro]: cant
+        }));
+
+        // Si el turno activo queda fuera del nuevo rango, volver a Turno 1
+        if (turnoActivo > cant) {
+            setTurnoActivo(1);
+        }
+    };
+
+    // Asegurar que turnoActivo no quede fuera de los turnos del semestre al cambiar de ciclo
+    useEffect(() => {
+        const cant = turnosPorSemestre[semestreFiltro] || 1;
+        if (turnoActivo > cant) {
+            setTurnoActivo(1);
+        }
+    }, [semestreFiltro, turnosPorSemestre, turnoActivo]);
+
     // Obtener etiqueta legible de turno basada en el registro de la BD: Turno 1, Turno 2, Turno 3
     const obtenerTextoTurno = (idTurno) => {
         const t = turnosBD.find((item) => Number(item.id_turno) === Number(idTurno));
@@ -403,8 +589,61 @@ export default function MallaSemestreView({
      * Regla: Si el curso es TEC-TAL, por defecto debe llevar el mismo docente.
      * Al seleccionar TEC, automáticamente se sincroniza el mismo para TAL.
      */
+    
+    /**
+     * Regla: Habilitar o inhabilitar un semestre específico de la carrera y persistir en la BD.
+     */
+    const handleToggleEstadoSemestre = async (semestreObj) => {
+        const nuevoEstado = semestreObj.estado === 'I' ? 'A' : 'I';
+        const idSemestre = semestreObj.id_semestre;
+
+        // Actualizar estado local optimistamente
+        setMallaData((prev) => {
+            if (!prev) return prev;
+            const actualizados = (prev.semestres || []).map((s) =>
+                s.id_semestre === idSemestre ? { ...s, estado: nuevoEstado } : s
+            );
+            return { ...prev, semestres: actualizados };
+        });
+
+        try {
+            const res = await authFetch(`${API_BASE_URL}/api/carreras/semestres/${idSemestre}/estado`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: nuevoEstado })
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.mensaje || 'Error al actualizar estado del semestre.');
+            }
+
+            if (typeof triggerToast === 'function') {
+                triggerToast(
+                    `Semestre ${semestreObj.semestre} ${nuevoEstado === 'A' ? 'habilitado' : 'inhabilitado'} exitosamente.`
+                );
+            }
+
+            if (typeof onRefrescarCarreras === 'function') {
+                onRefrescarCarreras();
+            }
+        } catch (err) {
+            console.error('Error al actualizar estado del semestre:', err);
+            // Revertir en caso de falla
+            setMallaData((prev) => {
+                if (!prev) return prev;
+                const actualizados = (prev.semestres || []).map((s) =>
+                    s.id_semestre === idSemestre ? { ...s, estado: semestreObj.estado } : s
+                );
+                return { ...prev, semestres: actualizados };
+            });
+            if (typeof triggerToast === 'function') {
+                triggerToast(err.message || 'Error al conectar con la base de datos.');
+            }
+        }
+    };
+
     const handleCambiarDocente = (semestreRomano, tipo, idDocente) => {
-        setHayCambiosSinGuardar(true);
         const semObj = semestres.find((s) => matchSemestre(s.semestre, semestreRomano));
         const tieneTecTal = semObj?.cursos?.some((c) => String(c.horario_sinfo || '').toUpperCase() === 'TEC-TAL');
 
@@ -437,7 +676,6 @@ export default function MallaSemestreView({
      * Regla: Para cursos complementarios (is_carrera === 0), permite elegir docente mediante comboBox individual.
      */
     const handleCambiarDocenteCurso = (idCurso, idTurno, idDocente) => {
-        setHayCambiosSinGuardar(true);
         setAsignacionesCursos((prev) => {
             const cur = prev[idCurso] || {};
             return {
@@ -500,8 +738,10 @@ export default function MallaSemestreView({
 
             for (const sem of listaSemestres) {
                 const cursos = sem.cursos || [];
+                const cantTurnosSem = turnosPorSemestre[sem.semestre] || 1;
+                const turnosActivosSem = turnosDisponibles.slice(0, cantTurnosSem);
 
-                for (const turno of turnosDisponibles) {
+                for (const turno of turnosActivosSem) {
                     const idTurno = turno.id_turno;
                     const asignSem = asignacionesDocentes[sem.semestre]?.[idTurno] || {};
 
@@ -559,6 +799,16 @@ export default function MallaSemestreView({
             }
 
             setHayCambiosSinGuardar(false);
+            const nuevoBaselineTurnos = {};
+            for (const s of mallaData?.semestres || []) {
+                nuevoBaselineTurnos[s.semestre] = turnosPorSemestre[s.semestre] || 1;
+            }
+            baselineRef.current = {
+                cargado: true,
+                turnosPorSemestre: nuevoBaselineTurnos,
+                asignacionesDocentes: JSON.parse(JSON.stringify(asignacionesDocentes)),
+                asignacionesCursos: JSON.parse(JSON.stringify(asignacionesCursos))
+            };
             if (typeof triggerToast === 'function') {
                 triggerToast('¡Configuración guardada exitosamente en la tabla programacion_academica!');
             }
@@ -646,34 +896,54 @@ export default function MallaSemestreView({
                 <div className="malla-control-row">
                     <span className="malla-control-label">ciclo en pantalla:</span>
                     <div className="malla-ciclos-chips-list">
-                        {['II', 'III', 'IV', 'V', 'VI'].map((sem) => (
-                            <button
-                                key={sem}
-                                type="button"
-                                className={`malla-ciclo-chip-btn ${matchSemestre(semestreFiltro, sem) ? 'active' : ''}`}
-                                onClick={() => setSemestreFiltro(sem)}
-                            >
-                                Sem. {sem}
-                            </button>
-                        ))}
+                        {semestresDisponiblesCarrera.map((s) => {
+                            const isLocked = s.estado === 'I';
+                            return (
+                                <button
+                                    key={s.id_semestre || s.semestre}
+                                    type="button"
+                                    className={`malla-ciclo-chip-btn ${matchSemestre(semestreFiltro, s.semestre) ? 'active' : ''} ${isLocked ? 'chip-semestre-inactivo' : ''}`}
+                                    onClick={() => setSemestreFiltro(s.semestre)}
+                                    title={isLocked ? `Semestre ${s.semestre} Inhabilitado` : `Ver Semestre ${s.semestre}`}
+                                >
+                                    Sem. {s.semestre}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* Desplegable de selección de turno según la BD */}
+                {/* Selector de cantidad de turnos y cuadros marcados de turno */}
                 <div className="malla-control-row">
                     <span className="malla-control-label">turno:</span>
                     <select
                         className="malla-select-turnos-count"
-                        value={turnoActivo}
-                        onChange={(e) => setTurnoActivo(Number(e.target.value))}
-                        title="Seleccionar el turno de clases a configurar"
+                        value={cantidadTurnosActual}
+                        onChange={(e) => handleCambiarCantidadTurnos(e.target.value)}
+                        title="Seleccionar cuántos turnos tendrá el semestre actual (1, 2 o 3 turnos)"
                     >
-                        {turnosDisponibles.map((turno) => (
-                            <option key={turno.id_turno} value={turno.id_turno}>
-                                {obtenerTextoTurno(turno.id_turno)}
-                            </option>
-                        ))}
+                        <option value={1}>1 Turno</option>
+                        <option value={2}>2 Turnos</option>
+                        <option value={3}>3 Turnos</option>
                     </select>
+
+                    {/* Cuadros marcados de turnos: si eligió 1 turno solo aparece Turno 1, si 2 aparecen Turno 1 y Turno 2, etc. */}
+                    <div className="malla-turnos-tabs-list">
+                        {turnosCicloActual.map((turno) => {
+                            const esActivo = Number(turnoActivo) === Number(turno.id_turno);
+                            return (
+                                <button
+                                    key={turno.id_turno}
+                                    type="button"
+                                    className={`malla-turno-tab-btn ${esActivo ? 'active' : ''}`}
+                                    onClick={() => setTurnoActivo(Number(turno.id_turno))}
+                                    title={`Configurar asignaciones para ${obtenerTextoTurno(turno.id_turno)}`}
+                                >
+                                    {obtenerTextoTurno(turno.id_turno)}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
@@ -728,7 +998,16 @@ export default function MallaSemestreView({
                                             {cursosDelCiclo.length} cursos
                                         </p>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                        <button
+                                            type="button"
+                                            className={`malla-btn-toggle-semestre ${semestre.estado === 'I' ? 'inactivo' : 'activo'}`}
+                                            onClick={() => handleToggleEstadoSemestre(semestre)}
+                                            title={semestre.estado === 'I' ? 'Semestre inhabilitado. Clic para habilitar' : 'Semestre habilitado. Clic para inhabilitar'}
+                                        >
+                                            <i className={`fas ${semestre.estado === 'I' ? 'fa-lock' : 'fa-lock-open'}`}></i>
+                                            <span>{semestre.estado === 'I' ? 'Inhabilitado' : 'Habilitado'}</span>
+                                        </button>
                                         <button
                                             type="button"
                                             className="malla-btn-agregar-curso"
@@ -743,6 +1022,13 @@ export default function MallaSemestreView({
                                         </span>
                                     </div>
                                 </div>
+
+                                {semestre.estado === 'I' && (
+                                    <div className="malla-semestre-inhabilitado-banner">
+                                        <i className="fas fa-lock" style={{ fontSize: '15px' }}></i>
+                                        <span><strong>Semestre Inhabilitado:</strong> Este ciclo se encuentra pausado y fuera de la programación activa de horarios. Puede habilitarlo en cualquier momento usando el botón de la cabecera.</span>
+                                    </div>
+                                )}
 
                                 {/* =============================================================== */}
                                 {/* SELECTORES DE DOCENTES PARA TEC Y TAL EN ESTE TURNO             */}
@@ -805,7 +1091,7 @@ export default function MallaSemestreView({
                                                     <th>DOCENTE ASIGNADO ({obtenerTextoTurno(turnoActivo)})</th>
                                                     <th className="center">SEMANAS</th>
                                                     <th className="center">TOTAL HORAS</th>
-                                                    <th className="center" style={{ width: '90px' }}>ACCIONES</th>
+                                                    <th className="center" style={{ width: '135px' }}>ACCIONES</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -813,13 +1099,14 @@ export default function MallaSemestreView({
                                                     const esSeminario = /seminario/i.test(curso.nombre_curso || '');
                                                     const esEmpresa = String(curso.horario_sinfo || '').toUpperCase().includes('EMP');
                                                     const esDeCarrera = Number(curso.is_carrera) === 1;
+                                                    const esInactivo = curso.estado === 'I';
 
                                                     // Para cursos de carrera:
                                                     const esTaller = String(curso.horario_sinfo || '').toUpperCase().includes('TAL') || esSeminario;
                                                     const docenteAsignadoCarrera = esTaller ? docenteTalAsignado : docenteTecAsignado;
 
                                                     return (
-                                                        <tr key={curso.id_curso || curso.mat_cur}>
+                                                        <tr key={curso.id_curso || curso.mat_cur} className={esInactivo ? 'malla-row-inactivo' : ''}>
                                                             <td>
                                                                 <span className="malla-badge-matcur-blue">
                                                                     {curso.mat_cur}
@@ -842,10 +1129,11 @@ export default function MallaSemestreView({
                                                             </td>
                                                             <td>
                                                                 <select
-                                                                    className={`malla-select-is-carrera ${esDeCarrera ? 'carrera' : 'complementario'}`}
+                                                                    className={`malla-select-is-carrera ${esDeCarrera ? 'carrera' : 'complementario'} ${esInactivo ? 'disabled' : ''}`}
                                                                     value={esDeCarrera ? '1' : '0'}
                                                                     onChange={(e) => handleCambiarTipoCurso(curso.id_curso, Number(e.target.value))}
-                                                                    title="Seleccione si el curso es de Carrera o Complementario"
+                                                                    disabled={esInactivo}
+                                                                    title={esInactivo ? "Curso inactivo (no editable)" : "Seleccione si el curso es de Carrera o Complementario"}
                                                                 >
                                                                     <option value="1">Carrera</option>
                                                                     <option value="0">Complementario</option>
@@ -870,9 +1158,11 @@ export default function MallaSemestreView({
                                                                     )
                                                                 ) : (
                                                                     <select
-                                                                        className="malla-docente-row-combobox"
+                                                                        className={`malla-docente-row-combobox ${esInactivo ? 'disabled' : ''}`}
                                                                         value={asignacionesCursos[curso.id_curso]?.[turnoActivo] || ''}
                                                                         onChange={(e) => handleCambiarDocenteCurso(curso.id_curso, turnoActivo, e.target.value)}
+                                                                        disabled={esInactivo}
+                                                                        title={esInactivo ? "Curso inactivo (no editable)" : "Seleccionar docente complementario"}
                                                                     >
                                                                         <option value="">-- Seleccionar docente complementario --</option>
                                                                         {listaDocentes.map((d) => (
@@ -895,19 +1185,20 @@ export default function MallaSemestreView({
                                                                 <div className="malla-row-actions">
                                                                     <button
                                                                         type="button"
-                                                                        className="malla-action-btn edit"
-                                                                        onClick={() => abrirModalEditarCurso(curso, semestre)}
-                                                                        title={`Editar curso: ${curso.nombre_curso}`}
+                                                                        className={`malla-action-btn edit ${esInactivo ? 'disabled' : ''}`}
+                                                                        onClick={() => !esInactivo && abrirModalEditarCurso(curso, semestre)}
+                                                                        disabled={esInactivo}
+                                                                        title={esInactivo ? "Curso inactivo (habilítelo para editar)" : `Editar curso: ${curso.nombre_curso}`}
                                                                     >
                                                                         <i className="fas fa-pencil-alt"></i>
                                                                     </button>
                                                                     <button
                                                                         type="button"
-                                                                        className="malla-action-btn delete"
-                                                                        onClick={() => handleEliminarCurso(curso.id_curso, curso.nombre_curso)}
-                                                                        title={`Eliminar curso: ${curso.nombre_curso}`}
+                                                                        className={`malla-btn-estado-curso ${curso.estado === 'I' ? 'inactivo' : 'activo'}`}
+                                                                        onClick={() => handleToggleEstadoCurso(curso, semestre)}
+                                                                        title={curso.estado === 'I' ? `Curso inactivo. Clic para activar: ${curso.nombre_curso}` : `Curso activo. Clic para desactivar: ${curso.nombre_curso}`}
                                                                     >
-                                                                        <i className="fas fa-trash-alt"></i>
+                                                                        <span>{curso.estado === 'I' ? 'Inactivo' : 'Activo'}</span>
                                                                     </button>
                                                                 </div>
                                                             </td>
