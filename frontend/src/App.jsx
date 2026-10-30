@@ -751,18 +751,21 @@ function FeriadosModulo({ triggerToast }) {
     }, [triggerToast]);
   
     const formatearFecha = (fechaStr) => {
+    // Si viene de la BD como "2026-04-30T00:00:00.000Z", nos quedamos solo con "2026-04-30"
     const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-    const partes = soloFecha.split('-'); // [YYYY, MM, DD]
+    const partes = soloFecha.split('-'); // [2026, 04, 30]
+    
     if (partes.length === 3) {
         const anio = partes[0];
         const mesIndex = parseInt(partes[1], 10) - 1;
         const dia = partes[2];
         
-        // Creamos una fecha usando componentes UTC o mapeando los nombres de los meses directamente para evitar desfases
         const mesesNombres = [
             'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
             'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
         ];
+        
+        // Retorna el texto exacto sin intervención de la zona horaria del navegador
         return `${dia} de ${mesesNombres[mesIndex] || ''}`;
     }
     return '';
