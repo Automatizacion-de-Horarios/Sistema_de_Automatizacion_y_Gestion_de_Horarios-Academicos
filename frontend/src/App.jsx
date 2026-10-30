@@ -934,264 +934,295 @@ function FeriadosModulo({ triggerToast }) {
 //   MÓDULO AUTÓNOMO: INFRAESTRUCTURA, AULAS Y AMBIENTES (EQUIPO 2)
 // ===============================================================
 function AmbientesModulo() {
-    // Mock data basado en las tablas futuras: tipo_ambiente, ambientes, ambiente_apto_carreras
-    const [tipoAmbiente] = useState([
-        { id_tipo: 1, descripcion: 'Taller' },
-        { id_tipo: 2, descripcion: 'Laboratorio' },
-        { id_tipo: 3, descripcion: 'Teoría' },
-        { id_tipo: 4, descripcion: 'Auditorio' }
-    ]);
-
-    const [ambientes] = useState([
-        {
-            id_ambiente: 1,
-            codigo_ambiente: 'T-101',
-            id_tipo_ambiente: 1,
-            descripcion: 'Taller de Mecánica',
-            aforo_maximo: 20,
-            piso_ubicacion: '1er Piso',
-            pabellón: 'Pabellón A',
-            estado: 'disponible'
-        },
-        {
-            id_ambiente: 2,
-            codigo_ambiente: 'LAB-201',
-            id_tipo_ambiente: 2,
-            descripcion: 'Laboratorio de Electrónica',
-            aforo_maximo: 16,
-            piso_ubicacion: '2do Piso',
-            pabellón: 'Pabellón B',
-            estado: 'disponible'
-        },
-        {
-            id_ambiente: 3,
-            codigo_ambiente: 'T-102',
-            id_tipo_ambiente: 1,
-            descripcion: 'Taller de Soldadura',
-            aforo_maximo: 12,
-            piso_ubicacion: '1er Piso',
-            pabellón: 'Pabellón A',
-            estado: 'disponible'
-        },
-        {
-            id_ambiente: 4,
-            codigo_ambiente: 'AULA-301',
-            id_tipo_ambiente: 3,
-            descripcion: 'Aula de Teoría - General',
-            aforo_maximo: 40,
-            piso_ubicacion: '3er Piso',
-            pabellón: 'Pabellón C',
-            estado: 'disponible'
-        },
-        {
-            id_ambiente: 5,
-            codigo_ambiente: 'LAB-202',
-            id_tipo_ambiente: 2,
-            descripcion: 'Laboratorio de Redes',
-            aforo_maximo: 15,
-            piso_ubicacion: '2do Piso',
-            pabellón: 'Pabellón B',
-            estado: 'mantenimiento'
-        },
-        {
-            id_ambiente: 6,
-            codigo_ambiente: 'T-103',
-            id_tipo_ambiente: 1,
-            descripcion: 'Taller de Carpintería',
-            aforo_maximo: 18,
-            piso_ubicacion: '1er Piso',
-            pabellón: 'Pabellón A',
-            estado: 'disponible'
-        },
-        {
-            id_ambiente: 7,
-            codigo_ambiente: 'AULA-302',
-            id_tipo_ambiente: 3,
-            descripcion: 'Aula Multimedia',
-            aforo_maximo: 35,
-            piso_ubicacion: '3er Piso',
-            pabellón: 'Pabellón C',
-            estado: 'disponible'
-        },
-        {
-            id_ambiente: 8,
-            codigo_ambiente: 'AUD-001',
-            id_tipo_ambiente: 4,
-            descripcion: 'Auditorio Principal',
-            aforo_maximo: 150,
-            piso_ubicacion: 'Planta Baja',
-            pabellón: 'Pabellón Central',
-            estado: 'disponible'
-        },
-        {
-            id_ambiente: 9,
-            codigo_ambiente: 'LAB-203',
-            id_tipo_ambiente: 2,
-            descripcion: 'Laboratorio de Computación',
-            aforo_maximo: 14,
-            piso_ubicacion: '2do Piso',
-            pabellón: 'Pabellón B',
-            estado: 'disponible'
-        }
-    ]);
-
+    // 1. ESTADOS PRINCIPALES (Datos de la base de datos)
+    const [tiposDeAmbiente, setTiposDeAmbiente] = useState([]);
+    const [listaAmbientes, setListaAmbientes] = useState([]);
+    
+    // 2. ESTADOS PARA BÚSQUEDA Y FILTROS
     const [filtroTipo, setFiltroTipo] = useState('todos');
+    const [terminoBusqueda, setTerminoBusqueda] = useState('');
 
-    // Umbral para considerar aforo restringido (menor a 18 personas)
-    const UMBRAL_AFRO_RESTRINGIDO = 18;
+    // 3. ESTADOS PARA EL FORMULARIO MODAL (Crear / Editar)
+    const [mostrarModal, setMostrarModal] = useState(false);
+    const [idEdicion, setIdEdicion] = useState(null);
+    const [datosFormulario, setDatosFormulario] = useState({
+        codigo_ambiente: '',
+        id_tipo_ambiente: '',
+        aforo_maximo: '',
+        piso_ubicacion: '',
+        pabellon: '',
+        estado: 'DISPONIBLE'
+    });
 
-    const getTipoAmbiente = (idTipo) => {
-        const tipo = tipoAmbiente.find(t => t.id_tipo === idTipo);
-        return tipo ? tipo.descripcion : 'Sin Tipo';
+    const UMBRAL_AFORO_RESTRINGIDO = 18;
+
+    // --- FUNCIONES DE COMUNICACIÓN CON LA BASE DE DATOS (BACKEND) ---
+
+    const cargarAmbientesDesdeBD = async () => {
+        try {
+            const respuesta = await authFetch(`${API_BASE_URL}/api/ambientes`);
+            const datos = await respuesta.json();
+            if (!respuesta.ok) throw new Error(datos.mensaje || 'No se pudieron cargar los ambientes.');
+            setListaAmbientes(Array.isArray(datos) ? datos : []);
+        } catch (error) {
+            console.error('Error cargando ambientes:', error);
+            setListaAmbientes([]);
+        }
     };
 
-    const ambientesFiltrados = filtroTipo === 'todos' 
-        ? ambientes 
-        : ambientes.filter(a => a.id_tipo_ambiente === parseInt(filtroTipo));
+    // Este efecto se ejecuta una sola vez al cargar la página
+    useEffect(() => {
+        authFetch(`${API_BASE_URL}/api/tipos-ambiente`)
+            .then(respuesta => respuesta.json())
+            .then(datos => setTiposDeAmbiente(Array.isArray(datos) ? datos : []))
+            .catch(error => {
+                console.error('Error cargando tipos de ambiente:', error);
+                setTiposDeAmbiente([]);
+            });
+        
+        cargarAmbientesDesdeBD();
+    }, []);
 
-    // Contadores por tipo
+
+    // --- FUNCIONES PARA MANEJAR EL FORMULARIO MODAL ---
+
+    const abrirModal = (ambienteSeleccionado = null) => {
+        if (ambienteSeleccionado) {
+            // Modo Editar: Llenamos el formulario con los datos del ambiente
+            setIdEdicion(ambienteSeleccionado.id);
+            setDatosFormulario({
+                codigo_ambiente: ambienteSeleccionado.codigo_ambiente,
+                id_tipo_ambiente: ambienteSeleccionado.id_tipo_ambiente,
+                aforo_maximo: ambienteSeleccionado.aforo_maximo,
+                piso_ubicacion: ambienteSeleccionado.piso_ubicacion,
+                pabellon: ambienteSeleccionado.pabellon || ambienteSeleccionado.pabellón,
+                estado: ambienteSeleccionado.estado
+            });
+        } else {
+            // Modo Crear Nuevo: Vaciamos el formulario
+            setIdEdicion(null);
+            setDatosFormulario({
+                codigo_ambiente: '',
+                id_tipo_ambiente: tiposDeAmbiente.length > 0 ? tiposDeAmbiente[0].id_tipo_ambiente : '',
+                aforo_maximo: '',
+                piso_ubicacion: '',
+                pabellon: '',
+                estado: 'DISPONIBLE'
+            });
+        }
+        setMostrarModal(true);
+    };
+
+    // Actualiza el estado mientras el usuario escribe en los inputs
+    const manejarCambioInput = (evento) => {
+        setDatosFormulario({ 
+            ...datosFormulario, 
+            [evento.target.name]: evento.target.value 
+        });
+    };
+
+    // Enviar datos al backend para Guardar o Actualizar
+    const guardarAmbiente = async (evento) => {
+        evento.preventDefault(); // Evita que la página se recargue
+
+        const url = idEdicion
+            ? `${API_BASE_URL}/api/ambientes/${idEdicion}`
+            : `${API_BASE_URL}/api/ambientes`;
+        
+        const metodoHTTP = idEdicion ? 'PUT' : 'POST';
+
+        // Convertimos números a enteros para evitar errores en MySQL
+        const datosAEnviar = {
+            ...datosFormulario,
+            id_tipo_ambiente: parseInt(datosFormulario.id_tipo_ambiente),
+            aforo_maximo: parseInt(datosFormulario.aforo_maximo),
+            piso_ubicacion: parseInt(datosFormulario.piso_ubicacion)
+        };
+
+        try {
+            const respuesta = await authFetch(url, {
+                method: metodoHTTP,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datosAEnviar)
+            });
+
+            if (respuesta.ok) {
+                setMostrarModal(false);
+                cargarAmbientesDesdeBD(); // Recargamos la tabla visual
+            } else {
+                const errorDelServidor = await respuesta.json();
+                alert(`Error: ${errorDelServidor.mensaje}`);
+            }
+        } catch (error) {
+            console.error('Error al guardar el ambiente:', error);
+        }
+    };
+
+    // Eliminar un ambiente
+    const eliminarAmbiente = async (id, codigo) => {
+        if (window.confirm(`¿Estás seguro de eliminar el ambiente ${codigo}?`)) {
+            try {
+                const respuesta = await authFetch(`${API_BASE_URL}/api/ambientes/${id}`, {
+                    method: 'DELETE'
+                });
+                if (respuesta.ok) {
+                    cargarAmbientesDesdeBD();
+                }
+            } catch (error) {
+                console.error('Error al eliminar:', error);
+            }
+        }
+    };
+
+
+    // --- LÓGICA DE FILTROS, BÚSQUEDA Y MATEMÁTICAS ---
+
+    const obtenerNombreTipoAmbiente = (idTipo) => {
+        const tipoEncontrado = tiposDeAmbiente.find(t => t.id_tipo_ambiente === idTipo);
+        return tipoEncontrado ? tipoEncontrado.nombre_tipo_ambiente : 'Sin Tipo';
+    };
+
+    // Filtrar la lista de ambientes según el buscador y los botones
+    const ambientesFiltrados = listaAmbientes.filter(ambiente => {
+        const coincideTipo = filtroTipo === 'todos' || ambiente.id_tipo_ambiente === parseInt(filtroTipo);
+        
+        const textoBusqueda = terminoBusqueda.toLowerCase().trim();
+        const coincideBusqueda = textoBusqueda === '' || 
+            ambiente.codigo_ambiente.toLowerCase().includes(textoBusqueda) ||
+            (ambiente.pabellon || ambiente.pabellón || '').toLowerCase().includes(textoBusqueda) ||
+            obtenerNombreTipoAmbiente(ambiente.id_tipo_ambiente).toLowerCase().includes(textoBusqueda);
+            
+        return coincideTipo && coincideBusqueda;
+    });
+
+    // Contadores para las tarjetas de resumen
     const contarPorTipo = (idTipo) => {
-        if (idTipo === 'todos') return ambientes.length;
-        return ambientes.filter(a => a.id_tipo_ambiente === parseInt(idTipo)).length;
+        if (idTipo === 'todos') return listaAmbientes.length;
+        return listaAmbientes.filter(a => a.id_tipo_ambiente === parseInt(idTipo)).length;
     };
 
-    const totalAforos = ambientes.reduce((sum, a) => sum + a.aforo_maximo, 0);
-    const ambientesDisponibles = ambientes.filter(a => a.estado === 'disponible').length;
-    const ambientesRestringidos = ambientes.filter(a => a.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO).length;
+    const capacidadTotal = listaAmbientes.reduce((suma, ambiente) => suma + ambiente.aforo_maximo, 0);
+    const cantidadDisponibles = listaAmbientes.filter(a => a.estado.toLowerCase() === 'disponible' || a.estado.toLowerCase() === 'activo').length;
+    const cantidadRestringidos = listaAmbientes.filter(a => a.aforo_maximo < UMBRAL_AFORO_RESTRINGIDO).length;
 
+
+    // --- RENDERIZADO VISUAL (HTML/JSX) ---
     return (
         <>
+            {/* CABECERA Y BUSCADOR */}
             <header className="view-header">
                 <div className="header-title-area">
                     <h1>Infraestructura y Ambientes</h1>
                     <p className="subtitle">Gestión de aulas, talleres, laboratorios y espacios académicos</p>
                 </div>
+                
+                <div className="header-actions" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <div className="search-box" style={{ margin: 0, width: '250px' }}>
+                        <i className="fas fa-search"></i>
+                        <input 
+                            type="text" 
+                            placeholder="Buscar código..." 
+                            value={terminoBusqueda}
+                            onChange={(e) => setTerminoBusqueda(e.target.value)}
+                        />
+                    </div>
+                    <button className="btn btn-primary" onClick={() => abrirModal()}>
+                        <i className="fas fa-plus"></i> Nuevo Ambiente
+                    </button>
+                </div>
             </header>
 
-            {/* Resumen de Infraestructura */}
+            {/* TARJETAS DE RESUMEN SUPERIOR */}
             <div className="ambientes-resumen">
                 <div className="resumen-card">
-                    <div className="resumen-icon">
-                        <i className="fas fa-door-open"></i>
-                    </div>
+                    <div className="resumen-icon"><i className="fas fa-door-open"></i></div>
                     <div className="resumen-info">
-                        <span className="resumen-valor">{ambientes.length}</span>
+                        <span className="resumen-valor">{listaAmbientes.length}</span>
                         <span className="resumen-label">Total de Ambientes</span>
                     </div>
                 </div>
                 <div className="resumen-card">
-                    <div className="resumen-icon">
-                        <i className="fas fa-check-circle"></i>
-                    </div>
+                    <div className="resumen-icon"><i className="fas fa-check-circle"></i></div>
                     <div className="resumen-info">
-                        <span className="resumen-valor">{ambientesDisponibles}</span>
+                        <span className="resumen-valor">{cantidadDisponibles}</span>
                         <span className="resumen-label">Disponibles</span>
                     </div>
                 </div>
                 <div className="resumen-card">
-                    <div className="resumen-icon">
-                        <i className="fas fa-users"></i>
-                    </div>
+                    <div className="resumen-icon"><i className="fas fa-users"></i></div>
                     <div className="resumen-info">
-                        <span className="resumen-valor">{totalAforos}</span>
+                        <span className="resumen-valor">{capacidadTotal}</span>
                         <span className="resumen-label">Capacidad Total</span>
                     </div>
                 </div>
                 <div className="resumen-card">
-                    <div className="resumen-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
-                        <i className="fas fa-exclamation-triangle"></i>
-                    </div>
+                    <div className="resumen-icon" style={{ background: '#fef3c7', color: '#d97706' }}><i className="fas fa-exclamation-triangle"></i></div>
                     <div className="resumen-info">
-                        <span className="resumen-valor" style={{ color: '#b45309' }}>{ambientesRestringidos}</span>
-                        <span className="resumen-label">Aforo Restringido (&lt;{UMBRAL_AFRO_RESTRINGIDO})</span>
+                        <span className="resumen-valor" style={{ color: '#b45309' }}>{cantidadRestringidos}</span>
+                        <span className="resumen-label">Aforo Restringido (&lt;{UMBRAL_AFORO_RESTRINGIDO})</span>
                     </div>
                 </div>
             </div>
 
-            {/* Filtros rápidos por tipo de ambiente */}
+            {/* BOTONES DE FILTRO POR TIPO */}
             <div className="ambientes-filtros">
-                <button
-                    className={`ambiente-filter-chip ${filtroTipo === 'todos' ? 'active' : ''}`}
-                    onClick={() => setFiltroTipo('todos')}
-                >
-                    <i className="fas fa-th"></i>
-                    Todos
-                    <span className="chip-count">{contarPorTipo('todos')}</span>
+                <button className={`ambiente-filter-chip ${filtroTipo === 'todos' ? 'active' : ''}`} onClick={() => setFiltroTipo('todos')}>
+                    <i className="fas fa-th"></i> Todos <span className="chip-count">{contarPorTipo('todos')}</span>
                 </button>
-                {tipoAmbiente.map(tipo => (
-                    <button
-                        key={tipo.id_tipo}
-                        className={`ambiente-filter-chip ${filtroTipo === tipo.id_tipo.toString() ? 'active' : ''}`}
-                        onClick={() => setFiltroTipo(tipo.id_tipo.toString())}
-                    >
-                        <i className={tipo.descripcion === 'Taller' ? 'fas fa-wrench' : 
-                                      tipo.descripcion === 'Laboratorio' ? 'fas fa-flask' :
-                                      tipo.descripcion === 'Teoría' ? 'fas fa-chalkboard-teacher' :
-                                      'fas fa-users'}></i>
-                        {tipo.descripcion}
-                        <span className="chip-count">{contarPorTipo(tipo.id_tipo)}</span>
+                {tiposDeAmbiente.map(tipo => (
+                    <button key={tipo.id_tipo_ambiente} className={`ambiente-filter-chip ${filtroTipo === tipo.id_tipo_ambiente.toString() ? 'active' : ''}`} onClick={() => setFiltroTipo(tipo.id_tipo_ambiente.toString())}>
+                        <i className={tipo.nombre_tipo_ambiente.toLowerCase().includes('taller') ? 'fas fa-wrench' : tipo.nombre_tipo_ambiente.toLowerCase().includes('laboratorio') ? 'fas fa-flask' : tipo.nombre_tipo_ambiente.toLowerCase().includes('aula') ? 'fas fa-chalkboard-teacher' : 'fas fa-users'}></i>
+                        {tipo.nombre_tipo_ambiente} <span className="chip-count">{contarPorTipo(tipo.id_tipo_ambiente)}</span>
                     </button>
                 ))}
             </div>
 
-            {/* Grilla de Aulas / Ambientes */}
+            {/* GRILLA DE TARJETAS DE AULAS */}
             <div className="ambientes-grid">
                 {ambientesFiltrados.map(ambiente => {
-                    const esAforoRestringido = ambiente.aforo_maximo < UMBRAL_AFRO_RESTRINGIDO;
+                    const esAforoPequeno = ambiente.aforo_maximo < UMBRAL_AFORO_RESTRINGIDO;
+                    const estiloEstado = ambiente.estado.toLowerCase() === 'disponible' ? 'disponible' : ambiente.estado.toLowerCase().includes('mantenimiento') ? 'mantenimiento' : 'ocupado';
+                    
                     return (
-                        <div 
-                            key={ambiente.id_ambiente} 
-                            className={`aula-card ${esAforoRestringido ? 'aforo-restringido' : ''}`}
-                        >
+                        <div key={ambiente.id} className={`aula-card ${esAforoPequeno ? 'aforo-restringido' : ''}`}>
                             <div className="aula-card-header">
                                 <div className="aula-codigo">
                                     <i className="far fa-building"></i>
                                     {ambiente.codigo_ambiente}
                                 </div>
-                                <span className="aula-tipo-badge">
-                                    {getTipoAmbiente(ambiente.id_tipo_ambiente)}
-                                </span>
+                                <div className="aula-actions">
+                                    <button className="btn-icon edit" onClick={() => abrirModal(ambiente)} title="Editar"><i className="fas fa-pen"></i></button>
+                                    <button className="btn-icon delete" onClick={() => eliminarAmbiente(ambiente.id, ambiente.codigo_ambiente)} title="Eliminar"><i className="fas fa-trash"></i></button>
+                                </div>
                             </div>
+                            
+                            <span className="aula-tipo-badge">{obtenerNombreTipoAmbiente(ambiente.id_tipo_ambiente)}</span>
 
-                            <div style={{ marginBottom: '10px', fontSize: '13px', color: 'var(--text-normal)', fontWeight: '500' }}>
-                                {ambiente.descripcion}
-                            </div>
-
-                            <div className="aula-info-grid">
+                            <div className="aula-info-grid" style={{ marginTop: '15px' }}>
                                 <div className="aula-info-item">
                                     <span className="aula-info-label">Pabellón</span>
-                                    <span className="aula-info-value">
-                                        <i className="fas fa-map-marker-alt" style={{ color: 'var(--text-muted)', marginRight: '4px' }}></i>
-                                        {ambiente.pabellón}
-                                    </span>
+                                    <span className="aula-info-value"><i className="fas fa-map-marker-alt" style={{ color: 'var(--text-muted)', marginRight: '4px' }}></i>{ambiente.pabellon || ambiente.pabellón}</span>
                                 </div>
                                 <div className="aula-info-item">
-                                    <span className="aula-info-label">Ubicación</span>
+                                    <span className="aula-info-label">Piso</span>
                                     <span className="aula-info-value">{ambiente.piso_ubicacion}</span>
                                 </div>
                             </div>
 
                             <div className="aula-aforo">
-                                <span className="aula-aforo-label">
-                                    <i className="fas fa-users"></i>
-                                    Aforo Máximo
-                                </span>
+                                <span className="aula-aforo-label"><i className="fas fa-users"></i> Aforo Máximo</span>
                                 <span className="aula-aforo-valor">{ambiente.aforo_maximo} personas</span>
                             </div>
 
-                            {esAforoRestringido && (
+                            {esAforoPequeno && (
                                 <div className="aula-alerta-restringido">
-                                    <i className="fas fa-exclamation-circle"></i>
-                                    <span>Aforo Restringido - Capacidad Limitada</span>
+                                    <i className="fas fa-exclamation-circle"></i><span>Capacidad Limitada</span>
                                 </div>
                             )}
 
                             <div style={{ marginTop: '12px' }}>
-                                <span className={`aula-estado ${ambiente.estado}`}>
-                                    <span className="estado-dot"></span>
-                                    {ambiente.estado === 'disponible' ? 'Disponible' : 
-                                     ambiente.estado === 'mantenimiento' ? 'En Mantenimiento' : 
-                                     'Ocupado'}
+                                <span className={`aula-estado ${estiloEstado}`}>
+                                    <span className="estado-dot"></span>{ambiente.estado}
                                 </span>
                             </div>
                         </div>
@@ -1199,10 +1230,86 @@ function AmbientesModulo() {
                 })}
             </div>
 
+            {/* MENSAJE SI NO HAY RESULTADOS */}
             {ambientesFiltrados.length === 0 && (
                 <div className="workspace-card">
-                    <h2>No hay ambientes</h2>
-                    <p>No se encontraron ambientes con el filtro seleccionado.</p>
+                    <h2>No se encontraron resultados</h2>
+                    <p>Intenta con un término de búsqueda diferente o cambia el filtro de tipo de ambiente.</p>
+                </div>
+            )}
+
+            {/* FORMULARIO MODAL (CREAR Y EDITAR) */}
+            {mostrarModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card-modal">
+                        
+                        <div className="modal-header-modern">
+                            <div className="modal-title-area">
+                                <div className="modal-icon-bg">
+                                    <i className={`fas ${idEdicion ? 'fa-pen' : 'fa-plus'}`}></i>
+                                </div>
+                                <div>
+                                    <h3>{idEdicion ? 'Editar Ambiente' : 'Nuevo Ambiente'}</h3>
+                                    <p>Ingrese los detalles del espacio académico</p>
+                                </div>
+                            </div>
+                            <button className="btn-close" onClick={() => setMostrarModal(false)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={guardarAmbiente} className="modal-form-modern">
+                            <div className="form-grid">
+                                
+                                <div className="form-group col-span-2">
+                                    <label><i className="fas fa-qrcode"></i> Código del Ambiente</label>
+                                    <input type="text" name="codigo_ambiente" className="input-modern" value={datosFormulario.codigo_ambiente} onChange={manejarCambioInput} required placeholder="Ej: LAB-101" />
+                                </div>
+                                
+                                <div className="form-group col-span-2">
+                                    <label><i className="fas fa-tags"></i> Tipo de Ambiente</label>
+                                    <select name="id_tipo_ambiente" className="input-modern" value={datosFormulario.id_tipo_ambiente} onChange={manejarCambioInput} required>
+                                        <option value="" disabled>Seleccione un tipo</option>
+                                        {tiposDeAmbiente.map(tipo => (
+                                            <option key={tipo.id_tipo_ambiente} value={tipo.id_tipo_ambiente}>{tipo.nombre_tipo_ambiente}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label><i className="fas fa-users"></i> Aforo Máximo</label>
+                                    <input type="number" name="aforo_maximo" className="input-modern" value={datosFormulario.aforo_maximo} onChange={manejarCambioInput} required placeholder="Ej: 30" />
+                                </div>
+
+                                <div className="form-group">
+                                    <label><i className="fas fa-layer-group"></i> Piso</label>
+                                    <input type="number" name="piso_ubicacion" className="input-modern" value={datosFormulario.piso_ubicacion} onChange={manejarCambioInput} required placeholder="Ej: 1" />
+                                </div>
+
+                                <div className="form-group">
+                                    <label><i className="far fa-building"></i> Pabellón</label>
+                                    <input type="text" name="pabellon" className="input-modern" value={datosFormulario.pabellon} onChange={manejarCambioInput} required placeholder="Ej: Pabellón 1" />
+                                </div>
+
+                                <div className="form-group">
+                                    <label><i className="fas fa-toggle-on"></i> Estado</label>
+                                    <select name="estado" className="input-modern" value={datosFormulario.estado} onChange={manejarCambioInput}>
+                                        <option value="DISPONIBLE">Disponible</option>
+                                        <option value="EN MANTENIMIENTO">En Mantenimiento</option>
+                                        <option value="OCUPADO">Ocupado</option>
+                                    </select>
+                                </div>
+
+                            </div>
+
+                            <div className="modal-footer-modern">
+                                <button type="button" className="btn btn-secondary" onClick={() => setMostrarModal(false)}>Cancelar</button>
+                                <button type="submit" className="btn btn-primary">
+                                    <i className="fas fa-save"></i> Guardar Ambiente
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
         </>
