@@ -348,9 +348,9 @@ export default function DocentesView({ periodo }) {
                 <button className="doc-azul" type="submit" disabled={ocupado || cargando || buscandoDocente || buscandoNombre || conflictoDni || !configuracion.preparado}>{ocupado && !ventana ? 'Guardando…' : '+ Registrar Instructor'}</button>
             </form>
             {!cargando && !error && !configuracion.preparado && <div className="doc-preparacion" role="status"><strong>Falta preparar el registro real.</strong> Ejecuta el archivo database/grupo1_docentes_real.sql en HeidiSQL y pulsa “Actualizar listado”. El panel no modifica el esquema automáticamente.</div>}
-            {error && !ventana && <p role="alert" className="doc-error">{error}</p>}{mensaje && <p role="status" className="doc-exito">{mensaje}</p>}{ocupado && !ventana && <p role="status">Cargando…</p>}
+            {error && !ventana && <p role="alert" className="doc-error">{error}</p>}{mensaje && <p role="status" className="doc-exito">{mensaje}</p>}{ocupado && !ventana && <p role="status">Guardando…</p>}
             <div className="doc-tabla-contenedor"><table className="doc-tabla"><thead><tr><th>ID</th><th>Instructor</th><th>Especialidad / competencias</th><th>Disponibilidad</th><th>Estado operativo</th><th>Auditoría</th><th>Acciones</th></tr></thead><tbody>
-                {cargando ? <tr><td colSpan={7}>Cargando docentes…</td></tr> : docentes.map((d) => <tr key={d.id_docente}>
+                {cargando && !docentes.length ? <tr><td colSpan={7}>Cargando docentes…</td></tr> : docentes.map((d) => <tr key={d.id_docente}>
                     <td><span className="doc-id-badge">#{d.id_docente}</span></td>
                     <td><strong>{d.apellidos}, {d.nombres}</strong><small>DNI: {d.dni || 'Sin registrar'}</small></td>
                     <td>{d.especialidad || 'Sin especialidad'}<button className="doc-cursos" disabled={ocupado} onClick={() => abrir('cursos', d)}>▣ {d.cursos_asignados ?? '—'} asignadas</button></td>
@@ -359,7 +359,7 @@ export default function DocentesView({ periodo }) {
                     <td><button className="doc-auditoria" disabled={ocupado} onClick={() => abrir('auditoria', d)}>{nombreAuditoria(d.usuario_modificacion)}<small>{fechaVisible(d.fecha_modificacion)}</small></button></td>
                     <td><button aria-label={'Gestionar a ' + d.nombres + ' (ID ' + d.id_docente + ')'} disabled={ocupado} onClick={() => abrir('acciones', d)}>⚙</button></td>
                 </tr>)}{!cargando && !docentes.length && <tr><td colSpan={7}>Sin instructores registrados.</td></tr>}
-            </tbody></table></div><footer className="doc-pie"><span>{docentes.length + (docentes.length === 1 ? ' instructor en sistema' : ' instructores en sistema')}</span><button disabled={ocupado || cargando} onClick={recargar}>Actualizar listado</button></footer>
+            </tbody></table></div><footer className="doc-pie"><span>{docentes.length + (docentes.length === 1 ? ' instructor en sistema' : ' instructores en sistema')}</span><button disabled={ocupado || cargando} onClick={recargar}>{cargando && docentes.length ? 'Actualizando…' : 'Actualizar listado'}</button></footer>
         </div>
         {ventana && <Modal titulo={titulos[ventana]} subtitulo={docenteDelModal ? docenteDelModal.apellidos + ', ' + docenteDelModal.nombres : ''} onCerrar={cerrar} amplio={['cursos','disponibilidad','clases','ficha'].includes(ventana)}><form onSubmit={guardar}>
             <div className="doc-cuerpo">{error && <p role="alert" className="doc-error">{error}</p>}
