@@ -1290,7 +1290,6 @@ function AmbientesModulo({ periodoGlobal }) {
         .includes('laboratorio');
 
     const cerrarPanelCursos = () => {
-        if (guardandoCursos) return;
         solicitudCursosRef.current += 1;
         panelCursosActualRef.current = null;
         setLaboratorioSeleccionado(null);
@@ -1349,18 +1348,25 @@ function AmbientesModulo({ periodoGlobal }) {
         setGuardandoCursos(true);
 
         try {
+            const cambios = [...pendientes.values()];
+            const esCambioIndividual = cambios.length === 1;
+            const cambioIndividual = cambios[0];
             const respuesta = await authFetch(
-                `${API_BASE_URL}/api/ambientes/${ambienteId}/cursos-permitidos`,
+                esCambioIndividual
+                    ? `${API_BASE_URL}/api/ambientes/${ambienteId}/cursos-permitidos/${cambioIndividual.idCurso}`
+                    : `${API_BASE_URL}/api/ambientes/${ambienteId}/cursos-permitidos`,
                 {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        codigo_periodo: codigoPeriodo,
-                        cambios: [...pendientes.values()].map(({ idCurso, permitido }) => ({
-                            id_curso: Number(idCurso),
-                            permitido
-                        }))
-                    })
+                    body: JSON.stringify(esCambioIndividual
+                        ? { codigo_periodo: codigoPeriodo, permitido: cambioIndividual.permitido }
+                        : {
+                            codigo_periodo: codigoPeriodo,
+                            cambios: cambios.map(({ idCurso, permitido }) => ({
+                                id_curso: Number(idCurso),
+                                permitido
+                            }))
+                        })
                 }
             );
             const datos = await respuesta.json();
@@ -1388,7 +1394,7 @@ function AmbientesModulo({ periodoGlobal }) {
             setGuardandoCursos(cambiosEnCursoCursosRef.current.size > 0);
 
             if (cambiosPendientesCursosRef.current.get(claveGrupo)?.size > 0) {
-                setTimeout(() => enviarCambiosCursos(ambienteId, codigoPeriodo), 120);
+                enviarCambiosCursos(ambienteId, codigoPeriodo);
             }
         }
     };
@@ -1405,7 +1411,7 @@ function AmbientesModulo({ periodoGlobal }) {
         temporizadoresCursosRef.current.set(claveGrupo, temporizador);
     };
 
-    const actualizarSeleccionCursos = (cambios) => {
+    const actualizarSeleccionCursos = (cambios, guardarInmediatamente = false) => {
         if (!laboratorioSeleccionado || cambios.length === 0) return;
 
         const ambienteId = laboratorioSeleccionado.id;
@@ -1450,11 +1456,24 @@ function AmbientesModulo({ periodoGlobal }) {
             }
         }
         setErrorCursos('');
-        if (pendientes.size > 0) programarEnvioCambiosCursos(ambienteId, codigoPeriodo);
+        if (pendientes.size > 0) {
+            if (guardarInmediatamente) {
+                const temporizador = temporizadoresCursosRef.current.get(claveGrupo);
+                if (temporizador) {
+                    clearTimeout(temporizador);
+                    temporizadoresCursosRef.current.delete(claveGrupo);
+                }
+                requestAnimationFrame(() => {
+                    setTimeout(() => enviarCambiosCursos(ambienteId, codigoPeriodo), 0);
+                });
+            } else {
+                programarEnvioCambiosCursos(ambienteId, codigoPeriodo);
+            }
+        }
     };
 
     const cambiarCursoPermitido = (cursoId, permitido) => {
-        actualizarSeleccionCursos([{ id_curso: cursoId, permitido }]);
+        actualizarSeleccionCursos([{ id_curso: cursoId, permitido }], true);
     };
 
     const textoBusquedaCursos = busquedaCursos.trim().toLocaleLowerCase();
@@ -1465,9 +1484,7 @@ function AmbientesModulo({ periodoGlobal }) {
         }
         return cursosSeleccionados.has(String(curso.id_curso));
     });
-    const idsParaSeleccionar = textoBusquedaCursos
-        ? cursosVisibles.map((curso) => String(curso.id_curso))
-        : cursos.map((curso) => String(curso.id_curso));
+    const idsParaSeleccionar = cursosVisibles.map((curso) => String(curso.id_curso));
     const todosSeleccionados = idsParaSeleccionar.length > 0 &&
         idsParaSeleccionar.every((idCurso) => cursosSeleccionados.has(idCurso));
 
@@ -1717,7 +1734,6 @@ function AmbientesModulo({ periodoGlobal }) {
                             <button
                                 className="btn-close"
                                 onClick={cerrarPanelCursos}
-                                disabled={guardandoCursos}
                                 aria-label="Cerrar panel de cursos"
                             >
                                 <i className="fas fa-times"></i>
@@ -1757,7 +1773,6 @@ function AmbientesModulo({ periodoGlobal }) {
                         </label>
 
                         {errorCursos && <p className="cursos-panel-error" role="alert">{errorCursos}</p>}
-                        {guardandoCursos && <p className="cursos-panel-status" role="status">Guardando cambios...</p>}
                         {cargandoCursos ? (
                             <p className="cursos-panel-empty">Cargando cursos...</p>
                         ) : cursosVisibles.length > 0 ? (

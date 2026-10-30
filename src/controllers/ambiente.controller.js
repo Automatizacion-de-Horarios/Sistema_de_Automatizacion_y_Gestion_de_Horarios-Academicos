@@ -121,17 +121,15 @@ const actualizarCursoPermitido = async (req, res) => {
       return res.status(400).json({ mensaje: 'El estado permitido debe ser verdadero o falso' });
     }
 
-    const ambiente = await Ambiente.obtenerPorId(id);
-    if (!ambiente) {
-      return res.status(404).json({ mensaje: 'Ambiente no encontrado' });
+    const referenciasValidas = await Ambiente.actualizarCursoPermitido(
+      id,
+      codigoPeriodo.trim(),
+      idCurso,
+      permitido
+    );
+    if (!referenciasValidas) {
+      return res.status(404).json({ mensaje: 'Ambiente, curso o período no encontrado' });
     }
-
-    const idPeriodo = await Ambiente.obtenerIdPeriodo(codigoPeriodo.trim());
-    if (!idPeriodo) {
-      return res.status(404).json({ mensaje: 'Período no encontrado' });
-    }
-
-    await Ambiente.actualizarCursoPermitido(id, idPeriodo, idCurso, permitido);
     res.status(200).json({ id_curso: Number(idCurso), permitido });
   } catch (error) {
     console.error(error);
