@@ -755,7 +755,7 @@ function FeriadosModulo({ triggerToast }) {
             // Mostramos solo el Día y el Mes de manera legible, indicando que se repite anualmente
             const fechaTemp = new Date(soloFecha + 'T00:00:00');
             const mesNombre = fechaTemp.toLocaleDateString('es-PE', { month: 'long' });
-            return `${partes[2]} de ${mesNombre} (Todos los años)`;
+            return `${partes[2]} de ${mesNombre}`;
         }
         return '';
     };
