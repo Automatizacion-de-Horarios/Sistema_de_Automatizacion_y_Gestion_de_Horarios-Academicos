@@ -20,7 +20,6 @@ function App() {
 function Dashboard() {
     // Control de navegación entre vistas
     const [activeView, setActiveView] = useState('horario-view');
-    const [searchCarrera, setSearchCarrera] = useState('');
 
     // [GRUPO 4 - CAMBIO 1]: ESTADO GLOBAL DEL PERÍODO LECTIVO (CONECTADO A TODO EL SISTEMA)
     const [periodoGlobal, setPeriodoGlobal] = useState('202620');
@@ -44,6 +43,28 @@ function Dashboard() {
         avatar: user.nombre.split(/\s+/).slice(0, 2).map((parte) => parte[0]).join('').toUpperCase()
     } : null;
 
+    // Control de modificaciones pendientes en la malla y modales de confirmación
+    const [hayCambiosMalla, setHayCambiosMalla] = useState(false);
+    const [modalLogoutAbierto, setModalLogoutAbierto] = useState(false);
+    const [modalNavegacionSidebar, setModalNavegacionSidebar] = useState({ abierto: false, destino: null });
+
+    const handleNavegarSidebar = (nuevaVista) => {
+        // Si no hay cambios, permite navegar a otra carrera o vista inmediatamente; solo alerta si hay cambios sin guardar
+        if (activeView === 'malla-semestre-view' && nuevaVista !== 'malla-semestre-view' && hayCambiosMalla) {
+            setModalNavegacionSidebar({ abierto: true, destino: nuevaVista });
+        } else {
+            setActiveView(nuevaVista);
+        }
+    };
+
+    const handleSolicitarLogout = () => {
+        // Si no hay cambios, cierra sesión inmediatamente; solo alerta si hay cambios sin guardar en la malla
+        if (activeView === 'malla-semestre-view' && hayCambiosMalla) {
+            setModalLogoutAbierto(true);
+        } else {
+            logout();
+        }
+    };
 
     // Listado de carreras desde la base de datos (se comparte con el menu lateral)
     const [cargandoCarreras, setCargandoCarreras] = useState(true);
@@ -88,11 +109,6 @@ function Dashboard() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeView]);
 
-    const carrerasFiltradas = (carreras || []).filter((carrera) => {
-        const nombre = carrera.nombre_carrera || carrera.nombre || '';
-        return nombre.toLowerCase().includes(searchCarrera.toLowerCase().trim());
-    });
-
 
     return (
         <div className="app-container">
@@ -134,76 +150,41 @@ function Dashboard() {
                     <ul className="nav-links">
                         <li 
                             className={activeView === 'horario-view' ? 'active' : ''} 
-                            onClick={() => setActiveView('horario-view')}
+                            onClick={() => handleNavegarSidebar('horario-view')}
                         >
                             <i className="far fa-calendar-alt"></i> Horarios
                         </li>
                         <li 
-                            className={activeView === 'carreras-view' ? 'active' : ''} 
-                            onClick={() => setActiveView('carreras-view')}
+                            className={activeView === 'carreras-view' || activeView === 'malla-semestre-view' ? 'active' : ''} 
+                            onClick={() => handleNavegarSidebar('carreras-view')}
                         >
                             <i className="fas fa-graduation-cap"></i> Carreras y Mallas
                         </li>
                         <li 
                             className={activeView === 'docentes-view' ? 'active' : ''} 
-                            onClick={() => setActiveView('docentes-view')}
+                            onClick={() => handleNavegarSidebar('docentes-view')}
                         >
                             <i className="fas fa-user-friends"></i> Docentes
                         </li>
                         <li 
                             className={activeView === 'aulas-view' ? 'active' : ''} 
-                            onClick={() => setActiveView('aulas-view')}
+                            onClick={() => handleNavegarSidebar('aulas-view')}
                         >
                             <i className="far fa-building"></i> Infraestructura
                         </li>
                         <li 
                             className={activeView === 'feriados-view' ? 'active' : ''} 
-                            onClick={() => setActiveView('feriados-view')}
+                            onClick={() => handleNavegarSidebar('feriados-view')}
                         >
                             <i className="fas fa-flag"></i> Feriados
                         </li>
                         <li 
                             className={activeView === 'config-view' ? 'active' : ''} 
-                            onClick={() => setActiveView('config-view')}
+                            onClick={() => handleNavegarSidebar('config-view')}
                         >
                             <i className="fas fa-sliders-h"></i> Configuración
                         </li>
                     </ul>
-
-                    <div className="carreras-section">
-                        <div className="section-header">
-                            <span className="header-title">PROGRAMAS ACADÉMICOS</span>
-                            <span className="header-count" id="nav-count-carreras">
-                                {String(carrerasFiltradas.length).padStart(2, '0')}
-                            </span>
-                        </div>
-                        <div className="search-box">
-                            <i className="fas fa-search"></i>
-                            <input 
-                                type="text" 
-                                id="buscar-carrera" 
-                                placeholder="Buscar programa..." 
-                                value={searchCarrera}
-                                onChange={(e) => setSearchCarrera(e.target.value)}
-                            />
-                        </div>
-                        <ul id="lista-carreras" className="accordion-list">
-                            {/* Generado dinámicamente desde la base de datos */}
-                            {carrerasFiltradas.map((carrera, index) => {
-                                const nombre = carrera.nombre_carrera || carrera.nombre || carrera.codigo_carrera || '';
-                                return (
-                                    <li 
-                                        key={index} 
-                                        className="carrera-item"
-                                        onClick={() => setActiveView('carreras-view')}
-                                    >
-                                        <i className="fas fa-chevron-right" style={{ fontSize: '10px', color: 'var(--text-light)' }}></i>
-                                        <span>{nombre}</span>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </div>
                 </nav>
 
                 <div className="user-profile-bottom">
@@ -216,7 +197,7 @@ function Dashboard() {
                                 <span className="role">{currentUser.role}</span>
                             </div>
                             <i className="fas fa-shield-alt text-senati" title="Sesión autenticada"></i>
-                            <button className="logout-button" type="button" onClick={logout} title="Cerrar sesión" aria-label="Cerrar sesión">
+                            <button className="logout-button" type="button" onClick={handleSolicitarLogout} title="Cerrar sesión" aria-label="Cerrar sesión">
                                 <i className="fas fa-sign-out-alt" />
                             </button>
                         </>
@@ -269,6 +250,7 @@ function Dashboard() {
                     carreras={carreras}
                     cargandoCarreras={cargandoCarreras}
                     onRefrescarCarreras={cargarCarreras}
+                    onCambiosPendientesChange={setHayCambiosMalla}
                 />
 
 
@@ -307,6 +289,142 @@ function Dashboard() {
                 />
 
             </main>
+
+            {/* =============================================================== */}
+            {/*        MODAL DE CONFIRMACIÓN: CERRAR SESIÓN DEL SISTEMA         */}
+            {/* =============================================================== */}
+            {modalLogoutAbierto && (
+                <div className="eq4-modal-overlay" onClick={() => setModalLogoutAbierto(false)}>
+                    <div className="eq4-modal-content-custom" onClick={(e) => e.stopPropagation()} style={{ width: '450px' }}>
+                        <div className="eq4-modal-header-custom">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', margin: 0, fontSize: '16px', fontWeight: '700' }}>
+                                <i className="fas fa-sign-out-alt" style={{ color: '#dc2626', fontSize: '18px' }}></i>
+                                ¿Cerrar sesión?
+                            </h3>
+                            <button
+                                type="button"
+                                className="eq4-modal-close-btn"
+                                onClick={() => setModalLogoutAbierto(false)}
+                                title="Cerrar ventana"
+                            >
+                                &times;
+                            </button>
+                        </div>
+                        <div className="eq4-modal-body-custom" style={{ padding: '22px 24px' }}>
+                            <p style={{ margin: 0, fontSize: '14px', color: '#334155', lineHeight: 1.5 }}>
+                                ¿Está seguro de que desea salir del sistema de horarios?
+                            </p>
+                            {activeView === 'malla-semestre-view' && (
+                                <div style={{
+                                    background: '#fef2f2',
+                                    color: '#991b1b',
+                                    padding: '12px 14px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #fecaca',
+                                    marginTop: '12px',
+                                    fontSize: '13px',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '8px'
+                                }}>
+                                    <i className="fas fa-exclamation-triangle" style={{ fontSize: '16px', color: '#dc2626', marginTop: '2px', flexShrink: 0 }}></i>
+                                    <div>
+                                        Se encuentra en la vista de edición de malla curricular. Asegúrese de haber guardado sus cambios antes de salir.
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="eq4-modal-footer-custom" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button
+                                type="button"
+                                className="eq4-btn eq4-btn-secondary"
+                                onClick={() => setModalLogoutAbierto(false)}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                className="eq4-btn"
+                                style={{ background: '#dc2626', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                                onClick={() => {
+                                    setModalLogoutAbierto(false);
+                                    logout();
+                                }}
+                            >
+                                <i className="fas fa-sign-out-alt"></i>
+                                Sí, Cerrar Sesión
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* =============================================================== */}
+            {/*  MODAL DE CONFIRMACIÓN: CAMBIAR DE VISTA O CARRERA DESDE MENÚ   */}
+            {/* =============================================================== */}
+            {modalNavegacionSidebar.abierto && (
+                <div className="eq4-modal-overlay" onClick={() => setModalNavegacionSidebar({ abierto: false, destino: null })}>
+                    <div className="eq4-modal-content-custom" onClick={(e) => e.stopPropagation()} style={{ width: '460px' }}>
+                        <div className="eq4-modal-header-custom">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', margin: 0, fontSize: '16px', fontWeight: '700' }}>
+                                <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b', fontSize: '18px' }}></i>
+                                ¿Salir de la malla curricular?
+                            </h3>
+                            <button
+                                type="button"
+                                className="eq4-modal-close-btn"
+                                onClick={() => setModalNavegacionSidebar({ abierto: false, destino: null })}
+                                title="Cerrar ventana"
+                            >
+                                &times;
+                            </button>
+                        </div>
+                        <div className="eq4-modal-body-custom" style={{ padding: '22px 24px' }}>
+                            <p style={{ margin: 0, fontSize: '14px', color: '#334155', lineHeight: 1.5 }}>
+                                Está por cambiar de módulo o salir de la gestión de la carrera actual.
+                            </p>
+                            <div style={{
+                                background: '#fef3c7',
+                                color: '#92400e',
+                                padding: '12px 14px',
+                                borderRadius: '8px',
+                                border: '1px solid #fde68a',
+                                marginTop: '12px',
+                                fontSize: '13px',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '8px'
+                            }}>
+                                <i className="fas fa-exclamation-circle" style={{ fontSize: '16px', color: '#d97706', marginTop: '2px', flexShrink: 0 }}></i>
+                                <div>
+                                    Si realizó modificaciones en los semestres o docentes y no hizo clic en <strong>"Guardar Programación"</strong>, los cambios se perderán.
+                                </div>
+                            </div>
+                        </div>
+                        <div className="eq4-modal-footer-custom" style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button
+                                type="button"
+                                className="eq4-btn eq4-btn-secondary"
+                                onClick={() => setModalNavegacionSidebar({ abierto: false, destino: null })}
+                            >
+                                Permanecer en la carrera
+                            </button>
+                            <button
+                                type="button"
+                                className="eq4-btn eq4-btn-primary"
+                                style={{ background: '#003B70' }}
+                                onClick={() => {
+                                    const dest = modalNavegacionSidebar.destino;
+                                    setModalNavegacionSidebar({ abierto: false, destino: null });
+                                    if (dest) setActiveView(dest);
+                                }}
+                            >
+                                Sí, continuar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
