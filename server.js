@@ -10,7 +10,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const { verifyJWT } = require('./src/middlewares/authMiddleware');
 
 // Opcionales (si falta alguno, se avisa en consola en lugar de romper el arranque)
-let carrerasRoutes, mallasRoutes;
+let carrerasRoutes, mallasRoutes, expExcelCursosRoutes;
 try {
     carrerasRoutes = require('./src/routes/carrerasImpExp.routes');
 } catch (e) {
@@ -20,6 +20,11 @@ try {
     mallasRoutes = require('./src/routes/mallasImpExp.routes');
 } catch (e) {
     console.error('No se pudieron cargar las rutas de mallas/cursos:', e.message);
+}
+try {
+    expExcelCursosRoutes = require('./src/routes/expExcelCursos.routes');
+} catch (e) {
+    console.error('No se pudieron cargar las rutas de exportación de cursos:', e.message);
 }
 
 const app = express();
@@ -46,6 +51,11 @@ app.use('/api/auth', authRoutes);
 
 app.use('/api/carreras', verifyJWT, carrerasRoutes);
 app.use('/api/mallas', verifyJWT, mallasRoutes);
+
+// Exportación de la estructura curricular en Excel (mismo prefijo que la importación)
+if (expExcelCursosRoutes) {
+    app.use('/api/mallas', verifyJWT, expExcelCursosRoutes);
+}
 
 async function iniciarServidor() {
     try {

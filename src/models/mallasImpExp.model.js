@@ -48,6 +48,17 @@ const Malla = {
     },
 
     /**
+     * Devuelve todos los códigos (siglas) de carrera registrados en la BD.
+     * Se usan para saber si el prefijo de un MAT CUR pertenece a una carrera.
+     */
+    async obtenerCodigosCarreras(conexion) {
+        const [filas] = await obtenerEjecutor(conexion).query(
+            'SELECT codigo_carrera FROM carreras'
+        );
+        return filas.map((fila) => String(fila.codigo_carrera).trim().toUpperCase());
+    },
+
+    /**
      * Verifica si un MAT CUR ya existe para una carrera determinada.
      * Se une cursos con semestres para conocer el id_carrera real del curso.
      */
@@ -100,16 +111,31 @@ const Malla = {
             horasVirtual,
             horasEvaluacion,
             totalHoras,
-            estado = 'A'
+            estado = 'A',
+            catalogo = null,
+            isCarrera = 0
         } = curso;
 
         const [resultado] = await obtenerEjecutor(conexion).query(
             `INSERT INTO cursos
-                (id_semestre, mat_cur, horario_sinfo, nombre_curso, semanas, horas_teoria, horas_taller, horas_virtual, horas_evaluacion, total_horas, estado)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [idSemestre, matCur, horarioSinfo, nombreCurso, semanas, horasTeoria, horasTaller, horasVirtual, horasEvaluacion, totalHoras, estado]
+                (id_semestre, mat_cur, horario_sinfo, nombre_curso, semanas, horas_teoria, horas_taller, horas_virtual, horas_evaluacion, total_horas, estado, catalogo, is_carrera)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [idSemestre, matCur, horarioSinfo, nombreCurso, semanas, horasTeoria, horasTaller, horasVirtual, horasEvaluacion, totalHoras, estado, catalogo, isCarrera]
         );
         return resultado.insertId;
+    },
+
+    /**
+     * Actualiza CATALOGO e IS_CARRERA de un curso ya registrado.
+     * Sirve para que al reimportar el Excel se completen/refresquen estos datos
+     * sin duplicar el curso ni alterar su semestre.
+     */
+    async actualizarDatosClasificacionCurso(idCurso, { catalogo, isCarrera }, conexion) {
+        const [resultado] = await obtenerEjecutor(conexion).query(
+            'UPDATE cursos SET catalogo = ?, is_carrera = ? WHERE id_curso = ?',
+            [catalogo, isCarrera, idCurso]
+        );
+        return resultado.affectedRows;
     },
 
     /**

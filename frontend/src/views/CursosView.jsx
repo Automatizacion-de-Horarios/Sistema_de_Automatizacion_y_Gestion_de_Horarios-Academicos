@@ -6,7 +6,7 @@ import { authFetch } from '../lib/authFetch';
 // La fila 1 es un título general, la fila 2 son los encabezados y desde la fila 3 vienen los cursos.
 const columnasExcelCursos = [
     { nombre: 'CODIGO', ejemplo: 'PIAD', omitida: false },
-    { nombre: 'CATALOGO', ejemplo: '202610', omitida: true },
+    { nombre: 'CATALOGO', ejemplo: '202610', omitida: false },
     { nombre: 'MAT CUR', ejemplo: 'SCIU-185', omitida: false },
     { nombre: 'HORARIO SINFO', ejemplo: 'TEC', omitida: false },
     { nombre: 'CLASIFICACIÓN BLACKBOARD', ejemplo: 'TEC', omitida: true },
@@ -390,7 +390,7 @@ const CursosView = forwardRef(function CursosView({ onRegistrarCarrera, onProces
                                         <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', background: '#FFFBEB', fontSize: '10px', color: '#92400E', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
                                             <i className="fas fa-info-circle" style={{ marginTop: '2px' }}></i>
                                             <span>
-                                                Las columnas <strong>CATALOGO</strong> y <strong>CLASIFICACIÓN BLACKBOARD</strong> pueden venir en el Excel, pero el sistema <strong>no las insertará</strong> en la base de datos. Los cursos se leen desde la <strong>fila 3</strong>.
+                                                La columna <strong>CATALOGO</strong> sí se guarda en la base de datos. La columna <strong>CLASIFICACIÓN BLACKBOARD</strong> puede venir en el Excel, pero el sistema <strong>no la insertará</strong>. Los cursos se leen desde la <strong>fila 3</strong>.
                                                 <br />
                                                 <span style={{ color: '#B45309' }}>Desliza horizontalmente la tabla para ver todas las columnas.</span>
                                             </span>
@@ -457,10 +457,11 @@ const CursosView = forwardRef(function CursosView({ onRegistrarCarrera, onProces
                                             <div>Carreras verificadas: <strong>{resultadoImportacion.reporte?.carrerasVerificadas}</strong></div>
                                             <div>Semestres nuevos: <strong>{resultadoImportacion.reporte?.semestresCreados}</strong></div>
                                             <div>Cursos insertados: <strong style={{ color: '#059669' }}>{resultadoImportacion.reporte?.cursosInsertados}</strong></div>
+                                            <div>Catálogo / tipo actualizado: <strong style={{ color: '#1D4ED8' }}>{resultadoImportacion.reporte?.cursosActualizados || 0}</strong></div>
                                             <div>Duplicados por carrera ignorados: <strong style={{ color: '#D97706' }}>{resultadoImportacion.reporte?.filasIgnoradasPorRepetido}</strong></div>
                                         </div>
                                         <div style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '8px', lineHeight: '1.5' }}>
-                                            <i className="fas fa-shield-alt"></i> Se ignoraron automáticamente las columnas: <strong>CATALOGO</strong> y <strong>CLASIFICACION BLACKBOARD</strong>.
+                                            <i className="fas fa-shield-alt"></i> Se ignoró automáticamente la columna: <strong>CLASIFICACION BLACKBOARD</strong>. El campo <strong>IS_CARRERA</strong> se calcula solo: 1 si el código del curso inicia con una carrera registrada o con <strong>NCCU</strong>, y 0 si es un curso complementario.
                                             <br />
                                             <i className="fas fa-copy"></i> {resultadoImportacion.reglaDuplicados || 'Un mismo curso se registra una sola vez por carrera, pero sí puede pertenecer a carreras diferentes.'}
                                         </div>
@@ -588,6 +589,7 @@ const CursosView = forwardRef(function CursosView({ onRegistrarCarrera, onProces
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 12px', marginTop: '10px', paddingTop: '9px', borderTop: '1px solid var(--border-light)', fontSize: '11px', color: 'var(--text-normal)' }}>
                                 <span>Filas revisadas: <strong>{datosProgreso.filasProcesadas || 0} / {datosProgreso.totalFilas || 0}</strong></span>
                                 <span>Cursos insertados: <strong style={{ color: '#059669' }}>{datosProgreso.cursosInsertados || 0}</strong></span>
+                                <span>Cursos actualizados: <strong style={{ color: '#1D4ED8' }}>{datosProgreso.cursosActualizados || 0}</strong></span>
                                 <span>Duplicados ignorados: <strong style={{ color: '#D97706' }}>{datosProgreso.filasIgnoradas || 0}</strong></span>
                                 <span>Semestres nuevos: <strong>{datosProgreso.semestresCreados || 0}</strong></span>
                             </div>
@@ -597,6 +599,7 @@ const CursosView = forwardRef(function CursosView({ onRegistrarCarrera, onProces
                             <div style={{ marginTop: '11px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 12px', fontSize: '11px', color: 'var(--text-normal)' }}>
                                     <span>Cursos insertados: <strong style={{ color: '#059669' }}>{resultadoImportacion.reporte?.cursosInsertados}</strong></span>
+                                    <span>Cursos actualizados: <strong style={{ color: '#1D4ED8' }}>{resultadoImportacion.reporte?.cursosActualizados || 0}</strong></span>
                                     <span>Duplicados ignorados: <strong style={{ color: '#D97706' }}>{resultadoImportacion.reporte?.filasIgnoradasPorRepetido}</strong></span>
                                     <span>Semestres nuevos: <strong>{resultadoImportacion.reporte?.semestresCreados}</strong></span>
                                     <span>Filas leídas: <strong>{resultadoImportacion.reporte?.totalFilasLeidas}</strong></span>
