@@ -6,6 +6,7 @@ const db = require('./src/config/db');
 // Importación de rutas de los módulos
 const ambienteRoutes = require('./src/routes/ambiente.routes');
 const feriadoRoutes = require('./src/routes/feriado.routes'); // 👈 Nueva ruta de Feriados (Equipo 2)
+const tipoAmbienteRoutes = require('./src/routes/tipoAmbiente.routes');
 const authRoutes = require('./src/routes/authRoutes');
 const { verifyJWT } = require('./src/middlewares/authMiddleware');
 
@@ -46,6 +47,7 @@ app.use(express.json());
 
 // Montaje de rutas de la API
 app.use('/api/ambientes', verifyJWT, ambienteRoutes);
+app.use('/api/tipos-ambiente', tipoAmbienteRoutes);
 app.use('/api/feriados', verifyJWT, feriadoRoutes); // 👈 Endpoint montado en /api/feriados
 app.use('/api/auth', authRoutes);
 
