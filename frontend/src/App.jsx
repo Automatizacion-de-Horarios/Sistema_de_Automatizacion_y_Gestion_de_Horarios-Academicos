@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import senatiLogo from './assets/logo-senati.png';
+import { API_BASE_URL } from './config/api';
 
 function App() {
     // Control de navegación entre vistas
