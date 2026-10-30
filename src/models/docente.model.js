@@ -3,10 +3,10 @@ const { exigir, totalMinutos } = require('../utils/docentes.util');
 
 async function buscarRegistrado(identificador, conexion = db, bloquear = false) {
     const [filas] = await conexion.query(
-        "SELECT id_docente FROM docentes WHERE id_docente = ? AND registrado_en_panel = 1" + (bloquear ? ' FOR UPDATE' : ''),
+        "SELECT id_docente FROM docentes WHERE id_docente = ?" + (bloquear ? ' FOR UPDATE' : ''),
         [identificador]
     );
-    exigir(filas.length, 'No se encontró el docente registrado en este panel.', 404);
+    exigir(filas.length, 'No se encontró el docente.', 404);
 }
 
 async function transaccion(identificador, operacion, permitirExistente = false) {
@@ -79,8 +79,8 @@ const Docente = {
 
     async listar(configuracion) {
         if (!configuracion.preparado) return [];
-        const [docentes] = await db.query('SELECT ' + camposDocente + ' FROM docentes WHERE registrado_en_panel = 1 ORDER BY apellidos, nombres, id_docente');
-        const [franjas] = await db.query("SELECT dd.id_docente, dd.dia_semana, dd.hora_inicio, dd.hora_fin FROM disponibilidad_docentes dd JOIN docentes d ON d.id_docente = dd.id_docente WHERE d.registrado_en_panel = 1 AND dd.estado = 'A'");
+        const [docentes] = await db.query('SELECT ' + camposDocente + ' FROM docentes ORDER BY apellidos, nombres, id_docente');
+        const [franjas] = await db.query("SELECT dd.id_docente, dd.dia_semana, dd.hora_inicio, dd.hora_fin FROM disponibilidad_docentes dd JOIN docentes d ON d.id_docente = dd.id_docente WHERE dd.estado = 'A'");
         const [cantidades] = await db.query("SELECT id_docente, COUNT(DISTINCT id_curso) AS cantidad FROM cursos_docentes WHERE id_periodo = ? AND estado = 'A' GROUP BY id_docente", [configuracion.periodo.id_periodo]);
         return docentes.map((docente) => ({
             ...docente,
@@ -180,7 +180,7 @@ const Docente = {
     async ficha(identificador, configuracion) {
         const docentes = await Docente.listar(configuracion);
         const docente = docentes.find((fila) => fila.id_docente === identificador);
-        exigir(docente, 'No se encontró el docente registrado en este panel.', 404);
+        exigir(docente, 'No se encontró el docente.', 404);
         const cursos = (await Docente.cursos(identificador, configuracion.periodo)).filter((curso) => Number(curso.seleccionado) === 1);
         const disponibilidad = await Docente.disponibilidad(identificador);
         return { docente, cursos, disponibilidad, periodo: configuracion.periodo };
