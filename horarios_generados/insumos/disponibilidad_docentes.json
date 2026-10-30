@@ -1,0 +1,1122 @@
+[
+  {
+    "docente": "ARAUJO SOSA, JUAN FRANCISCO",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "BRACAMONTE CARPIO, NATALY AMELIA",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "CARDOSO LINARES, PATRICIA VIOLETA",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "CHAVEZ ORMEÑO, PIERO JAVIER",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "COAQUIRA RAMOS, LILIAN",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "CONDORI CATUNTA, DAVID JOSUE",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "COTRADO FLORES, EDGAR JAVIER",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "CRUZ RIVERA, GISSELL ADNYLU",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "ESPINOZA JAIMES, FEBE PERCIDA",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "FLORES CANCHARI, HEBERT LYNN",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "HUANCA CORONADO, DANILO MARTIN",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "LEON MARIN, GERMAN WILLIAMS",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "LUPACA QUISPE, OMAR CRISTIAN",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "LUQUE ZUÑIGA, BRENO SOLIM",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "LUYO GUILLEN, ITALO JAIR",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "MAMANI ALAVE, LUIS ANTONIO",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "MAMANI SALCEDO, YONI",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "NUÑEZ URRUTIA, MILTON CESAR",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "PORTUGAL COLQUE, ALEX FERNANDO",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "ROBLES BRONDINO, ADOLFO MARTIN",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "ROSPIGLIOSI COHAILA, FREDDY",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "SANCHEZ AGUILERA, CARLOS ALBERTO",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "SANTANA CARBAJAL, SIDNEY AARON",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "TEJERINA ARIAS, IVANA CECILIA",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "TORRES SILVA, REYNALDO ROBERTO",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "VALDIVIA ROJAS, ROGER OVANDO",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "VARGAS ROSADO, LUIS MIGUEL",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "VILLALBA CHALLO, JASMIN LESLIE",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "WIRACOCHA HUANCA, JARLY EVELIN",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "ZAPANA AGUILAR, YENIFFER WENDY",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "profe nueva",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  },
+  {
+    "docente": "profe nuevo",
+    "franjas_disponibles": [
+      {
+        "dia": "LUNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MARTES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "MIERCOLES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "JUEVES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "VIERNES",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      },
+      {
+        "dia": "SABADO",
+        "hora_inicio": "07:45",
+        "hora_fin": "23:00"
+      }
+    ]
+  }
+]

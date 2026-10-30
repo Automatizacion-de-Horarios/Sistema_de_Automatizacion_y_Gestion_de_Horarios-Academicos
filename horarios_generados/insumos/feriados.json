@@ -1,0 +1,92 @@
+[
+  {
+    "mes": "ENERO",
+    "dia": 1,
+    "fecha_formatted": "01-01"
+  },
+  {
+    "mes": "MARZO",
+    "dia": 25,
+    "fecha_formatted": "03-25"
+  },
+  {
+    "mes": "MARZO",
+    "dia": 26,
+    "fecha_formatted": "03-26"
+  },
+  {
+    "mes": "MARZO",
+    "dia": 28,
+    "fecha_formatted": "03-28"
+  },
+  {
+    "mes": "MAYO",
+    "dia": 1,
+    "fecha_formatted": "05-01"
+  },
+  {
+    "mes": "MAYO",
+    "dia": 26,
+    "fecha_formatted": "05-26"
+  },
+  {
+    "mes": "JUNIO",
+    "dia": 7,
+    "fecha_formatted": "06-07"
+  },
+  {
+    "mes": "JUNIO",
+    "dia": 29,
+    "fecha_formatted": "06-29"
+  },
+  {
+    "mes": "JULIO",
+    "dia": 28,
+    "fecha_formatted": "07-28"
+  },
+  {
+    "mes": "JULIO",
+    "dia": 29,
+    "fecha_formatted": "07-29"
+  },
+  {
+    "mes": "AGOSTO",
+    "dia": 6,
+    "fecha_formatted": "08-06"
+  },
+  {
+    "mes": "AGOSTO",
+    "dia": 28,
+    "fecha_formatted": "08-28"
+  },
+  {
+    "mes": "AGOSTO",
+    "dia": 30,
+    "fecha_formatted": "08-30"
+  },
+  {
+    "mes": "OCTUBRE",
+    "dia": 8,
+    "fecha_formatted": "10-08"
+  },
+  {
+    "mes": "NOVIEMBRE",
+    "dia": 1,
+    "fecha_formatted": "11-01"
+  },
+  {
+    "mes": "DICIEMBRE",
+    "dia": 8,
+    "fecha_formatted": "12-08"
+  },
+  {
+    "mes": "DICIEMBRE",
+    "dia": 9,
+    "fecha_formatted": "12-09"
+  },
+  {
+    "mes": "DICIEMBRE",
+    "dia": 25,
+    "fecha_formatted": "12-25"
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "area": "LABORATORIO ING. SOFTWARE",
+    "carreras_permitidas": ["PIAD", "PCID"],
+    "tipo_clase": ["TEC", "TAL"],
+    "cursos_codigos": []
+  },
+  {
+    "area": "LABORATORIO CIBERSEGURIDAD",
+    "carreras_permitidas": ["PCBD"],
+    "tipo_clase": ["TEC", "TAL"],
+    "cursos_codigos": []
+  },
+  {
+    "area": "LABORATORIO DISEÑO",
+    "carreras_permitidas": ["PGDT"],
+    "tipo_clase": ["TEC", "TAL"],
+    "cursos_codigos": []
+  },
+  {
+    "area": "LABORATORIO COMPUTACION",
+    "carreras_permitidas": ["NAED", "NCBD", "NMGD", "PIAD", "PCID"],
+    "tipo_clase": ["TEC", "TAL"],
+    "cursos_codigos": ["SINU-165", "NCCU-279", "NCCU-283", "NMGD-608", "PGDT-538"]
+  },
+  {
+    "area": "AULA",
+    "carreras_permitidas": ["TODAS"],
+    "tipo_clase": ["TEC", "TAL"],
+    "cursos_codigos": []
+  }
+]

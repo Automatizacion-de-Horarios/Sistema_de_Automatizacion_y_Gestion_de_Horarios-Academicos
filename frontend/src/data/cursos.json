@@ -1,0 +1,1416 @@
+{
+  "SCIU-185": {
+    "nombre": "MATEMÁTICA",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "SCIU-186": {
+    "nombre": "FÍSICA Y QUÍMICA",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "SPSU-875": {
+    "nombre": "LENGUAJE Y COMUNICACIÓN",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "SCOU-248": {
+    "nombre": "INGLÉS I",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "SINU-166": {
+    "nombre": "INTRODUCCIÓN A LAS TECNOLOGÍAS DE LA INFORMACIÓN",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "SINU-167": {
+    "nombre": "COMPETENCIAS DIGITALES PARA LA INDUSTRIA",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "SPSU-877": {
+    "nombre": "DESARROLLO PERSONAL Y TALLER DE LIDERAZGO",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PIAD-316": {
+    "nombre": "PROGRAMACIÓN PARA DESARROLLO DE SOFTWARE WITH ORACLE",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 3,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-10-16"
+  },
+  "PIAD-317": {
+    "nombre": "ING. DE SOFTWARE Y METODOLOGÍAS ÁGILES",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 3,
+    "fecha_inicio": "2026-10-12",
+    "fecha_fin": "2026-11-13"
+  },
+  "PIAD-318": {
+    "nombre": "BACKEND DEVELOPER WEB",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 3,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-11"
+  },
+  "SPSU-865": {
+    "nombre": "TÉCNICAS DE LA COMUNICACIÓN",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 3,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-12-02"
+  },
+  "SCOU-236": {
+    "nombre": "INGLÉS III",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 3,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-10-07"
+  },
+  "CGEU-273": {
+    "nombre": "INSERCIÓN AL ENTORNO EMPRESARIAL",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 3,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-10-16"
+  },
+  "PIAD-425": {
+    "nombre": "MÓDULOS Y PAQUETES PARA MACHINE LEARNING CON PYTHON",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-07"
+  },
+  "PIAD-426": {
+    "nombre": "FUNDAMENTOS Y ALGORITMIA PARA INTELIGENCIA ARTIFICIAL",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-10-05"
+  },
+  "PIAD-427": {
+    "nombre": "MACHINE LEARNING Y DEEP LEARNING",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 4,
+    "fecha_inicio": "2026-10-12",
+    "fecha_fin": "2026-11-02"
+  },
+  "PIAD-428": {
+    "nombre": "ARTIFICIAL INTELLIGENCE WITH MACHINE LEARNING IN JAVA¿ (ORACLE)",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 4,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-11-30"
+  },
+  "PIAD-429": {
+    "nombre": "FORMACIÓN PRÁCTICA EN EMPRESA I",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-08",
+    "fecha_fin": "2026-12-01"
+  },
+  "PIAD-430": {
+    "nombre": "SEMINARIO DE COMPLEMENTACIÓN PRÁCTICA I",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-18",
+    "fecha_fin": "2026-12-10"
+  },
+  "SPSU-866": {
+    "nombre": "DESARROLLO HUMANO",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-12-11"
+  },
+  "PIAD-525": {
+    "nombre": "DISEÑO Y DESARROLLO DE APLICACIONES MÓVILES",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-18",
+    "fecha_fin": "2026-09-08"
+  },
+  "PIAD-526": {
+    "nombre": "DISEÑO Y DESARROLLO DE SOLUCIONES IOT",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 5,
+    "fecha_inicio": "2026-09-15",
+    "fecha_fin": "2026-10-06"
+  },
+  "PIAD-527": {
+    "nombre": "FULLSTACK DEVELOPER SOFTWARE",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 5,
+    "fecha_inicio": "2026-10-13",
+    "fecha_fin": "2026-11-03"
+  },
+  "PIAD-528": {
+    "nombre": "TALLER DE DESARROLLO DE APLICACIONES CON MACHINE LEARNING",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 5,
+    "fecha_inicio": "2026-11-10",
+    "fecha_fin": "2026-12-01"
+  },
+  "PIAD-529": {
+    "nombre": "FORMACIÓN PRÁCTICA EN EMPRESA II",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 5,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-11-30"
+  },
+  "PIAD-530": {
+    "nombre": "SEMINARIO DE COMPLEMENTACIÓN PRÁCTICA II",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-19",
+    "fecha_fin": "2026-12-11"
+  },
+  "CGEU-239": {
+    "nombre": "CALIDAD TOTAL",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-12-10"
+  },
+  "SCOU-220": {
+    "nombre": "INGLÉS TÉCNICO",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-22",
+    "fecha_fin": "2026-12-05"
+  },
+  "CGEU-275": {
+    "nombre": "EMPLEABILIDAD Y DESARROLLO PROFESIONAL",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-12-11"
+  },
+  "PIAD-625": {
+    "nombre": "BIG DATA Y ANÁLISIS DE DATOS",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-20",
+    "fecha_fin": "2026-09-10"
+  },
+  "PIAD-626": {
+    "nombre": "TECNOLOGÍA CLOUD CON AWS",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-17",
+    "fecha_fin": "2026-11-12"
+  },
+  "PIAD-627": {
+    "nombre": "AI-900T00 CONCEPTOS BÁSICOS DE IA EN MICROSOFT AZURE",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 6,
+    "fecha_inicio": "2026-11-19",
+    "fecha_fin": "2026-12-10"
+  },
+  "PIAD-628": {
+    "nombre": "FORMACIÓN PRÁCTICA EN EMPRESA III",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-11-30"
+  },
+  "PIAD-629": {
+    "nombre": "SEMINARIO DE COMPLEMENTACIÓN PRÁCTICA III",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-21",
+    "fecha_fin": "2026-12-11"
+  },
+  "CGEU-240": {
+    "nombre": "FORMACIÓN DE MONITORES DE EMPRESA",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-12-11"
+  },
+  "CGEU-241": {
+    "nombre": "MEJORA DE MÉTODOS EN EL TRABAJO",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-12-11"
+  },
+  "PIAD-221": {
+    "nombre": "ALGORITMOS Y PROGRAMACIÓN PARA DESARROLLO DE SOFTWARE",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-18"
+  },
+  "PIAD-222": {
+    "nombre": "FRONTEND DEVELOPER WEB",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 2,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-10-16"
+  },
+  "PIAD-223": {
+    "nombre": "DATABASE FOUNDATIONS (ORACLE)",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 2,
+    "fecha_inicio": "2026-10-12",
+    "fecha_fin": "2026-11-13"
+  },
+  "PIAD-224": {
+    "nombre": "SISTEMAS OPERATIVOS Y COMUNICACIÓN DE DATOS",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 2,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-11"
+  },
+  "CGEU-271": {
+    "nombre": "SEGURIDAD E HIGIENE INDUSTRIAL",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-18",
+    "fecha_fin": "2026-12-10"
+  },
+  "SPSU-878": {
+    "nombre": "TÉCNICAS DE COMUNICACIÓN",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-12-10"
+  },
+  "SCOU-249": {
+    "nombre": "INGLÉS II",
+    "carrera": "Ingeniería de Software con IA",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-10-15"
+  },
+  "SCOU-247": {
+    "nombre": "Inglés",
+    "carrera": "Administración de Empresas",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "SINU-165": {
+    "nombre": "Informática básica",
+    "carrera": "Administración de Empresas",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "SPSU-876": {
+    "nombre": "Técnicas y métodos de aprendizaje Investigativo",
+    "carrera": "Administración de Empresas",
+    "semestre": 1,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NCCU-267": {
+    "nombre": "Gestión de compras y abastecimiento",
+    "carrera": "Administración de Empresas",
+    "semestre": 3,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-04"
+  },
+  "NCCU-268": {
+    "nombre": "Gestión de almacenes y control de inventarios",
+    "carrera": "Administración de Empresas",
+    "semestre": 3,
+    "fecha_inicio": "2026-08-31",
+    "fecha_fin": "2026-10-02"
+  },
+  "NCCU-269": {
+    "nombre": "GESTIÓN DE DISTRIBUCIÓN Y TRANSPORTE",
+    "carrera": "Administración de Empresas",
+    "semestre": 3,
+    "fecha_inicio": "2026-09-28",
+    "fecha_fin": "2026-10-30"
+  },
+  "NCCU-270": {
+    "nombre": "Administración de la cadena de suministro",
+    "carrera": "Administración de Empresas",
+    "semestre": 3,
+    "fecha_inicio": "2026-10-26",
+    "fecha_fin": "2026-11-20"
+  },
+  "NCCU-271": {
+    "nombre": "Gestión de operaciones logísticas",
+    "carrera": "Administración de Empresas",
+    "semestre": 3,
+    "fecha_inicio": "2026-11-16",
+    "fecha_fin": "2026-12-11"
+  },
+  "NAED-424": {
+    "nombre": "Administración de Personas",
+    "carrera": "Administración de Empresas",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-01"
+  },
+  "NAED-425": {
+    "nombre": "Reclutamiento, Selección e Incorporación de Personal",
+    "carrera": "Administración de Empresas",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-09-22"
+  },
+  "NAED-426": {
+    "nombre": "Compensación de Personal",
+    "carrera": "Administración de Empresas",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-28",
+    "fecha_fin": "2026-10-13"
+  },
+  "NAED-427": {
+    "nombre": "Evaluación y Desarrollo de Personal",
+    "carrera": "Administración de Empresas",
+    "semestre": 4,
+    "fecha_inicio": "2026-10-19",
+    "fecha_fin": "2026-11-03"
+  },
+  "NAED-428": {
+    "nombre": "Administración Integral de Recursos Humanos",
+    "carrera": "Administración de Empresas",
+    "semestre": 4,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-01"
+  },
+  "NAED-429": {
+    "nombre": "Formación Práctica en Empresa I",
+    "carrera": "Administración de Empresas",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-08",
+    "fecha_fin": "2026-12-01"
+  },
+  "NAED-431": {
+    "nombre": "Seminario de Habilidades Prácticas I",
+    "carrera": "Administración de Empresas",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-18",
+    "fecha_fin": "2026-12-02"
+  },
+  "NCCU-239": {
+    "nombre": "Inglés Técnico",
+    "carrera": "Administración de Empresas",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-12-11"
+  },
+  "NAED-524": {
+    "nombre": "Marketing Operativo & Estratégico",
+    "carrera": "Administración de Empresas",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-19",
+    "fecha_fin": "2026-09-03"
+  },
+  "NAED-525": {
+    "nombre": "Branding & Packaging",
+    "carrera": "Administración de Empresas",
+    "semestre": 5,
+    "fecha_inicio": "2026-09-09",
+    "fecha_fin": "2026-09-24"
+  },
+  "NAED-526": {
+    "nombre": "Gestión Comercial & Trade Marketing",
+    "carrera": "Administración de Empresas",
+    "semestre": 5,
+    "fecha_inicio": "2026-09-30",
+    "fecha_fin": "2026-10-22"
+  },
+  "NAED-527": {
+    "nombre": "Marketing Digital & E-Commerce",
+    "carrera": "Administración de Empresas",
+    "semestre": 5,
+    "fecha_inicio": "2026-10-21",
+    "fecha_fin": "2026-11-12"
+  },
+  "NAED-528": {
+    "nombre": "Taller de Marketing",
+    "carrera": "Administración de Empresas",
+    "semestre": 5,
+    "fecha_inicio": "2026-11-11",
+    "fecha_fin": "2026-12-10"
+  },
+  "NAED-529": {
+    "nombre": "Formación Práctica en Empresa II",
+    "carrera": "Administración de Empresas",
+    "semestre": 5,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-11-28"
+  },
+  "NAED-531": {
+    "nombre": "Seminario de Habilidades Prácticas II",
+    "carrera": "Administración de Empresas",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-20",
+    "fecha_fin": "2026-12-10"
+  },
+  "NCCU-252": {
+    "nombre": "Matemática Financiera",
+    "carrera": "Administración de Empresas",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-08-27"
+  },
+  "NCCU-253": {
+    "nombre": "Contabilidad Financiera para Administración",
+    "carrera": "Administración de Empresas",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-30",
+    "fecha_fin": "2026-10-01"
+  },
+  "NCCU-254": {
+    "nombre": "Planeamiento Estratégico",
+    "carrera": "Administración de Empresas",
+    "semestre": 6,
+    "fecha_inicio": "2026-10-05",
+    "fecha_fin": "2026-10-28"
+  },
+  "NCCU-255": {
+    "nombre": "Formulación y Evaluación de Proyectos",
+    "carrera": "Administración de Empresas",
+    "semestre": 6,
+    "fecha_inicio": "2026-10-26",
+    "fecha_fin": "2026-11-18"
+  },
+  "NCCU-256": {
+    "nombre": "Administración Financiera Integral",
+    "carrera": "Administración de Empresas",
+    "semestre": 6,
+    "fecha_inicio": "2026-11-16",
+    "fecha_fin": "2026-12-10"
+  },
+  "NAED-619": {
+    "nombre": "Formación Práctica en Empresa III",
+    "carrera": "Administración de Empresas",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-11-30"
+  },
+  "NAED-621": {
+    "nombre": "Seminario de Habilidades Prácticas III",
+    "carrera": "Administración de Empresas",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-19",
+    "fecha_fin": "2026-12-10"
+  },
+  "NCCU-276": {
+    "nombre": "Administración y organización de empresas",
+    "carrera": "Administración de Empresas",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-18"
+  },
+  "NCCU-277": {
+    "nombre": "Matemática aplicada a la administración",
+    "carrera": "Administración de Empresas",
+    "semestre": 2,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-10-16"
+  },
+  "NCCU-278": {
+    "nombre": "Contabilidad, costos y presupuestos",
+    "carrera": "Administración de Empresas",
+    "semestre": 2,
+    "fecha_inicio": "2026-10-12",
+    "fecha_fin": "2026-12-11"
+  },
+  "NCCU-279": {
+    "nombre": "Informática aplicada",
+    "carrera": "Administración de Empresas",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-21",
+    "fecha_fin": "2026-12-11"
+  },
+  "PCBD-315": {
+    "nombre": "RED HAT SYSTEM ADMINISTRATION I (LINUX RED HAT)",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 3,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-11"
+  },
+  "PCBD-316": {
+    "nombre": "CCNA 7, M3. ENSA-ENTERPRISE NETWORKING, SECURITY AND AUTOMATION (CISCO)",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 3,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-10-02"
+  },
+  "PCBD-317": {
+    "nombre": "FUNDAMENTOS DE DESARROLLO WEB",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 3,
+    "fecha_inicio": "2026-09-28",
+    "fecha_fin": "2026-11-06"
+  },
+  "PCBD-318": {
+    "nombre": "ALGORITMIA",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 3,
+    "fecha_inicio": "2026-11-02",
+    "fecha_fin": "2026-12-11"
+  },
+  "PCBD-425": {
+    "nombre": "CONFIGURACIÓN DE SERVICIOS CON WINDOWS",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-07"
+  },
+  "PCBD-426": {
+    "nombre": "RED HAT SYSTEM ADMINISTRATION II (LINUX RED HAT)",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-09-28"
+  },
+  "PCBD-427": {
+    "nombre": "CCNA CYBER OPS (CISCO)",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 4,
+    "fecha_inicio": "2026-10-05",
+    "fecha_fin": "2026-10-19"
+  },
+  "PCBD-428": {
+    "nombre": "LENGUAJE DE PROGRAMACIÓN",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 4,
+    "fecha_inicio": "2026-10-26",
+    "fecha_fin": "2026-11-09"
+  },
+  "PCBD-429": {
+    "nombre": "SEGURIDAD EN BASE DE DATOS",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 4,
+    "fecha_inicio": "2026-11-16",
+    "fecha_fin": "2026-11-30"
+  },
+  "PCBD-430": {
+    "nombre": "FORMACIÓN PRÁCTICA EN EMPRESA I",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-09",
+    "fecha_fin": "2026-11-28"
+  },
+  "PCBD-431": {
+    "nombre": "SEMINARIO DE COMPLEMENTACIÓN PRÁCTICA I",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-18",
+    "fecha_fin": "2026-12-12"
+  },
+  "PCBD-524": {
+    "nombre": "NETWORK SECURITY (CISCO)",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-19",
+    "fecha_fin": "2026-09-02"
+  },
+  "PCBD-525": {
+    "nombre": "CRIPTOGRAFÍA APLICADA",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 5,
+    "fecha_inicio": "2026-09-09",
+    "fecha_fin": "2026-09-23"
+  },
+  "PCBD-526": {
+    "nombre": "SEGURIDAD EN REDES INALÁMBRICAS",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 5,
+    "fecha_inicio": "2026-10-07",
+    "fecha_fin": "2026-10-21"
+  },
+  "PCBD-527": {
+    "nombre": "FORTIGATE INFRAESTRUCTURE (FORTINET)",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 5,
+    "fecha_inicio": "2026-10-28",
+    "fecha_fin": "2026-11-11"
+  },
+  "PCBD-528": {
+    "nombre": "FORTIGATE SECURITY (FORTINET)",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 5,
+    "fecha_inicio": "2026-11-18",
+    "fecha_fin": "2026-12-11"
+  },
+  "PCBD-529": {
+    "nombre": "FORMACIÓN PRÁCTICA EN EMPRESA II",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 5,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-11-28"
+  },
+  "PCBD-530": {
+    "nombre": "SEMINARIO DE COMPLEMENTACIÓN PRÁCTICA II",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-20",
+    "fecha_fin": "2026-12-11"
+  },
+  "SCOU-222": {
+    "nombre": "INGLÉS TÉCNICO",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-21",
+    "fecha_fin": "2026-12-11"
+  },
+  "PCBD-624": {
+    "nombre": "TALLER DE INTEGRACIÓN EN CIBERSEGURIDAD",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-08"
+  },
+  "PCBD-625": {
+    "nombre": "GESTIÓN APLICADA DE AMENAZAS EN REDES",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-09-29"
+  },
+  "PCBD-626": {
+    "nombre": "GESTIÓN DE SERVICIOS Y GOBERNABILIDAD DE TI",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 6,
+    "fecha_inicio": "2026-10-05",
+    "fecha_fin": "2026-10-20"
+  },
+  "PCBD-627": {
+    "nombre": "NORMAS Y ESTÁNDARES DE SEGURIDAD TI",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 6,
+    "fecha_inicio": "2026-10-26",
+    "fecha_fin": "2026-11-10"
+  },
+  "PCBD-628": {
+    "nombre": "AUDITORÍA EN CIBERSEGURIDAD",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 6,
+    "fecha_inicio": "2026-11-16",
+    "fecha_fin": "2026-12-01"
+  },
+  "PCBD-629": {
+    "nombre": "FORMACIÓN PRÁCTICA EN EMPRESA III",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-11-28"
+  },
+  "PCBD-630": {
+    "nombre": "SEMINARIO DE COMPLEMENTACIÓN PRÁCTICA III",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-12-02"
+  },
+  "PCBD-221": {
+    "nombre": "ARQUITECTURA DE COMPUTADORAS",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-18"
+  },
+  "PCBD-222": {
+    "nombre": "SISTEMAS OPERATIVOS",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 2,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-10-16"
+  },
+  "PCBD-223": {
+    "nombre": "FUNDAMENTOS DE PROGRAMACIÓN",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 2,
+    "fecha_inicio": "2026-10-12",
+    "fecha_fin": "2026-11-13"
+  },
+  "PCBD-224": {
+    "nombre": "REDES Y COMUNICACIONES",
+    "carrera": "Ingeniería en Ciberseguridad",
+    "semestre": 2,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-11"
+  },
+  "NCBD-201": {
+    "nombre": "FUNDAMENTOS Y DINÁMICA DE LA CONTABILIDAD",
+    "carrera": "Contabilidad",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-10"
+  },
+  "NCBD-202": {
+    "nombre": "DOCUMENTACIÓN COMERCIAL Y CONTABLE",
+    "carrera": "Contabilidad",
+    "semestre": 2,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-10-09"
+  },
+  "NCBD-203": {
+    "nombre": "Administración General",
+    "carrera": "Contabilidad",
+    "semestre": 2,
+    "fecha_inicio": "2026-10-12",
+    "fecha_fin": "2026-11-05"
+  },
+  "NCBD-204": {
+    "nombre": "Costos y Presupuestos",
+    "carrera": "Contabilidad",
+    "semestre": 2,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-03"
+  },
+  "NCBD-301": {
+    "nombre": "Procesos Contables",
+    "carrera": "Contabilidad",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NCBD-302": {
+    "nombre": "Fundamentos y organización de Sociedades",
+    "carrera": "Contabilidad",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NCBD-303": {
+    "nombre": "Regimen Laboral General",
+    "carrera": "Contabilidad",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NCBD-304": {
+    "nombre": "Matemática Financiera",
+    "carrera": "Contabilidad",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PCID-205": {
+    "nombre": "FUNDAMENTOS DE PROGRAMACIÓN",
+    "carrera": "Computación e Informática",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-16"
+  },
+  "PCID-206": {
+    "nombre": "SISTEMAS OPERATIVOS",
+    "carrera": "Computación e Informática",
+    "semestre": 2,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-10-14"
+  },
+  "PCID-207": {
+    "nombre": "SOPORTE DE TI",
+    "carrera": "Computación e Informática",
+    "semestre": 2,
+    "fecha_inicio": "2026-10-12",
+    "fecha_fin": "2026-11-11"
+  },
+  "PCID-208": {
+    "nombre": "REDES Y COMUNICACIONES",
+    "carrera": "Computación e Informática",
+    "semestre": 2,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-11"
+  },
+  "PCID-301": {
+    "nombre": "PROGRAMACIÓN ORIENTADA A OBJETOS",
+    "carrera": "Computación e Informática",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PCID-302": {
+    "nombre": "FUNDAMENTOS DE CLOUD COMPUTING",
+    "carrera": "Computación e Informática",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PCID-303": {
+    "nombre": "FUNDAMENTOS DE ADMINISTRACIÓN DE BASES DE DATOS",
+    "carrera": "Computación e Informática",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PCID-304": {
+    "nombre": "FUNDAMENTOS DE CIBERSEGURIDAD",
+    "carrera": "Computación e Informática",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-339": {
+    "nombre": "ILUSTRACIÓN Y COMPOSICIÓN",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-340": {
+    "nombre": "MORFOLOGÍA",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-341": {
+    "nombre": "TIPOGRAFÍA",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-342": {
+    "nombre": "DIAGRAMACIÓN",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-439": {
+    "nombre": "DISEÑO Y DESARROLLO WEB",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 4,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-440": {
+    "nombre": "EDICIÓN DE VIDEO",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 4,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-441": {
+    "nombre": "DISEÑO Y MAQUETACIÓN DE APPS MÓVILES",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 4,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-442": {
+    "nombre": "FORMACIÓN PRÁCTICA EN EMPRESA I",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 4,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-443": {
+    "nombre": "SEMINARIO DE COMPLEMENTACIÓN PRÁCTICA I",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 4,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-536": {
+    "nombre": "MODELADO Y ANIMACIÓN 3D",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-537": {
+    "nombre": "APLICACIONES PARA MÓVILES",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-538": {
+    "nombre": "MARKETING DIGITAL",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-539": {
+    "nombre": "FORMACIÓN PRÁCTICA EN EMPRESA II",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-540": {
+    "nombre": "SEMINARIO DE COMPLEMENTACIÓN PRÁCTICA II",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "SCOU-223": {
+    "nombre": "INGLÉS TÉCNICO",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-637": {
+    "nombre": "DESIGN THINKING E INNOVACIÓN EN COMUNICACIONES",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 6,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-638": {
+    "nombre": "BRANDING, IDENTIDAD VISUAL, E IMAGEN CORPORATIVA",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 6,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-639": {
+    "nombre": "EXPERIENCIA DE USUARIO UX",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 6,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-640": {
+    "nombre": "FORMACIÓN PRÁCTICA EN EMPRESA III",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 6,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-641": {
+    "nombre": "SEMINARIO DE COMPLEMENTACIÓN PRÁCTICA III",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 6,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-238": {
+    "nombre": "EDICIÓN VECTORIAL",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 2,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-239": {
+    "nombre": "PERCEPCIÓN Y COLOR",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 2,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-240": {
+    "nombre": "FOTOGRAFÍA DIGITAL",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 2,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "PGDT-241": {
+    "nombre": "EDICIÓN DE MAPA DE BITS",
+    "carrera": "Diseño Gráfico Digital",
+    "semestre": 2,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NSID-311": {
+    "nombre": "Procesos industriales y seguridad de los procesos",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 3,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-12"
+  },
+  "NSID-312": {
+    "nombre": "Salud e higiene ocupacional",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 3,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-11-06"
+  },
+  "NSID-313": {
+    "nombre": "Gestión de efluentes, emisiones y residuos empresariales",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 3,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-04"
+  },
+  "NSID-418": {
+    "nombre": "Investigación de accidentes e incidentes de trabajo",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-18",
+    "fecha_fin": "2026-09-09"
+  },
+  "NSID-419": {
+    "nombre": "Preparación y respuesta a emergencias",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-15",
+    "fecha_fin": "2026-10-07"
+  },
+  "NSID-420": {
+    "nombre": "Inspección y fiscalización de seguridad",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 4,
+    "fecha_inicio": "2026-10-13",
+    "fecha_fin": "2026-11-04"
+  },
+  "NSID-421": {
+    "nombre": "Implementación de las 5S, BPM para la SST",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 4,
+    "fecha_inicio": "2026-11-10",
+    "fecha_fin": "2026-12-02"
+  },
+  "NSID-422": {
+    "nombre": "Formación Práctica en Empresa I",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-12-03"
+  },
+  "NSID-423": {
+    "nombre": "Seminario de Habilidades Prácticas I",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-22",
+    "fecha_fin": "2026-12-05"
+  },
+  "NSID-525": {
+    "nombre": "Entrenando al entrenador, capacitaciones lúdicas",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-08"
+  },
+  "NSID-526": {
+    "nombre": "Supervisión de trabajos de alto riesgo",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 5,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-11-03"
+  },
+  "NSID-527": {
+    "nombre": "Habilidades directivas para la gestión de SST",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 5,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-01"
+  },
+  "NSID-528": {
+    "nombre": "Formación Práctica en Empresa II",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 5,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-12-03"
+  },
+  "NSID-529": {
+    "nombre": "Seminario de Habilidades Prácticas II",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 5,
+    "fecha_inicio": "2026-08-19",
+    "fecha_fin": "2026-12-02"
+  },
+  "NSID-216": {
+    "nombre": "Legislación de Seguridad y Salud en el Trabajo",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-11"
+  },
+  "NSID-217": {
+    "nombre": "Diagnóstico, planes y programas de gestión",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 2,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-10-09"
+  },
+  "NSID-218": {
+    "nombre": "Gestión de riesgos y estándares de control",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 2,
+    "fecha_inicio": "2026-10-12",
+    "fecha_fin": "2026-11-06"
+  },
+  "NSID-219": {
+    "nombre": "Comités de Seguridad y Salud en el Trabajo",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 2,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-04"
+  },
+  "NSID-220": {
+    "nombre": "Informática y tendencias para la gestión de SST",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 2,
+    "fecha_inicio": "2026-08-18",
+    "fecha_fin": "2026-12-01"
+  },
+  "NSID-623": {
+    "nombre": "Cultura de SST y la seguridad basada en el comportamiento",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-09"
+  },
+  "NSID-624": {
+    "nombre": "Gestión por procesos",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-11",
+    "fecha_fin": "2026-10-07"
+  },
+  "NSID-625": {
+    "nombre": "Implementación de SGSST basado en ISO 45001",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 6,
+    "fecha_inicio": "2026-10-12",
+    "fecha_fin": "2026-11-04"
+  },
+  "NSID-626": {
+    "nombre": "Directrices de auditorías basado en ISO 19011",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 6,
+    "fecha_inicio": "2026-11-09",
+    "fecha_fin": "2026-12-02"
+  },
+  "NSID-627": {
+    "nombre": "Formación Práctica en Empresa III",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-12-03"
+  },
+  "NSID-628": {
+    "nombre": "Seminario de Habilidades Prácticas III",
+    "carrera": "Seguridad Industrial y Prevención de Riesgos",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-22",
+    "fecha_fin": "2026-12-05"
+  },
+  "NMGD-312": {
+    "nombre": "Fundamentos del Marketing",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-313": {
+    "nombre": "Investigación de Mercados",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-314": {
+    "nombre": "Comportamiento del Consumidor",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-315": {
+    "nombre": "Investigación y Desarrollo de Nuevos Productos",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-316": {
+    "nombre": "Estrategias de Investigación de Mercados",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 3,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-409": {
+    "nombre": "Gestión Comercial y Ventas",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-17",
+    "fecha_fin": "2026-09-09"
+  },
+  "NMGD-410": {
+    "nombre": "Canales de Distribución Comercial",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-14",
+    "fecha_fin": "2026-09-30"
+  },
+  "NMGD-411": {
+    "nombre": "Trade Marketing",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 4,
+    "fecha_inicio": "2026-10-05",
+    "fecha_fin": "2026-10-21"
+  },
+  "NMGD-412": {
+    "nombre": "Gestión y Estrategias de Precios",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 4,
+    "fecha_inicio": "2026-10-26",
+    "fecha_fin": "2026-11-11"
+  },
+  "NMGD-413": {
+    "nombre": "Estrategias Comerciales",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 4,
+    "fecha_inicio": "2026-11-16",
+    "fecha_fin": "2026-12-02"
+  },
+  "NMGD-414": {
+    "nombre": "Formación Práctica en Empresa I",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 4,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-12-02"
+  },
+  "NMGD-416": {
+    "nombre": "Seminario de Habilidades Prácticas I",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 4,
+    "fecha_inicio": "2026-08-19",
+    "fecha_fin": "2026-12-10"
+  },
+  "NMGD-509": {
+    "nombre": "Branding & Packaging",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-510": {
+    "nombre": "Marketing de Contenidos",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-511": {
+    "nombre": "Estrategias de Comunicación y Publicidad",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-512": {
+    "nombre": "Diseño Gráfico aplicado al Marketing",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-513": {
+    "nombre": "Estrategias de Marketing y Comunicaciones",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-514": {
+    "nombre": "Formación Práctica en Empresa II",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-516": {
+    "nombre": "Seminario de Habilidades Prácticas II",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 5,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NMGD-608": {
+    "nombre": "Marketing Digital",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-19",
+    "fecha_fin": "2026-09-03"
+  },
+  "NMGD-609": {
+    "nombre": "E-Commerce",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-09",
+    "fecha_fin": "2026-09-24"
+  },
+  "NMGD-610": {
+    "nombre": "Community Management",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-30",
+    "fecha_fin": "2026-10-21"
+  },
+  "NMGD-611": {
+    "nombre": "Analítica Digital",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 6,
+    "fecha_inicio": "2026-10-22",
+    "fecha_fin": "2026-11-11"
+  },
+  "NMGD-612": {
+    "nombre": "Estrategias de Marketing Digital",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 6,
+    "fecha_inicio": "2026-11-12",
+    "fecha_fin": "2026-12-10"
+  },
+  "NMGD-613": {
+    "nombre": "Formación Práctica en Empresa III",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 6,
+    "fecha_inicio": "2026-09-07",
+    "fecha_fin": "2026-12-03"
+  },
+  "NMGD-615": {
+    "nombre": "Seminario de Habilidades Prácticas III",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 6,
+    "fecha_inicio": "2026-08-21",
+    "fecha_fin": "2026-12-12"
+  },
+  "NCCU-280": {
+    "nombre": "Administración y Organización de Empresas",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 2,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NCCU-281": {
+    "nombre": "Matemática Aplicada a la Administración",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 2,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NCCU-282": {
+    "nombre": "Contabilidad, Costos y Presupuestos",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 2,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  },
+  "NCCU-283": {
+    "nombre": "Informática Aplicada",
+    "carrera": "Marketing y Gestión Comercial",
+    "semestre": 2,
+    "fecha_inicio": null,
+    "fecha_fin": null
+  }
+}

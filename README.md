@@ -2,6 +2,43 @@
 
 Aplicación web para apoyar la planificación de horarios, la gestión académica y la administración de ambientes.
 
+## Generación local y segura de horarios
+
+Ejecuta el flujo estricto desde la raíz del proyecto:
+
+```powershell
+python generar_horario.py
+```
+
+Las entradas `python solver_engine.py` y `python motor_horarios.py` también
+delegan a este flujo validado.
+
+El proceso lee los insumos enumerados en `json/` excepto
+`horario_generado.json` y `horario_optimizado.json`. No abre ni toma en cuenta
+`horario_base_consolidado.json` y nunca escribe sobre los JSON originales.
+Prepara copias normalizadas en `horarios_generados/insumos/`; ahí quedan también
+las reglas endurecidas y los datos que se pasan al optimizador. El resultado
+validado se exporta como `horarios_generados/horario_generado.json`, y
+`horarios_generados/ajustes_preprocesamiento.json` registra los cambios
+aplicados a las copias. Para hacer factible H2 sin modificar la disponibilidad
+original, la copia de `disponibilidad_docentes.json` otorga a cada docente
+asignado la franja operativa completa de lunes a sábado.
+
+El inventario adaptado de salones agrega recursos auxiliares identificados
+como `AUXILIAR` y conserva el área de cada sala para cumplir H4/H5/H6. Estos
+recursos de trabajo deben confirmarse contra la disponibilidad física real
+antes de usar el horario institucionalmente.
+
+El validador rechaza cualquier violación dura, incluida disponibilidad docente,
+transiciones mínimas y Formación Práctica en Empresa (EMP) de 08:00 a 14:00 en
+días consecutivos sin TEC/TAL en esos días. Los candidatos rechazados se
+descartan y se reintenta con otra semilla. El proceso hace hasta 20 intentos
+por defecto; `HORARIOS_MAX_INTENTOS` permite aumentar ese límite. Si no se
+obtiene un horario válido, termina con error y no publica un horario final.
+
+El generador requiere Python y OR-Tools (`ortools`) disponibles en el entorno
+activo.
+
 ## Requisitos
 
 - Node.js y npm.

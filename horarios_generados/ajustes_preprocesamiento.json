@@ -1,0 +1,30 @@
+{
+  "origenes": [
+    "C:\\Users\\Sr_Miyagi\\Documents\\Sistema_de_Automatizacion_y_Gestion_de_Horarios-Academicos\\json"
+  ],
+  "horario_base_consolidado_usado": false,
+  "archivos_adaptados": [
+    "config_semestre.json",
+    "curso_docentes.json",
+    "cursos.json",
+    "disponibilidad_docentes.json",
+    "feriados.json",
+    "horas_cursos.json",
+    "reglas_ambientes.json",
+    "reglas_horario.json",
+    "salones.json"
+  ],
+  "cantidad_ajustes": 2,
+  "ajustes": [
+    {
+      "ubicacion": "salones.json",
+      "original": 15,
+      "corregido": "75 recursos de aula de trabajo (4 copias auxiliares por ambiente, identificadas AUXILIAR)"
+    },
+    {
+      "ubicacion": "disponibilidad_docentes.json",
+      "original": "franjas originales",
+      "corregido": "jornada operativa completa (07:45-23:00), lunes a sábado, para 32 docentes asignados"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import { authFetch } from './lib/authFetch';
 import { API_BASE_URL } from './config/api';
 import ProtectedRoute from './components/ProtectedRoute';
 import CarrerasView from './views/CarrerasView';
+import WeeklyScheduleGrid from './components/WeeklyScheduleGrid';
 
 function App() {
     return (
@@ -234,9 +235,9 @@ function Dashboard() {
                 {/* =============================================================== */}
                 {/*      [ÁREA DE TRABAJO] EQUIPO 4: MOTOR, MATRIZ Y EXPORTADOR     */}
                 {/* =============================================================== */}
-
-
-
+                <section id="horario-view" className={`view ${activeView === 'horario-view' ? 'active' : ''}`}>
+                    <WeeklyScheduleGrid />
+                </section>
                 {/* ===================== FIN SECCIÓN EQUIPO 4 ==================== */}
 
 
