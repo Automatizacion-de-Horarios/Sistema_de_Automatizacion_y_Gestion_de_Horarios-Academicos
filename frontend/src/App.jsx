@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import senatiLogo from './assets/logo-senati.png';
+import { AuthProvider } from './context/AuthContext.jsx';
+import { useAuth } from './context/useAuth';
+import { authFetch } from './lib/authFetch';
+import { API_BASE_URL } from './config/api';
+import ProtectedRoute from './components/ProtectedRoute';
+import CarrerasView from './views/CarrerasView';
 
 //--------Estructura referencial del Excel de cursos aceptado - EQUIPO 4 SECCION CURSOS ---------------
 // La fila 1 es un título general, la fila 2 son los encabezados y desde la fila 3 vienen los cursos.
@@ -786,7 +792,7 @@ function FeriadosModulo({ triggerToast }) {
             try {
                 const response = await authFetch(`${API_BASE_URL}/api/feriados`);
                 if (!response.ok) throw new Error('Error al obtener feriados');
-                let data = await response.json();
+                const data = await response.json();
 
                 const anioActual = new Date().getFullYear();
                 const { juevesSanto, viernesSanto } = calcularFechasSemanaSanta(anioActual);
@@ -885,6 +891,7 @@ function FeriadosModulo({ triggerToast }) {
 
             if (!response.ok) throw new Error('Error al actualizar estado');
 
+            // Actualizamos el estado localmente solo si el backend respondió con éxito
             setFeriados(prev =>
                 prev.map(feriado => {
                     if (feriado.id_feriado === idFeriado) {
