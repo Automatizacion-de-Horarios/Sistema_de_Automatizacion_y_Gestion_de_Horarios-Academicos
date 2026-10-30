@@ -708,3 +708,188 @@
 }
 
 
+
+
+/* ===============================================================
+   ESTILOS DE HABILITACIÓN Y DESHABILITACIÓN DE SEMESTRES
+   =============================================================== */
+.malla-btn-toggle-semestre {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.malla-btn-toggle-semestre.activo {
+    background: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
+}
+
+.malla-btn-toggle-semestre.activo:hover {
+    background: #d1fae5;
+    border-color: #6ee7b7;
+}
+
+.malla-btn-toggle-semestre.inactivo {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.malla-btn-toggle-semestre.inactivo:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.malla-semestre-inhabilitado-banner {
+    background: #fff1f2;
+    border-bottom: 1px solid #fecdd3;
+    padding: 10px 24px;
+    color: #9f1239;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chip-semestre-inactivo {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+    border-color: #fecaca !important;
+}
+
+.btn-semestre-chip.semestre-disabled {
+    background: #fee2e2 !important;
+    color: #dc2626 !important;
+    border-color: #fca5a5 !important;
+    opacity: 1 !important;
+    font-weight: 700;
+}
+
+.btn-semestre-chip.semestre-disabled:hover {
+    background: #fecaca !important;
+    color: #b91c1c !important;
+    border-color: #f87171 !important;
+}
+
+/* 1er Semestre (Estudios Generales): Franjas grises para indicar que no se toma en cuenta */
+.btn-semestre-chip.semestre-primer-ciclo {
+    background: repeating-linear-gradient(
+        -45deg,
+        #f8fafc,
+        #f8fafc 6px,
+        #e2e8f0 6px,
+        #e2e8f0 12px
+    ) !important;
+    color: #94a3b8 !important;
+    border: 1px dashed #cbd5e1 !important;
+    cursor: not-allowed !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+}
+
+.btn-semestre-chip.semestre-primer-ciclo:hover {
+    background: repeating-linear-gradient(
+        -45deg,
+        #f1f5f9,
+        #f1f5f9 6px,
+        #cbd5e1 6px,
+        #cbd5e1 12px
+    ) !important;
+    color: #64748b !important;
+    border-color: #94a3b8 !important;
+    transform: none !important;
+}
+
+/* Botón de estado de curso en la tabla: Activo / Inactivo */
+.malla-btn-estado-curso {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    user-select: none;
+    height: 28px;
+    box-sizing: border-box;
+}
+
+.malla-btn-estado-curso.activo {
+    background: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
+}
+
+.malla-btn-estado-curso.activo:hover {
+    background: #d1fae5;
+    border-color: #6ee7b7;
+    color: #047857;
+    transform: scale(1.04);
+}
+
+.malla-btn-estado-curso.inactivo {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.malla-btn-estado-curso.inactivo:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+    transform: scale(1.04);
+}
+
+/* Fila de curso cuando está inactivo */
+.malla-row-inactivo {
+    background-color: #f8fafc !important;
+}
+
+.malla-row-inactivo td {
+    opacity: 0.55;
+}
+
+/* Las acciones de la fila inactiva mantienen visibilidad para permitir reactivación */
+.malla-row-inactivo td:last-child {
+    opacity: 1;
+}
+
+.malla-row-inactivo .malla-curso-nombre-bold {
+    text-decoration: line-through;
+    color: #94a3b8;
+}
+
+.malla-select-is-carrera.disabled,
+.malla-select-is-carrera:disabled,
+.malla-docente-row-combobox.disabled,
+.malla-docente-row-combobox:disabled {
+    background-color: #f1f5f9 !important;
+    color: #94a3b8 !important;
+    border-color: #e2e8f0 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+    box-shadow: none !important;
+}
+
+.malla-action-btn.edit.disabled,
+.malla-action-btn.edit:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #94a3b8 !important;
+}
