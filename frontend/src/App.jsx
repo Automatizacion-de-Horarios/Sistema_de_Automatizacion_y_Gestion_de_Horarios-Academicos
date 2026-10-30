@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import senatiLogo from './assets/logo-senati.png';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { useAuth } from './context/useAuth';
@@ -267,7 +267,7 @@ function Dashboard() {
                 {/*    [ÁREA DE TRABAJO] EQUIPO 2: INFRAESTRUCTURA Y AMBIENTES       */}
                 {/* =============================================================== */}
                 <section id="aulas-view" className={`view ${activeView === 'aulas-view' ? 'active' : ''}`}>
-                    <AmbientesModulo />
+                    <AmbientesModulo periodoGlobal={periodoGlobal} />
                 </section>
 
 
@@ -1096,10 +1096,24 @@ const obtenerDiaMes = (fechaStr) => {
 // ===============================================================
 //   MÓDULO AUTÓNOMO: INFRAESTRUCTURA, AULAS Y AMBIENTES (EQUIPO 2)
 // ===============================================================
-function AmbientesModulo() {
+function AmbientesModulo({ periodoGlobal }) {
     // 1. ESTADOS PRINCIPALES (Datos de la base de datos)
     const [tiposDeAmbiente, setTiposDeAmbiente] = useState([]);
     const [listaAmbientes, setListaAmbientes] = useState([]);
+    const [laboratorioSeleccionado, setLaboratorioSeleccionado] = useState(null);
+    const [cursos, setCursos] = useState([]);
+    const [cursosSeleccionados, setCursosSeleccionados] = useState(new Set());
+    const [busquedaCursos, setBusquedaCursos] = useState('');
+    const [cargandoCursos, setCargandoCursos] = useState(false);
+    const [guardandoCursos, setGuardandoCursos] = useState(false);
+    const [errorCursos, setErrorCursos] = useState('');
+    const solicitudCursosRef = useRef(0);
+    const cursosSeleccionadosRef = useRef(new Set());
+    const cambiosPendientesCursosRef = useRef(new Map());
+    const cambiosEnCursoCursosRef = useRef(new Map());
+    const temporizadoresCursosRef = useRef(new Map());
+    const revisionGuardadoCursosRef = useRef(new Map());
+    const panelCursosActualRef = useRef(null);
     
     // 2. ESTADOS PARA BÚSQUEDA Y FILTROS
     const [filtroTipo, setFiltroTipo] = useState('todos');
@@ -1271,7 +1285,191 @@ function AmbientesModulo() {
 
     const capacidadTotal = listaAmbientes.reduce((suma, ambiente) => suma + ambiente.aforo_maximo, 0);
     const cantidadDisponibles = listaAmbientes.filter(a => a.estado.toLowerCase() === 'disponible' || a.estado.toLowerCase() === 'activo').length;
-    const cantidadRestringidos = listaAmbientes.filter(a => a.aforo_maximo < UMBRAL_AFORO_RESTRINGIDO).length;
+    const esLaboratorio = (ambiente) => obtenerNombreTipoAmbiente(ambiente.id_tipo_ambiente)
+        .toLowerCase()
+        .includes('laboratorio');
+
+    const cerrarPanelCursos = () => {
+        if (guardandoCursos) return;
+        solicitudCursosRef.current += 1;
+        panelCursosActualRef.current = null;
+        setLaboratorioSeleccionado(null);
+    };
+
+    const abrirPanelCursos = async (ambiente) => {
+        if (!esLaboratorio(ambiente)) return;
+
+        const solicitud = ++solicitudCursosRef.current;
+        panelCursosActualRef.current = { ambienteId: ambiente.id, codigoPeriodo: periodoGlobal };
+        setLaboratorioSeleccionado(ambiente);
+        setBusquedaCursos('');
+        setErrorCursos('');
+        setCargandoCursos(true);
+
+        try {
+            const [respuestaCursos, respuestaPermitidos] = await Promise.all([
+                authFetch(`${API_BASE_URL}/api/ambientes/cursos`),
+                authFetch(`${API_BASE_URL}/api/ambientes/${ambiente.id}/cursos-permitidos?codigo_periodo=${encodeURIComponent(periodoGlobal)}`)
+            ]);
+            const [datosCursos, datosPermitidos] = await Promise.all([
+                respuestaCursos.json(),
+                respuestaPermitidos.json()
+            ]);
+            if (!respuestaCursos.ok) {
+                throw new Error(datosCursos.mensaje || 'No se pudieron cargar los cursos.');
+            }
+            if (!respuestaPermitidos.ok) {
+                throw new Error(datosPermitidos.mensaje || 'No se pudieron cargar los cursos permitidos.');
+            }
+            if (solicitud !== solicitudCursosRef.current) return;
+
+            setCursos(Array.isArray(datosCursos) ? datosCursos : []);
+            const seleccion = new Set((datosPermitidos.id_cursos || []).map(String));
+            cursosSeleccionadosRef.current = seleccion;
+            setCursosSeleccionados(seleccion);
+        } catch (error) {
+            console.error('Error al cargar los cursos permitidos:', error);
+            if (solicitud === solicitudCursosRef.current) {
+                setErrorCursos(error.message || 'No se pudieron cargar los cursos.');
+            }
+        } finally {
+            if (solicitud === solicitudCursosRef.current) setCargandoCursos(false);
+        }
+    };
+
+    const enviarCambiosCursos = async (ambienteId, codigoPeriodo) => {
+        const claveGrupo = `${ambienteId}:${codigoPeriodo}`;
+        if (cambiosEnCursoCursosRef.current.has(claveGrupo)) return;
+
+        const pendientes = cambiosPendientesCursosRef.current.get(claveGrupo);
+        if (!pendientes || pendientes.size === 0) return;
+
+        cambiosPendientesCursosRef.current.delete(claveGrupo);
+        cambiosEnCursoCursosRef.current.set(claveGrupo, pendientes);
+        setGuardandoCursos(true);
+
+        try {
+            const respuesta = await authFetch(
+                `${API_BASE_URL}/api/ambientes/${ambienteId}/cursos-permitidos`,
+                {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codigo_periodo: codigoPeriodo,
+                        cambios: [...pendientes.values()].map(({ idCurso, permitido }) => ({
+                            id_curso: Number(idCurso),
+                            permitido
+                        }))
+                    })
+                }
+            );
+            const datos = await respuesta.json();
+            if (!respuesta.ok) {
+                throw new Error(datos.mensaje || 'No se pudieron guardar los cambios de cursos.');
+            }
+        } catch (error) {
+            console.error('Error al guardar cambios de cursos:', error);
+            const panelActual = panelCursosActualRef.current;
+            if (panelActual?.ambienteId === ambienteId &&
+                panelActual?.codigoPeriodo === codigoPeriodo) {
+                const seleccionRestaurada = new Set(cursosSeleccionadosRef.current);
+                for (const cambio of pendientes.values()) {
+                    const claveCurso = `${claveGrupo}:${cambio.idCurso}`;
+                    if (revisionGuardadoCursosRef.current.get(claveCurso) !== cambio.revision) continue;
+                    if (cambio.anterior) seleccionRestaurada.add(cambio.idCurso);
+                    else seleccionRestaurada.delete(cambio.idCurso);
+                }
+                cursosSeleccionadosRef.current = seleccionRestaurada;
+                setCursosSeleccionados(seleccionRestaurada);
+                setErrorCursos(error.message || 'No se pudieron guardar los cambios de cursos.');
+            }
+        } finally {
+            cambiosEnCursoCursosRef.current.delete(claveGrupo);
+            setGuardandoCursos(cambiosEnCursoCursosRef.current.size > 0);
+
+            if (cambiosPendientesCursosRef.current.get(claveGrupo)?.size > 0) {
+                setTimeout(() => enviarCambiosCursos(ambienteId, codigoPeriodo), 120);
+            }
+        }
+    };
+
+    const programarEnvioCambiosCursos = (ambienteId, codigoPeriodo) => {
+        const claveGrupo = `${ambienteId}:${codigoPeriodo}`;
+        const temporizadorAnterior = temporizadoresCursosRef.current.get(claveGrupo);
+        if (temporizadorAnterior) clearTimeout(temporizadorAnterior);
+
+        const temporizador = setTimeout(() => {
+            temporizadoresCursosRef.current.delete(claveGrupo);
+            enviarCambiosCursos(ambienteId, codigoPeriodo);
+        }, 120);
+        temporizadoresCursosRef.current.set(claveGrupo, temporizador);
+    };
+
+    const actualizarSeleccionCursos = (cambios) => {
+        if (!laboratorioSeleccionado || cambios.length === 0) return;
+
+        const ambienteId = laboratorioSeleccionado.id;
+        const codigoPeriodo = periodoGlobal;
+        const claveGrupo = `${ambienteId}:${codigoPeriodo}`;
+        const pendientes = cambiosPendientesCursosRef.current.get(claveGrupo) || new Map();
+        const enCurso = cambiosEnCursoCursosRef.current.get(claveGrupo) || new Map();
+        const seleccionNueva = new Set(cursosSeleccionadosRef.current);
+        let huboCambios = false;
+
+        for (const { id_curso: cursoId, permitido } of cambios) {
+            const idCurso = String(cursoId);
+            const claveCurso = `${claveGrupo}:${idCurso}`;
+            const seleccionadoAntes = seleccionNueva.has(idCurso);
+            if (seleccionadoAntes === permitido) continue;
+
+            const revision = (revisionGuardadoCursosRef.current.get(claveCurso) || 0) + 1;
+            revisionGuardadoCursosRef.current.set(claveCurso, revision);
+            const anteriorGuardado = pendientes.get(idCurso) || enCurso.get(idCurso);
+
+            const anterior = anteriorGuardado ? anteriorGuardado.anterior : seleccionadoAntes;
+            if (permitido === anterior && !enCurso.has(idCurso)) {
+                pendientes.delete(idCurso);
+            } else {
+                pendientes.set(idCurso, { idCurso, permitido, anterior, revision });
+            }
+            if (permitido) seleccionNueva.add(idCurso);
+            else seleccionNueva.delete(idCurso);
+            huboCambios = true;
+        }
+
+        if (!huboCambios) return;
+        cursosSeleccionadosRef.current = seleccionNueva;
+        setCursosSeleccionados(seleccionNueva);
+        if (pendientes.size > 0) cambiosPendientesCursosRef.current.set(claveGrupo, pendientes);
+        else {
+            cambiosPendientesCursosRef.current.delete(claveGrupo);
+            const temporizador = temporizadoresCursosRef.current.get(claveGrupo);
+            if (temporizador) {
+                clearTimeout(temporizador);
+                temporizadoresCursosRef.current.delete(claveGrupo);
+            }
+        }
+        setErrorCursos('');
+        if (pendientes.size > 0) programarEnvioCambiosCursos(ambienteId, codigoPeriodo);
+    };
+
+    const cambiarCursoPermitido = (cursoId, permitido) => {
+        actualizarSeleccionCursos([{ id_curso: cursoId, permitido }]);
+    };
+
+    const textoBusquedaCursos = busquedaCursos.trim().toLocaleLowerCase();
+    const cursosVisibles = cursos.filter((curso) => {
+        if (textoBusquedaCursos) {
+            return String(curso.mat_cur || '').toLocaleLowerCase().includes(textoBusquedaCursos) ||
+                String(curso.nombre_curso || '').toLocaleLowerCase().includes(textoBusquedaCursos);
+        }
+        return cursosSeleccionados.has(String(curso.id_curso));
+    });
+    const idsParaSeleccionar = textoBusquedaCursos
+        ? cursosVisibles.map((curso) => String(curso.id_curso))
+        : cursos.map((curso) => String(curso.id_curso));
+    const todosSeleccionados = idsParaSeleccionar.length > 0 &&
+        idsParaSeleccionar.every((idCurso) => cursosSeleccionados.has(idCurso));
 
 
     // --- RENDERIZADO VISUAL (HTML/JSX) ---
@@ -1323,13 +1521,6 @@ function AmbientesModulo() {
                         <span className="resumen-label">Capacidad Total</span>
                     </div>
                 </div>
-                <div className="resumen-card">
-                    <div className="resumen-icon" style={{ background: '#fef3c7', color: '#d97706' }}><i className="fas fa-exclamation-triangle"></i></div>
-                    <div className="resumen-info">
-                        <span className="resumen-valor" style={{ color: '#b45309' }}>{cantidadRestringidos}</span>
-                        <span className="resumen-label">Aforo Restringido (&lt;{UMBRAL_AFORO_RESTRINGIDO})</span>
-                    </div>
-                </div>
             </div>
 
             {/* BOTONES DE FILTRO POR TIPO */}
@@ -1352,7 +1543,19 @@ function AmbientesModulo() {
                     const estiloEstado = ambiente.estado.toLowerCase() === 'disponible' ? 'disponible' : ambiente.estado.toLowerCase().includes('mantenimiento') ? 'mantenimiento' : 'ocupado';
                     
                     return (
-                        <div key={ambiente.id} className={`aula-card ${esAforoPequeno ? 'aforo-restringido' : ''}`}>
+                        <div
+                            key={ambiente.id}
+                            className={`aula-card ${esAforoPequeno ? 'aforo-restringido' : ''} ${esLaboratorio(ambiente) ? 'aula-card-laboratorio' : ''}`}
+                            onClick={() => abrirPanelCursos(ambiente)}
+                            onKeyDown={(evento) => {
+                                if (esLaboratorio(ambiente) && (evento.key === 'Enter' || evento.key === ' ')) {
+                                    evento.preventDefault();
+                                    abrirPanelCursos(ambiente);
+                                }
+                            }}
+                            role={esLaboratorio(ambiente) ? 'button' : undefined}
+                            tabIndex={esLaboratorio(ambiente) ? 0 : undefined}
+                        >
                             <div className="aula-card-info">
                                 <div className="aula-card-heading">
                                     <div className="aula-codigo">
@@ -1387,8 +1590,21 @@ function AmbientesModulo() {
                                     <span className="estado-dot"></span>{ambiente.estado}
                                 </span>
                                 <div className="aula-actions">
-                                    <button className="btn-icon edit" onClick={() => abrirModal(ambiente)} title="Editar"><i className="fas fa-pen"></i></button>
-                                    <button className="btn-icon delete" onClick={() => eliminarAmbiente(ambiente.id, ambiente.codigo_ambiente)} title="Eliminar"><i className="fas fa-trash"></i></button>
+                                    {esLaboratorio(ambiente) && (
+                                        <button
+                                            className="btn-icon courses"
+                                            onClick={(evento) => {
+                                                evento.stopPropagation();
+                                                abrirPanelCursos(ambiente);
+                                            }}
+                                            title="Configurar cursos asignados"
+                                            aria-label={`Configurar cursos permitidos para ${ambiente.codigo_ambiente}`}
+                                        >
+                                            <i className="fas fa-book"></i>
+                                        </button>
+                                    )}
+                                    <button className="btn-icon edit" onClick={(evento) => { evento.stopPropagation(); abrirModal(ambiente); }} title="Editar"><i className="fas fa-pen"></i></button>
+                                    <button className="btn-icon delete" onClick={(evento) => { evento.stopPropagation(); eliminarAmbiente(ambiente.id, ambiente.codigo_ambiente); }} title="Eliminar"><i className="fas fa-trash"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -1476,6 +1692,103 @@ function AmbientesModulo() {
                             </div>
                         </form>
                     </div>
+                </div>
+            )}
+
+            {laboratorioSeleccionado && (
+                <div
+                    className="cursos-panel-overlay"
+                    onClick={cerrarPanelCursos}
+                    role="presentation"
+                >
+                    <aside
+                        className="cursos-panel"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="cursos-panel-titulo"
+                        onClick={(evento) => evento.stopPropagation()}
+                    >
+                        <header className="cursos-panel-header">
+                            <div>
+                                <span className="cursos-panel-eyebrow">Cursos asignados</span>
+                                <h2 id="cursos-panel-titulo">{laboratorioSeleccionado.codigo_ambiente}</h2>
+                                <p>{obtenerNombreTipoAmbiente(laboratorioSeleccionado.id_tipo_ambiente)}</p>
+                            </div>
+                            <button
+                                className="btn-close"
+                                onClick={cerrarPanelCursos}
+                                disabled={guardandoCursos}
+                                aria-label="Cerrar panel de cursos"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </header>
+
+                        <div className="cursos-panel-search">
+                            <i className="fas fa-search" aria-hidden="true"></i>
+                            <input
+                                type="search"
+                                value={busquedaCursos}
+                                onChange={(evento) => setBusquedaCursos(evento.target.value)}
+                                placeholder="Buscar cursos por código o nombre..."
+                                aria-label="Buscar cursos por código o nombre"
+                            />
+                        </div>
+
+                        <label className="cursos-seleccionar-todos">
+                            <input
+                                type="checkbox"
+                                checked={todosSeleccionados}
+                                disabled={cargandoCursos || idsParaSeleccionar.length === 0}
+                                onChange={() => {
+                                    const permitido = !todosSeleccionados;
+                                    actualizarSeleccionCursos(idsParaSeleccionar.map((idCurso) => ({
+                                        id_curso: idCurso,
+                                        permitido
+                                    })));
+                                }}
+                            />
+                            <span>
+                                {todosSeleccionados
+                                    ? (textoBusquedaCursos ? 'Deseleccionar resultados' : 'Deseleccionar todo')
+                                    : (textoBusquedaCursos ? 'Seleccionar resultados' : 'Seleccionar todo')}
+                            </span>
+                            <small>{cursosSeleccionados.size} seleccionados</small>
+                        </label>
+
+                        {errorCursos && <p className="cursos-panel-error" role="alert">{errorCursos}</p>}
+                        {guardandoCursos && <p className="cursos-panel-status" role="status">Guardando cambios...</p>}
+                        {cargandoCursos ? (
+                            <p className="cursos-panel-empty">Cargando cursos...</p>
+                        ) : cursosVisibles.length > 0 ? (
+                            <div className="cursos-panel-lista">
+                                {cursosVisibles.map((curso) => {
+                                    const seleccionado = cursosSeleccionados.has(String(curso.id_curso));
+                                    return (
+                                        <label className="curso-opcion" key={curso.id_curso}>
+                                            <input
+                                                type="checkbox"
+                                                checked={seleccionado}
+                                                onChange={() => {
+                                                    cambiarCursoPermitido(curso.id_curso, !seleccionado);
+                                                }}
+                                            />
+                                            <span className="curso-opcion-detalle">
+                                                <strong>{curso.mat_cur}</strong>
+                                                <span>{curso.nombre_curso}</span>
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="cursos-panel-empty">
+                                {textoBusquedaCursos
+                                    ? 'No se encontraron cursos con esa búsqueda.'
+                                    : 'No hay cursos asignados. Busca cursos para agregarlos.'}
+                            </p>
+                        )}
+                    </aside>
                 </div>
             )}
         </>
