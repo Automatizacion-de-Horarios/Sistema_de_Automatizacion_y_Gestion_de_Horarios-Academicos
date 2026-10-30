@@ -751,24 +751,39 @@ function FeriadosModulo({ triggerToast }) {
     }, [triggerToast]);
   
     const formatearFecha = (fechaStr) => {
-        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-        const partes = soloFecha.split('-'); 
-        if (partes.length === 3) {
-            const fechaTemp = new Date(soloFecha + 'T00:00:00');
-            const mesNombre = fechaTemp.toLocaleDateString('es-PE', { month: 'long' });
-            return `${partes[2]} de ${mesNombre}`;
-        }
-        return '';
-    };
+    const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+    const partes = soloFecha.split('-'); // [YYYY, MM, DD]
+    if (partes.length === 3) {
+        const anio = partes[0];
+        const mesIndex = parseInt(partes[1], 10) - 1;
+        const dia = partes[2];
+        
+        // Creamos una fecha usando componentes UTC o mapeando los nombres de los meses directamente para evitar desfases
+        const mesesNombres = [
+            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+            'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
+        ];
+        return `${dia} de ${mesesNombres[mesIndex] || ''}`;
+    }
+    return '';
+};
 
-    const obtenerDiaMes = (fechaStr) => {
-        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-        const fecha = new Date(soloFecha + 'T00:00:00');
+const obtenerDiaMes = (fechaStr) => {
+    const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+    const partes = soloFecha.split('-'); // [YYYY, MM, DD]
+    if (partes.length === 3) {
+        const mesesCortos = [
+            'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+            'JUL', 'AGO', 'SET', 'OCT', 'NOV', 'DIC'
+        ];
+        const mesIndex = parseInt(partes[1], 10) - 1;
         return {
-            dia: fecha.toLocaleDateString('es-PE', { day: '2-digit' }),
-            mes: fecha.toLocaleDateString('es-PE', { month: 'short' }).toUpperCase().replace('.', '')
+            dia: partes[2],
+            mes: mesesCortos[mesIndex] || ''
         };
-    };
+    }
+    return { dia: '--', mes: '---' };
+};
 
     // [MODIFICADO]: Filtrar por mes seleccionado además de ordenar cronológicamente
     const feriadosFiltrados = feriados.filter(feriado => {
@@ -928,7 +943,7 @@ function FeriadosModulo({ triggerToast }) {
                         </select>
                     </div>
 
-                    <button className="btn btn-primary" onClick={abrirModal}>
+                    <button className="eq4-btn eq4-btn-primary" onClick={abrirModal}>
                         <i className="fas fa-plus"></i>
                         Nuevo Feriado
                     </button>
