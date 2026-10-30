@@ -793,7 +793,7 @@ function FeriadosModulo({ triggerToast }) {
         if (partes.length === 3) {
             const fechaTemp = new Date(soloFecha + 'T00:00:00');
             const mesNombre = fechaTemp.toLocaleDateString('es-PE', { month: 'long' });
-            return `${partes[2]} de ${mesNombre} de ${partes[0]}`;
+            return `${partes[2]} de ${mesNombre}`;
         }
         return '';
     };
