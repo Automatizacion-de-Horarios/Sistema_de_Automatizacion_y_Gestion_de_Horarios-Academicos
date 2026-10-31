@@ -719,7 +719,7 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
 }
 
 // ===============================================================
-//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2) - CON FILTRO POR MES
+//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2)
 // ===============================================================
 function FeriadosModulo({ triggerToast }) {
     // 1. Iniciamos con un arreglo vacío; los datos vendrán de la base de datos
@@ -732,8 +732,9 @@ function FeriadosModulo({ triggerToast }) {
         estado: 'activo'
     });
 
-    // [NUEVO]: Estado para almacenar el mes seleccionado (vacío significa "Todos los meses")
+    const [filtroAnio, setFiltroAnio] = useState('todos');
     const [filtroMes, setFiltroMes] = useState('todos');
+    const [seccionFeriados, setSeccionFeriados] = useState('activo');
 
     // Cargar feriados desde la Base de Datos
     useEffect(() => {
@@ -754,18 +755,21 @@ function FeriadosModulo({ triggerToast }) {
     }, [triggerToast]);
   
     const formatearFecha = (fechaStr) => {
+    // Si viene de la BD como "2026-04-30T00:00:00.000Z", nos quedamos solo con "2026-04-30"
     const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-    const partes = soloFecha.split('-'); // [YYYY, MM, DD]
+    const partes = soloFecha.split('-'); // [2026, 04, 30]
+    
     if (partes.length === 3) {
         const anio = partes[0];
         const mesIndex = parseInt(partes[1], 10) - 1;
         const dia = partes[2];
         
-        // Creamos una fecha usando componentes UTC o mapeando los nombres de los meses directamente para evitar desfases
         const mesesNombres = [
             'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
             'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
         ];
+        
+        // Retorna el texto exacto sin intervención de la zona horaria del navegador
         return `${dia} de ${mesesNombres[mesIndex] || ''}`;
     }
     return '';
@@ -788,18 +792,27 @@ const obtenerDiaMes = (fechaStr) => {
     return { dia: '--', mes: '---' };
 };
 
-    // [MODIFICADO]: Filtrar por mes seleccionado además de ordenar cronológicamente
+    const aniosDisponibles = [...new Set(
+        feriados
+            .filter(feriado => feriado.fecha)
+            .map(feriado => feriado.fecha.split('T')[0].slice(0, 4))
+            .filter(anio => /^\d{4}$/.test(anio))
+    )].sort((a, b) => b.localeCompare(a));
+
     const feriadosFiltrados = feriados.filter(feriado => {
-        if (filtroMes === 'todos') return true;
         if (!feriado.fecha) return false;
-        const mesFeriado = feriado.fecha.split('T')[0].split('-')[1]; // Extrae el "MM" de YYYY-MM-DD
-        return mesFeriado === filtroMes;
+        const [anioFeriado, mesFeriado] = feriado.fecha.split('T')[0].split('-');
+        const coincideAnio = filtroAnio === 'todos' || anioFeriado === filtroAnio;
+        const coincideMes = filtroMes === 'todos' || mesFeriado === filtroMes;
+        return coincideAnio && coincideMes;
     });
 
-    const feriadosOrdenados = [...feriadosFiltrados].sort((a, b) => {
-        const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; 
-        const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; 
-        return fechaA.localeCompare(fechaB);
+    const feriadosDeLaSeccion = feriadosFiltrados
+        .filter(feriado => feriado.estado === seccionFeriados)
+        .sort((a, b) => {
+            const fechaA = a.fecha ? a.fecha.split('T')[0] : '';
+            const fechaB = b.fecha ? b.fecha.split('T')[0] : '';
+            return fechaA.localeCompare(fechaB);
     });
 
     const totalFeriados = feriados.length;
@@ -921,40 +934,47 @@ const obtenerDiaMes = (fechaStr) => {
                     <p className="subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
                 </div>
                 <div className="feriados-actions">
-                    {/* [NUEVO]: Selector de filtro por mes integrado en la cabecera */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                        <i className="far fa-calendar-alt" style={{ color: 'var(--senati-blue)' }}></i>
-                        <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Filtrar mes:</span>
-                        <select 
-                            value={filtroMes} 
-                            onChange={(e) => setFiltroMes(e.target.value)}
-                            style={{ border: 'none', background: 'transparent', fontWeight: '600', fontSize: '13px', color: 'var(--text-dark)', cursor: 'pointer', outline: 'none' }}
-                        >
-                            <option value="todos">Todos los meses</option>
-                            <option value="01">Enero</option>
-                            <option value="02">Febrero</option>
-                            <option value="03">Marzo</option>
-                            <option value="04">Abril</option>
-                            <option value="05">Mayo</option>
-                            <option value="06">Junio</option>
-                            <option value="07">Julio</option>
-                            <option value="08">Agosto</option>
-                            <option value="09">Setiembre</option>
-                            <option value="10">Octubre</option>
-                            <option value="11">Noviembre</option>
-                            <option value="12">Diciembre</option>
-                        </select>
-                    </div>
-
-                    <button className="eq4-btn eq4-btn-primary" onClick={abrirModal}>
+                    <button type="button" className="eq4-btn eq4-btn-primary" onClick={abrirModal}>
                         <i className="fas fa-plus"></i>
                         Nuevo Feriado
                     </button>
                 </div>
             </header>
 
+            <div className="feriados-filtros">
+                <label className="feriado-filtro">
+                    <i className="far fa-calendar-alt" aria-hidden="true"></i>
+                    <span>Año</span>
+                    <select value={filtroAnio} onChange={(e) => setFiltroAnio(e.target.value)}>
+                        <option value="todos">Todos los años</option>
+                        {aniosDisponibles.map(anio => (
+                            <option key={anio} value={anio}>{anio}</option>
+                        ))}
+                    </select>
+                </label>
+                <label className="feriado-filtro">
+                    <i className="far fa-calendar" aria-hidden="true"></i>
+                    <span>Mes</span>
+                    <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)}>
+                        <option value="todos">Todos los meses</option>
+                        <option value="01">Enero</option>
+                        <option value="02">Febrero</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Mayo</option>
+                        <option value="06">Junio</option>
+                        <option value="07">Julio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Setiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </label>
+            </div>
+
             <div className="feriados-resumen">
-                <div className="feriado-resumen-card">
+                <div className="feriado-resumen-card total">
                     <div className="feriado-resumen-icon total">
                         <i className="fas fa-calendar-day"></i>
                     </div>
@@ -963,7 +983,7 @@ const obtenerDiaMes = (fechaStr) => {
                         <span className="feriado-resumen-label">Total de Feriados</span>
                     </div>
                 </div>
-                <div className="feriado-resumen-card">
+                <div className="feriado-resumen-card activos">
                     <div className="feriado-resumen-icon activos">
                         <i className="fas fa-check-circle"></i>
                     </div>
@@ -972,7 +992,7 @@ const obtenerDiaMes = (fechaStr) => {
                         <span className="feriado-resumen-label">Activos</span>
                     </div>
                 </div>
-                <div className="feriado-resumen-card">
+                <div className="feriado-resumen-card inhabilitados">
                     <div className="feriado-resumen-icon inhabilitados">
                         <i className="fas fa-ban"></i>
                     </div>
@@ -983,8 +1003,37 @@ const obtenerDiaMes = (fechaStr) => {
                 </div>
             </div>
 
+            <div className="feriados-secciones" role="tablist" aria-label="Sección de feriados">
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={seccionFeriados === 'activo'}
+                    className={`feriados-seccion-btn ${seccionFeriados === 'activo' ? 'active' : ''}`}
+                    onClick={() => setSeccionFeriados('activo')}
+                >
+                    <i className="fas fa-check-circle" aria-hidden="true"></i>
+                    Activos
+                    <span className="feriados-seccion-cantidad">
+                        {feriadosFiltrados.filter(feriado => feriado.estado === 'activo').length}
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={seccionFeriados === 'inhabilitado'}
+                    className={`feriados-seccion-btn ${seccionFeriados === 'inhabilitado' ? 'active' : ''}`}
+                    onClick={() => setSeccionFeriados('inhabilitado')}
+                >
+                    <i className="fas fa-ban" aria-hidden="true"></i>
+                    Inhabilitados
+                    <span className="feriados-seccion-cantidad">
+                        {feriadosFiltrados.filter(feriado => feriado.estado === 'inhabilitado').length}
+                    </span>
+                </button>
+            </div>
+
             <div className="feriados-lista">
-                {feriadosOrdenados.map(feriado => {
+                {feriadosDeLaSeccion.map(feriado => {
                     const { dia, mes } = obtenerDiaMes(feriado.fecha);
                     const esInhabilitado = feriado.estado === 'inhabilitado';
                     return (
@@ -1023,10 +1072,10 @@ const obtenerDiaMes = (fechaStr) => {
                 })}
             </div>
 
-            {feriadosOrdenados.length === 0 && (
-                <div className="workspace-card">
-                    <h2>No hay feriados registrados para este mes</h2>
-                    <p>Intenta seleccionando otro mes o agrega un nuevo feriado.</p>
+            {feriadosDeLaSeccion.length === 0 && (
+                <div className="workspace-card feriados-vacio">
+                    <h2>No hay feriados {seccionFeriados === 'activo' ? 'activos' : 'inhabilitados'} para los filtros seleccionados</h2>
+                    <p>Prueba con otro año o mes, o cambia de sección.</p>
                 </div>
             )}
 
@@ -1037,7 +1086,7 @@ const obtenerDiaMes = (fechaStr) => {
                             <i className="fas fa-flag"></i>
                             Registrar Nuevo Feriado
                         </div>
-                        <button className="feriado-modal-close" onClick={cerrarModal}>
+                        <button type="button" className="feriado-modal-close" onClick={cerrarModal} aria-label="Cerrar modal">
                             <i className="fas fa-times"></i>
                         </button>
                     </div>
@@ -1081,10 +1130,10 @@ const obtenerDiaMes = (fechaStr) => {
                         </div>
                     </div>
                     <div className="feriado-modal-footer">
-                        <button className="btn btn-secondary" onClick={cerrarModal}>
+                        <button type="button" className="eq4-btn eq4-btn-secondary" onClick={cerrarModal}>
                             Cancelar
                         </button>
-                        <button className="btn btn-primary" onClick={agregarFeriado}>
+                        <button type="button" className="eq4-btn eq4-btn-primary" onClick={agregarFeriado}>
                             <i className="fas fa-save"></i>
                             Guardar Feriado
                         </button>
