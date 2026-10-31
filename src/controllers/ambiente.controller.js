@@ -226,6 +226,31 @@ const actualizar = async (req, res) => {
   } 
 }; 
  
+const cambiarEstado = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body ?? {};
+
+    const estadosValidos = ['DISPONIBLE', 'INACTIVO', 'EN MANTENIMIENTO', 'OCUPADO'];
+    const estadoNormalizado = String(estado || '').trim().toUpperCase();
+
+    if (!estadosValidos.includes(estadoNormalizado)) {
+      return res.status(400).json({ mensaje: 'Estado no válido. Use DISPONIBLE o INACTIVO.' });
+    }
+
+    const filasAfectadas = await Ambiente.cambiarEstado(id, estadoNormalizado);
+    if (filasAfectadas === 0) {
+      return res.status(404).json({ mensaje: 'Ambiente no encontrado' });
+    }
+
+    const actualizado = await Ambiente.obtenerPorId(id);
+    res.status(200).json(actualizado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error al cambiar estado del ambiente' });
+  }
+};
+
 const eliminar = async (req, res) => { 
   try { 
     const filasAfectadas = await Ambiente.eliminar(req.params.id); 
@@ -249,5 +274,6 @@ module.exports = {
   obtener,
   crear,
   actualizar,
+  cambiarEstado,
   eliminar
 };
