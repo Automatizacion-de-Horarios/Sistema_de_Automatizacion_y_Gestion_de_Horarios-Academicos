@@ -11,7 +11,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const { verifyJWT } = require('./src/middlewares/authMiddleware');
 const docenteRoutes = require('./src/routes/docente.routers');
 // Opcionales (si falta alguno, se avisa en consola en lugar de romper el arranque)
-let carrerasRoutes, mallasRoutes, expExcelCursosRoutes;
+let carrerasRoutes, mallasRoutes, expExcelCursosRoutes, mallaSemestreRoutes;
 try {
     carrerasRoutes = require('./src/routes/carrerasImpExp.routes');
 } catch (e) {
@@ -26,6 +26,11 @@ try {
     expExcelCursosRoutes = require('./src/routes/expExcelCursos.routes');
 } catch (e) {
     console.error('No se pudieron cargar las rutas de exportación de cursos:', e.message);
+}
+try {
+    mallaSemestreRoutes = require('./src/routes/mallaSemestre.routes');
+} catch (e) {
+    console.error('No se pudieron cargar las rutas de mallaSemestre:', e.message);
 }
 
 const app = express();
@@ -54,6 +59,10 @@ app.use('/api/docentes', verifyJWT, docenteRoutes);
 
 app.use('/api/carreras', verifyJWT, carrerasRoutes);
 app.use('/api/mallas', verifyJWT, mallasRoutes);
+
+if (mallaSemestreRoutes) {
+    app.use('/api/malla-semestre', verifyJWT, mallaSemestreRoutes);
+}
 
 // Exportación de la estructura curricular en Excel (mismo prefijo que la importación)
 if (expExcelCursosRoutes) {
