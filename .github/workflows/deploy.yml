@@ -20,21 +20,21 @@ jobs:
             set -e
 
             APP_DIR="/home/senati/apps/sistema-horarios"
-            REPO="https://github.com"
+            REPO="https://github.com/Automatizacion-de-Horarios/Sistema_de_Automatizacion_y_Gestion_de_Horarios-Academicos.git"
 
             echo "=========================================="
-            echo "1. ACTUALIZANDO CÓDIGO (SIN BORRAR NADA)"
+            echo "1. ACTUALIZANDO CÓDIGO"
             echo "=========================================="
 
             mkdir -p "$APP_DIR"
 
             if [ ! -d "$APP_DIR/.git" ]; then
-              git clone "$REPO" "$APP_DIR"
+              git clone --branch main --single-branch "$REPO" "$APP_DIR"
             else
               cd "$APP_DIR"
-              git fetch origin
+              git remote set-url origin "$REPO"
+              git fetch origin main
               git reset --hard origin/main
-              # 💡 Se eliminó 'git clean -fd' para proteger tus archivos .env locales
             fi
 
             cd "$APP_DIR"
@@ -46,12 +46,7 @@ jobs:
             echo "2. INSTALANDO DEPENDENCIAS DEL BACKEND"
             echo "=========================================="
 
-            # Instalación limpia de las dependencias base
             npm ci --omit=dev
-
-            # Asegurar la instalación explícita de los módulos requeridos
-            echo "Instalando módulos críticos de autenticación..."
-            npm install bcryptjs jsonwebtoken --omit=dev
 
             echo "=========================================="
             echo "3. INSTALANDO DEPENDENCIAS DEL FRONTEND"
@@ -59,7 +54,7 @@ jobs:
 
             cd "$APP_DIR/frontend"
 
-            npm install
+            npm ci
 
             echo "=========================================="
             echo "4. COMPILANDO REACT"
@@ -68,12 +63,16 @@ jobs:
             npm run build
 
             echo "=========================================="
-            echo "5. REINICIANDO BACKEND"
+            echo "5. INICIANDO O REINICIANDO BACKEND"
             echo "=========================================="
 
             cd "$APP_DIR"
 
-            pm2 restart horarios-backend
+            if pm2 describe horarios-backend >/dev/null 2>&1; then
+              pm2 restart horarios-backend
+            else
+              pm2 start server.js --name horarios-backend
+            fi
 
             echo "=========================================="
             echo "6. GUARDANDO ESTADO DE PM2"
