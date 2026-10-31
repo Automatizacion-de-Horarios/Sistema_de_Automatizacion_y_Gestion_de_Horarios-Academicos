@@ -8,8 +8,9 @@ const ambienteRoutes = require('./src/routes/ambiente.routes');
 const feriadoRoutes = require('./src/routes/feriado.routes'); // 👈 Nueva ruta de Feriados (Equipo 2)
 const tipoAmbienteRoutes = require('./src/routes/tipoAmbiente.routes');
 const authRoutes = require('./src/routes/authRoutes');
+const configuracionRoutes = require('./src/routes/configuracion.routes'); // 👈 Ruta de Configuración (Equipo 4)
 const { verifyJWT } = require('./src/middlewares/authMiddleware');
-const docenteRoutes = require('./src/routes/docente.routers');
+
 // Opcionales (si falta alguno, se avisa en consola en lugar de romper el arranque)
 let carrerasRoutes, mallasRoutes, expExcelCursosRoutes;
 try {
@@ -50,7 +51,7 @@ app.use('/api/ambientes', verifyJWT, ambienteRoutes);
 app.use('/api/tipos-ambiente', tipoAmbienteRoutes);
 app.use('/api/feriados', verifyJWT, feriadoRoutes); // 👈 Endpoint montado en /api/feriados
 app.use('/api/auth', authRoutes);
-app.use('/api/docentes', verifyJWT, docenteRoutes);
+app.use('/api/configuracion', verifyJWT, configuracionRoutes); // 👈 Endpoint de Configuración montado
 
 app.use('/api/carreras', verifyJWT, carrerasRoutes);
 app.use('/api/mallas', verifyJWT, mallasRoutes);
