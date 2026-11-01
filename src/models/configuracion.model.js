@@ -33,13 +33,13 @@ const obtenerFranja = async (id_periodo) => {
     return rows[0] || null;
 };
 
-// 6. Actualizar o guardar la franja horaria
-const guardarFranja = async (id_periodo, hora_inicio_mañana, hora_cierre_noche) => {
+// 6. Actualizar o guardar la franja horaria e incluir domingo
+const guardarFranja = async (id_periodo, hora_inicio_mañana, hora_cierre_noche, incluir_domingo) => {
     const [result] = await db.query(
-        `INSERT INTO configuracion_franja_horaria (id_periodo, hora_inicio_mañana, hora_cierre_noche)
-         VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE hora_inicio_mañana = VALUES(hora_inicio_mañana), hora_cierre_noche = VALUES(hora_cierre_noche)`,
-        [id_periodo, hora_inicio_mañana, hora_cierre_noche]
+        `INSERT INTO configuracion_franja_horaria (id_periodo, hora_inicio_mañana, hora_cierre_noche, incluir_domingo)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE hora_inicio_mañana = VALUES(hora_inicio_mañana), hora_cierre_noche = VALUES(hora_cierre_noche), incluir_domingo = VALUES(incluir_domingo)`,
+        [id_periodo, hora_inicio_mañana, hora_cierre_noche, incluir_domingo]
     );
     return result;
 };

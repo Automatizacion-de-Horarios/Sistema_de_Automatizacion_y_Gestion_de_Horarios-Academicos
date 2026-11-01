@@ -10,6 +10,7 @@ const tipoAmbienteRoutes = require('./src/routes/tipoAmbiente.routes');
 const authRoutes = require('./src/routes/authRoutes');
 const { verifyJWT } = require('./src/middlewares/authMiddleware');
 const docenteRoutes = require('./src/routes/docente.routers');
+const configuracionRoutes = require('./src/routes/configuracion.routes');
 // Opcionales (si falta alguno, se avisa en consola en lugar de romper el arranque)
 let carrerasRoutes, mallasRoutes, expExcelCursosRoutes, mallaSemestreRoutes;
 try {
@@ -59,6 +60,7 @@ app.use('/api/docentes', verifyJWT, docenteRoutes);
 
 app.use('/api/carreras', verifyJWT, carrerasRoutes);
 app.use('/api/mallas', verifyJWT, mallasRoutes);
+app.use('/api/configuracion', configuracionRoutes);
 
 if (mallaSemestreRoutes) {
     app.use('/api/malla-semestre', verifyJWT, mallaSemestreRoutes);

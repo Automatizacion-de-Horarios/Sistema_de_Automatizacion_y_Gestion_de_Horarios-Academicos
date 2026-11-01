@@ -273,13 +273,14 @@ function Dashboard() {
                 <section id="aulas-view" className={`view ${activeView === 'aulas-view' ? 'active' : ''}`}>
                     <AmbientesModulo periodoGlobal={periodoGlobal} />
                 </section>
-
-
-
-                <section id="feriados-view" className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}>
-                    <FeriadosModulo triggerToast={triggerToast} />
-                </section>
-
+<section
+    id="feriados-view"
+    className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}
+>
+    <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', padding: '24px' }}>
+        <FeriadosModulo triggerToast={triggerToast} />
+    </div>
+</section>
                 {/* ===================== FIN SECCIÓN EQUIPO 2 ==================== */}
 
                 {/* =============================================================== */}
@@ -468,6 +469,78 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
     const [nuevoCodigo, setNuevoCodigo] = useState("");
     const [nuevoNombre, setNuevoNombre] = useState("");
     const [nuevaCiudad, setNuevaCiudad] = useState("");
+    
+    // ESTADO PARA HABILITAR / DESHABILITAR DOMINGO
+    const [incluirDomingo, setIncluirDomingo] = useState(false);
+    
+    // ESTADOS PARA LAS HORAS OPERATIVAS
+    const [horaInicio, setHoraInicio] = useState("07:00");
+    const [horaFin, setHoraFin] = useState("21:00");
+
+    // 1. CARGAR CONFIGURACIÓN GLOBAL DESDE EL BACKEND AL MONTAR EL COMPONENTE
+    useEffect(() => {
+        const obtenerConfiguracion = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:3000/api/configuracion', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.franja) {
+                    const franja = result.data.franja;
+                    if (franja.hora_inicio_mañana) setHoraInicio(franja.hora_inicio_mañana.slice(0, 5));
+                    if (franja.hora_cierre_noche) setHoraFin(franja.hora_cierre_noche.slice(0, 5));
+                    
+                    // Carga el estado guardado del domingo en la BD (1 = true, 0 = false)
+                    setIncluirDomingo(franja.incluir_domingo === 1);
+                }
+            } catch (error) {
+                console.error("Error al obtener la configuración global:", error);
+            }
+        };
+
+        obtenerConfiguracion();
+    }, []);
+
+    // 2. FUNCIÓN PARA GUARDAR LA FRANJA HORARIA Y EL DOMINGO EN LA BASE DE DATOS
+    const handleGuardarConfiguracion = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:3000/api/configuracion/franja', {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    id_periodo: periodoGlobal || 1,
+                    hora_inicio_mañana: horaInicio,
+                    hora_cierre_noche: horaFin,
+                    incluir_domingo: incluirDomingo
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                if (typeof triggerToast === 'function') {
+                    triggerToast("Ajustes guardados correctamente en la BD.", "success");
+                }
+            } else {
+                if (typeof triggerToast === 'function') {
+                    triggerToast(data.message || "Error al guardar la configuración.", "error");
+                }
+            }
+        } catch (error) {
+            console.error("Error al conectar con la API:", error);
+            if (typeof triggerToast === 'function') {
+                triggerToast("Error de conexión con el servidor.", "error");
+            }
+        }
+    };
 
     // [GRUPO 4 - CAMBIO 10]: FUNCIÓN PARA REGISTRAR SEDE CON ALERTA TOAST FLOTANTE
     const handleRegistrarSede = () => {
@@ -526,7 +599,7 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                 </div>
                 <button 
                     type="button"
-                    onClick={() => typeof triggerToast === 'function' && triggerToast("Ajustes guardados correctamente.", "success")}
+                    onClick={handleGuardarConfiguracion}
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -609,7 +682,7 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                     </div>
                     <div>
                         <span style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jornada Operativa</span>
-                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginTop: '2px' }}>07:00 – 21:00 hs</div>
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginTop: '2px' }}>{horaInicio} – {horaFin} hs</div>
                     </div>
                 </div>
             </div>
@@ -666,7 +739,7 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                             </select>
                         </div>
 
-                        {/* SELECTOR DE SEDE CON BOTÓN NUEVA SEDE AMEJORADO */}
+                        {/* SELECTOR DE SEDE */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', margin: 0 }}>
@@ -753,13 +826,47 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
                                 Inicio Turno Mañana
                             </label>
-                            <input type="time" id="config-inicio" className="input-lg" defaultValue="07:00" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                            <input 
+                                type="time" 
+                                id="config-inicio" 
+                                className="input-lg" 
+                                value={horaInicio} 
+                                onChange={(e) => setHoraInicio(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
+                            />
                         </div>
                         <div>
                             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
                                 Cierre Turno Noche
                             </label>
-                            <input type="time" id="config-fin" className="input-lg" defaultValue="21:00" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                            <input 
+                                type="time" 
+                                id="config-fin" 
+                                className="input-lg" 
+                                value={horaFin} 
+                                onChange={(e) => setHoraFin(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
+                            />
+                        </div>
+
+                        {/* OPCIÓN: HABILITAR / DESHABILITAR DOMINGO */}
+                        <div style={{ gridColumn: 'span 2', marginTop: '10px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={incluirDomingo}
+                                    onChange={(e) => setIncluirDomingo(e.target.checked)}
+                                    style={{ width: '18px', height: '18px', accentColor: '#0045aa', cursor: 'pointer' }}
+                                />
+                                <div>
+                                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', display: 'block' }}>
+                                        Habilitar día Domingo en la programación
+                                    </span>
+                                    <span style={{ fontSize: '12px', color: '#64748b' }}>
+                                        Permite asignar clases y horarios académicos los días domingo.
+                                    </span>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -890,7 +997,6 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
         </div>
     );
 }
-
 // ===============================================================
 //   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2) - CON FILTRO POR MES
 // ===============================================================
@@ -927,39 +1033,39 @@ function FeriadosModulo({ triggerToast }) {
     }, [triggerToast]);
   
     const formatearFecha = (fechaStr) => {
-    const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-    const partes = soloFecha.split('-'); // [YYYY, MM, DD]
-    if (partes.length === 3) {
-        const anio = partes[0];
-        const mesIndex = parseInt(partes[1], 10) - 1;
-        const dia = partes[2];
-        
-        // Creamos una fecha usando componentes UTC o mapeando los nombres de los meses directamente para evitar desfases
-        const mesesNombres = [
-            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-            'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
-        ];
-        return `${dia} de ${mesesNombres[mesIndex] || ''}`;
-    }
-    return '';
-};
+        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+        const partes = soloFecha.split('-'); // [YYYY, MM, DD]
+        if (partes.length === 3) {
+            const anio = partes[0];
+            const mesIndex = parseInt(partes[1], 10) - 1;
+            const dia = partes[2];
+            
+            // Creamos una fecha usando componentes UTC o mapeando los nombres de los meses directamente para evitar desfases
+            const mesesNombres = [
+                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
+            ];
+            return `${dia} de ${mesesNombres[mesIndex] || ''}`;
+        }
+        return '';
+    };
 
-const obtenerDiaMes = (fechaStr) => {
-    const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-    const partes = soloFecha.split('-'); // [YYYY, MM, DD]
-    if (partes.length === 3) {
-        const mesesCortos = [
-            'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-            'JUL', 'AGO', 'SET', 'OCT', 'NOV', 'DIC'
-        ];
-        const mesIndex = parseInt(partes[1], 10) - 1;
-        return {
-            dia: partes[2],
-            mes: mesesCortos[mesIndex] || ''
-        };
-    }
-    return { dia: '--', mes: '---' };
-};
+    const obtenerDiaMes = (fechaStr) => {
+        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+        const partes = soloFecha.split('-'); // [YYYY, MM, DD]
+        if (partes.length === 3) {
+            const mesesCortos = [
+                'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+                'JUL', 'AGO', 'SET', 'OCT', 'NOV', 'DIC'
+            ];
+            const mesIndex = parseInt(partes[1], 10) - 1;
+            return {
+                dia: partes[2],
+                mes: mesesCortos[mesIndex] || ''
+            };
+        }
+        return { dia: '--', mes: '---' };
+    };
 
     // [MODIFICADO]: Filtrar por mes seleccionado además de ordenar cronológicamente
     const feriadosFiltrados = feriados.filter(feriado => {
@@ -1267,7 +1373,6 @@ const obtenerDiaMes = (fechaStr) => {
         </>
     );
 }
-
 
 // ===============================================================
 //   MÓDULO AUTÓNOMO: INFRAESTRUCTURA, AULAS Y AMBIENTES (EQUIPO 2)
