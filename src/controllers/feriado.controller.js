@@ -55,6 +55,22 @@ const crear = async (req, res) => {
     }
 };
 
+// POST /api/feriados/replicar
+const replicarSiguienteAnio = async (req, res) => {
+    const { anioOrigen } = req.body ?? {};
+    if (!/^\d{4}$/.test(String(anioOrigen ?? '')) || Number(anioOrigen) >= 9999) {
+        return res.status(400).json({ mensaje: 'Debe indicar un año válido para replicar los feriados' });
+    }
+
+    try {
+        const resultado = await Feriado.replicarSiguienteAnio(anioOrigen);
+        res.status(200).json({ anioOrigen: Number(anioOrigen), ...resultado });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ mensaje: 'Error al replicar los feriados' });
+    }
+};
+
 // PUT /api/feriados/:id
 const actualizar = async (req, res) => {
     try {
@@ -90,4 +106,4 @@ const eliminar = async (req, res) => {
     }
 };
 
-module.exports = { listar, obtener, crear, actualizar, eliminar };
+module.exports = { listar, obtener, crear, replicarSiguienteAnio, actualizar, eliminar };
