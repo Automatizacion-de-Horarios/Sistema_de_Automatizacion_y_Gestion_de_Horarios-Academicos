@@ -181,6 +181,7 @@ export default function DocentesView({ periodo, triggerToast }) {
     const [cargando, setCargando] = useState(() => !cacheDocentes.has(periodo));
     const [ocupado, setOcupado] = useState(false);
     const [ventana, setVentana] = useState(null);
+    const [confirmacionDescartar, setConfirmacionDescartar] = useState(false);
     const [docente, setDocente] = useState(null);
     const [formulario, setFormulario] = useState({ nombres: '', apellidos: '', especialidad: '', tipo_contrato: 'TIEMPO_COMPLETO', horas_semanales_meta: 36 });
     const [estadoOcupado, setEstadoOcupado] = useState(null);
@@ -191,6 +192,8 @@ export default function DocentesView({ periodo, triggerToast }) {
     const pintarRef = useRef(null);
     const tipoEntradaRef = useRef(null);
     const versionLocal = useRef(0);
+    const disponibilidadInicial = useRef({ celdas: new Set(), restriccion: 1 });
+    const formularioInicial = useRef(null);
     const api = useCallback((ruta = '', metodo = 'GET', datos, opciones = {}) => solicitarDocentes(ruta, metodo, datos, periodo, opciones.signal), [periodo]);
     const notificar = useCallback((texto) => {
         if (texto && typeof triggerToast === 'function') triggerToast(texto);
@@ -254,19 +257,23 @@ export default function DocentesView({ periodo, triggerToast }) {
 
     function abrirRegistro() {
         setDocente(null);
-        setFormulario({ nombres: '', apellidos: '', especialidad: '', tipo_contrato: 'TIEMPO_COMPLETO', horas_semanales_meta: 36 });
+        const inicial = { nombres: '', apellidos: '', especialidad: '', tipo_contrato: 'TIEMPO_COMPLETO', horas_semanales_meta: 36 };
+        formularioInicial.current = inicial;
+        setFormulario(inicial);
         setVentana('registrar');
     }
 
     function abrirEdicion(d) {
         setDocente(d);
-        setFormulario({
+        const inicial = {
             nombres: d.nombres || '',
             apellidos: d.apellidos || '',
             especialidad: d.especialidad || '',
             tipo_contrato: d.tipo_contrato || 'TIEMPO_COMPLETO',
             horas_semanales_meta: Number(d.horas_semanales_meta) || 36,
-        });
+        };
+        formularioInicial.current = inicial;
+        setFormulario(inicial);
         setVentana('editar');
     }
 
@@ -279,10 +286,14 @@ export default function DocentesView({ periodo, triggerToast }) {
 
         const mostrar = (filas, bandera) => {
             try {
-                setCeldas(seleccionarFranjas(filas, horario));
-                setRestriccion(
-                    d.tipo_contrato === 'TIEMPO_PARCIAL' || Number(bandera) === 1 ? 1 : 0
-                );
+                const celdasIniciales = seleccionarFranjas(filas, horario);
+                const restriccionInicial = d.tipo_contrato === 'TIEMPO_PARCIAL' || Number(bandera) === 1 ? 1 : 0;
+                disponibilidadInicial.current = {
+                    celdas: new Set(celdasIniciales),
+                    restriccion: restriccionInicial,
+                };
+                setCeldas(celdasIniciales);
+                setRestriccion(restriccionInicial);
                 setDocente(d);
                 setVentana('disponibilidad');
             } catch (fallo) {
@@ -397,7 +408,36 @@ export default function DocentesView({ periodo, triggerToast }) {
     }
 
     function cerrar() {
-        if (!ocupado) setVentana(null);
+        if (ocupado) return;
+        if (confirmacionDescartar) {
+            setConfirmacionDescartar(false);
+            return;
+        }
+
+        let hayCambios = false;
+
+        if (ventana === 'disponibilidad') {
+            const celdasIniciales = disponibilidadInicial.current.celdas;
+            hayCambios = restriccion !== disponibilidadInicial.current.restriccion
+                || celdas.size !== celdasIniciales.size
+                || [...celdas].some((celda) => !celdasIniciales.has(celda));
+        } else if (ventana === 'editar' || ventana === 'registrar') {
+            const inicial = formularioInicial.current;
+            hayCambios = Boolean(inicial) && Object.keys(inicial).some((campo) =>
+                formulario[campo] !== inicial[campo]
+            );
+        }
+
+        if (hayCambios) {
+            setConfirmacionDescartar(true);
+            return;
+        }
+        setVentana(null);
+    }
+
+    function confirmarDescarte() {
+        setConfirmacionDescartar(false);
+        setVentana(null);
     }
 
     async function guardar(evento) {
@@ -592,5 +632,28 @@ export default function DocentesView({ periodo, triggerToast }) {
                 <footer className="doc-modal-pie"><button type="button" disabled={ocupado} onClick={cerrar}>Cancelar</button><button className="doc-azul" disabled={ocupado || (ventana === 'disponibilidad' && !minutosHorario.length)}>{ocupado ? 'Guardando…' : textosGuardar[ventana]}</button></footer>
             </form>
         </Modal>}
+        {confirmacionDescartar && <div className="doc-fondo doc-confirmacion-fondo">
+            <section className="doc-confirmacion" role="alertdialog" aria-modal="true" aria-labelledby="doc-confirmacion-titulo" aria-describedby="doc-confirmacion-mensaje">
+                <header>
+                    <span className="doc-confirmacion-icono" aria-hidden="true">!</span>
+                    <div>
+                        <h2 id="doc-confirmacion-titulo">¿Descartar cambios?</h2>
+                        <p className="doc-modal-subtitulo">Tienes modificaciones que todavía no se han guardado.</p>
+                    </div>
+                    <button type="button" className="doc-cerrar" aria-label="Seguir editando" onClick={() => setConfirmacionDescartar(false)}>×</button>
+                </header>
+                <div className="doc-confirmacion-cuerpo">
+                    <p id="doc-confirmacion-mensaje">
+                        {ventana === 'disponibilidad'
+                            ? 'Si cierras ahora, se perderán los cambios en la cuadrícula de disponibilidad.'
+                            : 'Si cierras ahora, se perderán los cambios en los datos del docente.'}
+                    </p>
+                </div>
+                <footer className="doc-modal-pie">
+                    <button type="button" onClick={() => setConfirmacionDescartar(false)}>Seguir editando</button>
+                    <button type="button" className="doc-descartar" onClick={confirmarDescarte}>Descartar cambios</button>
+                </footer>
+            </section>
+        </div>}
     </div>;
 }
