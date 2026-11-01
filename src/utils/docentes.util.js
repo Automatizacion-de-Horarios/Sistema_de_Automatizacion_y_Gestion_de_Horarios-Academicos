@@ -8,6 +8,11 @@ const DIAS = [
     'DOMINGO'
 ];
 
+const HORAS_CONTRATO = {
+    TIEMPO_COMPLETO: [36],
+    TIEMPO_PARCIAL: [19, 23]
+};
+
 // Detiene la operación cuando un dato no es válido.
 function exigir(condicion, mensaje, status = 400) {
     if (!condicion) {
@@ -29,6 +34,42 @@ function id(valor) {
     );
 
     return numero;
+}
+
+// Valida el tipo de contrato y su meta semanal.
+function contrato(datos) {
+    const datosContrato = datos && typeof datos === 'object' && !Array.isArray(datos) ? datos : {};
+    const tipoContrato = String(datosContrato.tipo_contrato || 'TIEMPO_COMPLETO').trim().toUpperCase();
+
+    exigir(
+        Object.prototype.hasOwnProperty.call(HORAS_CONTRATO, tipoContrato),
+        'Selecciona un tipo de contrato válido.'
+    );
+
+    const horasPorDefecto = tipoContrato === 'TIEMPO_COMPLETO' ? 36 : 19;
+    const horasMeta = datosContrato.horas_semanales_meta == null || datosContrato.horas_semanales_meta === ''
+        ? horasPorDefecto
+        : Number(datosContrato.horas_semanales_meta);
+
+    exigir(
+        Number.isInteger(horasMeta) && HORAS_CONTRATO[tipoContrato].includes(horasMeta),
+        'Las horas semanales deben ser 36 para tiempo completo, o 19 o 23 para tiempo parcial.'
+    );
+
+    return { tipo_contrato: tipoContrato, horas_semanales_meta: horasMeta };
+}
+
+// Normaliza la bandera que decide si el solver respeta la cuadrícula.
+function restriccion(valor) {
+    if (valor === undefined || valor === null || valor === '') return null;
+    if (valor === true || valor === 1) return 1;
+    if (valor === false || valor === 0) return 0;
+
+    const texto = String(valor).trim().toLowerCase();
+    if (texto === '1' || texto === 'true') return 1;
+    if (texto === '0' || texto === 'false') return 0;
+
+    exigir(false, 'La restricción horaria debe estar activa o inactiva.');
 }
 
 // Valida los datos del docente.
@@ -61,24 +102,14 @@ function docente(datos) {
         'Completa nombres y apellidos.'
     );
 
-    exigir(
-        datos.dni == null || typeof datos.dni === 'string',
-        'El DNI debe ingresarse como texto.'
-    );
-
-    resultado.dni = (datos.dni || '').trim() || null;
-
-    exigir(
-        !resultado.dni || /^\d{8}$/.test(resultado.dni),
-        'El DNI debe tener 8 dígitos.'
-    );
-
     resultado.estado = datos.estado || 'A';
 
     exigir(
-        ['A', 'I', 'V'].includes(resultado.estado),
+        ['A', 'I'].includes(resultado.estado),
         'Estado inválido.'
     );
+
+    Object.assign(resultado, contrato(datos));
 
     return resultado;
 }
@@ -114,12 +145,17 @@ function hora(n) {
     );
 }
 
-// Une superposiciones y separaciones de hasta 45 minutos.
-function consolidar(franjas) {
+// Une solo franjas superpuestas o contiguas; los espacios libres se conservan.
+function consolidar(franjas, horario) {
     exigir(
         Array.isArray(franjas) && franjas.length <= 1000,
         'Disponibilidad inválida.'
     );
+
+    exigir(horario && typeof horario === 'object', 'No hay una franja horaria configurada para este periodo.', 409);
+    const limiteInicio = minutos(horario.hora_inicio);
+    const limiteFin = minutos(horario.hora_fin, true);
+    exigir(limiteFin > limiteInicio, 'La franja horaria configurada no es válida.', 409);
 
     const filas = franjas.map((f) => {
         exigir(
@@ -139,8 +175,8 @@ function consolidar(franjas) {
         const fin = minutos(f.hora_fin, true);
 
         exigir(
-            fin > inicio,
-            'La hora final debe ser posterior al inicio.'
+            fin > inicio && inicio >= limiteInicio && fin <= limiteFin,
+            'La disponibilidad debe estar dentro de la franja horaria configurada.'
         );
 
         return { dia, inicio, fin };
@@ -161,7 +197,7 @@ function consolidar(franjas) {
         if (
             ultima &&
             ultima.dia === fila.dia &&
-            fila.inicio - ultima.fin <= 45
+            fila.inicio <= ultima.fin
         ) {
             ultima.fin = Math.max(ultima.fin, fila.fin);
         } else {
@@ -222,7 +258,9 @@ module.exports = {
     DIAS,
     exigir,
     id,
+    contrato,
     docente,
+    restriccion,
     minutos,
     hora,
     consolidar,
