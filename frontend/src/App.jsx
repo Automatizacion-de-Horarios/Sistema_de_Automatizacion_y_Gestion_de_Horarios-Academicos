@@ -1272,7 +1272,7 @@ function FeriadosModulo({ triggerToast }) {
                     <p className="subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
                 </div>
                 <div className="feriados-actions">
-                    {/* [NUEVO]: Selector de filtro por mes integrado en la cabecera */}
+                    {/* Selector de filtro por mes integrado en la cabecera */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                         <i className="far fa-calendar-alt" style={{ color: 'var(--senati-blue)' }}></i>
                         <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Filtrar mes:</span>
@@ -1297,7 +1297,6 @@ function FeriadosModulo({ triggerToast }) {
                         </select>
                     </div>
 
-                    <button className="eq4-btn eq4-btn-primary" onClick={abrirModal}>
                     <button
                         type="button"
                         className="eq4-btn eq4-btn-secondary"
