@@ -7,6 +7,9 @@ import { API_BASE_URL } from './config/api';
 import ProtectedRoute from './components/ProtectedRoute';
 import CarrerasView from './views/CarrerasView';
 import DocentesView from './views/DocentesView';
+// [CONFIGURACIÓN DE DISEÑO] Importación de la imagen de fondo compartida con CarrerasView
+import fondoCarreras from './assets/fondoCarreras.png';
+
 
 function App() {
     return (
@@ -259,10 +262,8 @@ function Dashboard() {
                 {/*      [ÁREA DE TRABAJO] EQUIPO 1: DOCENTES Y DISPONIBILIDAD      */}
                 {/* =============================================================== */}
                 <section id="docentes-view" className={`view ${activeView === 'docentes-view' ? 'active' : ''}`}>
-                     {activeView === 'docentes-view' && <DocentesView key={periodoGlobal} periodo={periodoGlobal} triggerToast={triggerToast} />}
-                     
+                {activeView === 'docentes-view' && <DocentesView key={periodoGlobal} periodo={periodoGlobal} triggerToast={triggerToast} />}
                 </section>
-
                 {/* ===================== FIN SECCIÓN EQUIPO 1 ==================== */}
 
 
@@ -272,24 +273,40 @@ function Dashboard() {
                 <section id="aulas-view" className={`view ${activeView === 'aulas-view' ? 'active' : ''}`}>
                     <AmbientesModulo periodoGlobal={periodoGlobal} />
                 </section>
-
-
-
-                <section id="feriados-view" className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}>
-                    <FeriadosModulo triggerToast={triggerToast} />
-                </section>
-
+<section
+    id="feriados-view"
+    className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}
+>
+    <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', padding: '24px' }}>
+        <FeriadosModulo triggerToast={triggerToast} />
+    </div>
+</section>
                 {/* ===================== FIN SECCIÓN EQUIPO 2 ==================== */}
 
                 {/* =============================================================== */}
                 {/*   [GRUPO 4 - CAMBIO 6]: COMPONENTE AUTÓNOMO DE CONFIGURACIÓN     */}
                 {/* =============================================================== */}
-                <ConfiguracionModulo 
-                    activeView={activeView} 
-                    periodoGlobal={periodoGlobal} 
-                    setPeriodoGlobal={setPeriodoGlobal} 
+  
+                <section
+                id="config-view"
+                className={`view ${activeView === 'config-view' ? 'active' : ''}`}
+                style={{
+                    backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.7)), url(${fondoCarreras})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    flex: '1 1 auto',
+                    maxWidth: 'none',
+                    margin: 0
+                }}
+                >
+                <ConfiguracionModulo
+                    activeView={activeView}
+                    periodoGlobal={periodoGlobal}
+                    setPeriodoGlobal={setPeriodoGlobal}
                     triggerToast={triggerToast}
                 />
+                </section>
 
             </main>
 
@@ -452,12 +469,84 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
     const [nuevoCodigo, setNuevoCodigo] = useState("");
     const [nuevoNombre, setNuevoNombre] = useState("");
     const [nuevaCiudad, setNuevaCiudad] = useState("");
+    
+    // ESTADO PARA HABILITAR / DESHABILITAR DOMINGO
+    const [incluirDomingo, setIncluirDomingo] = useState(false);
+    
+    // ESTADOS PARA LAS HORAS OPERATIVAS
+    const [horaInicio, setHoraInicio] = useState("07:00");
+    const [horaFin, setHoraFin] = useState("21:00");
+
+    // 1. CARGAR CONFIGURACIÓN GLOBAL DESDE EL BACKEND AL MONTAR EL COMPONENTE
+    useEffect(() => {
+        const obtenerConfiguracion = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:3000/api/configuracion', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.franja) {
+                    const franja = result.data.franja;
+                    if (franja.hora_inicio_mañana) setHoraInicio(franja.hora_inicio_mañana.slice(0, 5));
+                    if (franja.hora_cierre_noche) setHoraFin(franja.hora_cierre_noche.slice(0, 5));
+                    
+                    // Carga el estado guardado del domingo en la BD (1 = true, 0 = false)
+                    setIncluirDomingo(franja.incluir_domingo === 1);
+                }
+            } catch (error) {
+                console.error("Error al obtener la configuración global:", error);
+            }
+        };
+
+        obtenerConfiguracion();
+    }, []);
+
+    // 2. FUNCIÓN PARA GUARDAR LA FRANJA HORARIA Y EL DOMINGO EN LA BASE DE DATOS
+    const handleGuardarConfiguracion = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:3000/api/configuracion/franja', {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    id_periodo: periodoGlobal || 1,
+                    hora_inicio_mañana: horaInicio,
+                    hora_cierre_noche: horaFin,
+                    incluir_domingo: incluirDomingo
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                if (typeof triggerToast === 'function') {
+                    triggerToast("Ajustes guardados correctamente en la BD.", "success");
+                }
+            } else {
+                if (typeof triggerToast === 'function') {
+                    triggerToast(data.message || "Error al guardar la configuración.", "error");
+                }
+            }
+        } catch (error) {
+            console.error("Error al conectar con la API:", error);
+            if (typeof triggerToast === 'function') {
+                triggerToast("Error de conexión con el servidor.", "error");
+            }
+        }
+    };
 
     // [GRUPO 4 - CAMBIO 10]: FUNCIÓN PARA REGISTRAR SEDE CON ALERTA TOAST FLOTANTE
     const handleRegistrarSede = () => {
         if (!nuevoCodigo.trim() || !nuevoNombre.trim()) {
             if (typeof triggerToast === 'function') {
-                triggerToast("Por favor ingrese el código y nombre de la sede.");
+                triggerToast("Por favor ingrese el código y nombre de la sede.", "warning");
             }
             return;
         }
@@ -482,32 +571,150 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
         document.getElementById('modal-nueva-sede').style.display = 'none';
 
         if (typeof triggerToast === 'function') {
-            triggerToast("Sede registrada correctamente.");
+            triggerToast("Sede registrada correctamente.", "success");
         }
     };
 
-    return (
-        <>
-            <section id="config-view" className={`view ${activeView === 'config-view' ? 'active' : ''}`}>
-                <header className="view-header">
-                    <div className="header-title-area">
-                        <h1>Ajustes Globales del Sistema</h1>
-                        <p className="subtitle">Parámetros operativos del campus, sede activa y límites de turno.</p>
-                    </div>
-                </header>
+    // Obtener el nombre o código de la sede activa actual para mostrar en el KPI
+    const sedeActualObj = (sedesPorZonal[zonalActiva] || []).find(s => s.codigo === sedeActiva);
+    const nombreSedeMostrar = sedeActualObj ? sedeActualObj.nombre : (sedeActiva || "Sin Sede");
 
-                <div className="card config-form">
-                    <h3 className="section-title" style={{ marginBottom: '16px', fontSize: '15px' }}>
-                        Contexto Institucional Activo
-                    </h3>
-                    
-                    <div className="form-row-custom">
-                        {/* [GRUPO 4 - CAMBIO 11]: SELECTOR DE ZONAL QUE REACCIONA AL CAMBIO FILTRANDO O VACIANDO SEDES */}
-                        <div className="form-group">
-                            <label>Dirección Zonal</label>
+    return (
+        <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '24px' }}>
+            
+            {/* 1. ENCABEZADO PRINCIPAL CON BOTÓN DE GUARDADO */}
+            <header style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: '24px' 
+            }}>
+                <div>
+                    <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1e293b', margin: 0 }}>
+                        Ajustes Globales del Sistema
+                    </h1>
+                    <p style={{ color: '#64748b', fontSize: '13px', marginTop: '4px', margin: 0 }}>
+                        Parámetros operativos del campus, sede activa y límites de turno.
+                    </p>
+                </div>
+                <button 
+                    type="button"
+                    onClick={handleGuardarConfiguracion}
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        backgroundColor: '#0045aa',
+                        color: '#ffffff',
+                        padding: '10px 20px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 4px rgba(0, 69, 170, 0.25)'
+                    }}
+                >
+                    <i className="fas fa-check"></i> Guardar Ajustes
+                </button>
+            </header>
+
+            {/* 2. FILA DE TARJETAS INFORMATIVAS (KPIs) */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+                gap: '16px', 
+                marginBottom: '24px' 
+            }}>
+                {/* KPI 1: SEDE ACTIVA */}
+                <div style={{ 
+                    backgroundColor: '#ffffff', 
+                    padding: '16px 20px', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e2e8f0', 
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px'
+                }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0045aa' }}>
+                        <i className="fas fa-building" style={{ fontSize: '18px' }}></i>
+                    </div>
+                    <div>
+                        <span style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sede Activa</span>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', marginTop: '2px' }}>{nombreSedeMostrar}</div>
+                    </div>
+                </div>
+
+                {/* KPI 2: PERÍODO LECTIVO */}
+                <div style={{ 
+                    backgroundColor: '#ffffff', 
+                    padding: '16px 20px', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e2e8f0', 
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px'
+                }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0045aa' }}>
+                        <i className="fas fa-calendar-alt" style={{ fontSize: '18px' }}></i>
+                    </div>
+                    <div>
+                        <span style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Período Lectivo</span>
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginTop: '2px' }}>{periodoGlobal || "202620"}</div>
+                    </div>
+                </div>
+
+                {/* KPI 3: JORNADA OPERATIVA */}
+                <div style={{ 
+                    backgroundColor: '#ffffff', 
+                    padding: '16px 20px', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e2e8f0', 
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px'
+                }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0045aa' }}>
+                        <i className="fas fa-clock" style={{ fontSize: '18px' }}></i>
+                    </div>
+                    <div>
+                        <span style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jornada Operativa</span>
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginTop: '2px' }}>{horaInicio} – {horaFin} hs</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 3. FORMULARIO SEPARADO EN TARJETAS ESTRUCTURADAS */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                
+                {/* TARJETA A: CONTEXTO INSTITUCIONAL */}
+                <div style={{ 
+                    backgroundColor: '#ffffff', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e2e8f0', 
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    padding: '24px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                        <i className="fas fa-university" style={{ color: '#0045aa', fontSize: '16px' }}></i>
+                        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#1e293b', margin: 0 }}>
+                            Contexto Institucional Activo
+                        </h2>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        {/* SELECTOR DE ZONAL */}
+                        <div>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Dirección Zonal
+                            </label>
                             <select 
                                 id="config-zonal" 
-                                className="input-lg" 
+                                className="form-select input-lg" 
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                 value={zonalActiva}
                                 onChange={(e) => {
                                     const zonalSeleccionada = e.target.value;
@@ -532,26 +739,41 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                             </select>
                         </div>
 
-                        {/* [GRUPO 4 - CAMBIO 12]: SELECTOR DE SEDE FILTRADO DINÁMICAMENTE POR LA ZONAL ACTIVA */}
-                        <div className="form-group">
+                        {/* SELECTOR DE SEDE */}
+                        <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                <label style={{ margin: 0 }}>Sede / Campus (CAMP)</label>
-                            <button 
-                                type="button"
-                                className="eq4-btn eq4-btn-secondary"
-                                style={{ padding: '6px 12px', fontSize: '12px' }}
-                                onClick={() => {
-                                    setNuevaZonal(zonalActiva);
-                                    document.getElementById('modal-nueva-sede').style.display = 'flex';
-                                }}
-                            >
-                                <i className="fas fa-plus-circle" style={{ color: 'var(--senati-blue)' }}></i> Nueva Sede
-                            </button>
+                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', margin: 0 }}>
+                                    Sede / Campus (CAMP)
+                                </label>
+                                <button 
+                                    type="button"
+                                    style={{ 
+                                        padding: '4px 10px', 
+                                        fontSize: '12px', 
+                                        fontWeight: '600',
+                                        color: '#0045aa',
+                                        backgroundColor: '#eff6ff',
+                                        border: '1px solid #bfdbfe',
+                                        borderRadius: '16px',
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '5px', 
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    onClick={() => {
+                                        setNuevaZonal(zonalActiva);
+                                        document.getElementById('modal-nueva-sede').style.display = 'flex';
+                                    }}
+                                >
+                                    <i className="fas fa-plus-circle" style={{ color: '#0045aa' }}></i> Nueva Sede
+                                </button>
                             </div>
                             
                             <select 
                                 id="config-sede" 
-                                className="input-lg"
+                                className="form-select input-lg"
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                 value={sedeActiva}
                                 onChange={(e) => setSedeActiva(e.target.value)}
                             >
@@ -564,49 +786,94 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                                 )}
                             </select>
                         </div>
-                    </div>
 
-                    {/* [GRUPO 4 - CAMBIO 13]: SELECTOR DE PERÍODO CONECTADO A PERIODOGLOBAL */}
-                    <div className="form-row-custom">
-                        <div className="form-group">
-                            <label>Período Lectivo Activo</label>
+                        {/* SELECTOR DE PERÍODO LECTIVO */}
+                        <div style={{ gridColumn: 'span 2' }}>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Período Lectivo Activo
+                            </label>
                             <select 
                                 id="config-periodo" 
-                                className="input-lg" 
+                                className="form-select input-lg" 
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                 value={periodoGlobal}
-                                onChange={(e) => setPeriodoGlobal(e.target.value)}
+                                onChange={(e) => setPeriodoGlobal && setPeriodoGlobal(e.target.value)}
                             >
                                 <option value="202620">202620 - Semestre Académico 2026 - II</option>
                                 <option value="202610">202610 - Semestre Académico 2026 - I</option>
                             </select>
                         </div>
                     </div>
+                </div>
 
-                    {/* FRANJA HORARIA OPERATIVA */}
-                    <h3 className="section-title" style={{ marginTop: '20px', marginBottom: '16px', fontSize: '15px' }}>
-                        Franja Horaria Operativa
-                    </h3>
-                    <div className="form-row-custom">
-                        <div className="form-group">
-                            <label>Inicio Turno Mañana</label>
-                            <input type="time" id="config-inicio" className="input-lg" defaultValue="07:00" />
-                        </div>
-                        <div className="form-group">
-                            <label>Cierre Turno Noche</label>
-                            <input type="time" id="config-fin" className="input-lg" defaultValue="21:00" />
-                        </div>
+                {/* TARJETA B: FRANJA HORARIA OPERATIVA */}
+                <div style={{ 
+                    backgroundColor: '#ffffff', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e2e8f0', 
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    padding: '24px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                        <i className="fas fa-business-time" style={{ color: '#0045aa', fontSize: '16px' }}></i>
+                        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#1e293b', margin: 0 }}>
+                            Franja Horaria Operativa
+                        </h2>
                     </div>
 
-                    {/* GUARDAR AJUSTES */}
-                <div className="form-actions" style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
-                    <button type="button" className="eq4-btn eq4-btn-primary" onClick={() => triggerToast("Ajustes guardados correctamente.")}>
-                        <i className="fas fa-check"></i> Guardar Ajustes
-                    </button>
-                </div>
-                </div>
-            </section>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Inicio Turno Mañana
+                            </label>
+                            <input 
+                                type="time" 
+                                id="config-inicio" 
+                                className="input-lg" 
+                                value={horaInicio} 
+                                onChange={(e) => setHoraInicio(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Cierre Turno Noche
+                            </label>
+                            <input 
+                                type="time" 
+                                id="config-fin" 
+                                className="input-lg" 
+                                value={horaFin} 
+                                onChange={(e) => setHoraFin(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
+                            />
+                        </div>
 
-            {/* [GRUPO 4 - CAMBIO 14]: MODAL FLOTANTE DE REGISTRO DE NUEVA SEDE */}
+                        {/* OPCIÓN: HABILITAR / DESHABILITAR DOMINGO */}
+                        <div style={{ gridColumn: 'span 2', marginTop: '10px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={incluirDomingo}
+                                    onChange={(e) => setIncluirDomingo(e.target.checked)}
+                                    style={{ width: '18px', height: '18px', accentColor: '#0045aa', cursor: 'pointer' }}
+                                />
+                                <div>
+                                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', display: 'block' }}>
+                                        Habilitar día Domingo en la programación
+                                    </span>
+                                    <span style={{ fontSize: '12px', color: '#64748b' }}>
+                                        Permite asignar clases y horarios académicos los días domingo.
+                                    </span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            {/* 4. MODAL FLOTANTE DE REGISTRO DE NUEVA SEDE */}
             <div 
                 id="modal-nueva-sede" 
                 style={{ 
@@ -623,14 +890,14 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                     alignItems: 'center' 
                 }}
             >
-                <div className="card" style={{ width: '480px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', borderRadius: '12px', background: '#fff' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--text-dark)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <i className="fas fa-building" style={{ color: 'var(--senati-blue)' }}></i> Registrar Nueva Sede / Campus
+                <div className="card" style={{ width: '480px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', borderRadius: '12px', background: '#fff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="fas fa-building" style={{ color: '#0045aa' }}></i> Registrar Nueva Sede / Campus
                         </h3>
                         <button 
                             type="button"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: 'var(--text-muted)' }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#64748b' }}
                             onClick={() => document.getElementById('modal-nueva-sede').style.display = 'none'}
                         >
                             <i className="fas fa-times"></i>
@@ -639,9 +906,12 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
 
                     <div>
                         <div className="form-group" style={{ marginBottom: '14px' }}>
-                            <label>Dirección Zonal Perteneciente</label>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Dirección Zonal Perteneciente
+                            </label>
                             <select 
                                 className="input-lg" 
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                 value={nuevaZonal} 
                                 onChange={(e) => setNuevaZonal(e.target.value)}
                             >
@@ -662,10 +932,13 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                         </div>
 
                         <div className="form-group" style={{ marginBottom: '14px' }}>
-                            <label>Código de Campus (CAMP)</label>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Código de Campus (CAMP)
+                            </label>
                             <input 
                                 type="text" 
                                 className="input-lg" 
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                 placeholder="Ej. 56CS, 10P, 01C" 
                                 maxLength={10} 
                                 value={nuevoCodigo}
@@ -674,10 +947,13 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                         </div>
 
                         <div className="form-group" style={{ marginBottom: '14px' }}>
-                            <label>Nombre de la Sede / Centro de Formación</label>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Nombre de la Sede / Centro de Formación
+                            </label>
                             <input 
                                 type="text" 
                                 className="input-lg" 
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                 placeholder="Ej. CFP Tacna - Cono Sur" 
                                 value={nuevoNombre}
                                 onChange={(e) => setNuevoNombre(e.target.value)}
@@ -685,10 +961,13 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                         </div>
 
                         <div className="form-group" style={{ marginBottom: '20px' }}>
-                            <label>Ciudad / Ubicación</label>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Ciudad / Ubicación
+                            </label>
                             <input 
                                 type="text" 
                                 className="input-lg" 
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                 placeholder="Ej. Tacna, Moquegua, Arequipa" 
                                 value={nuevaCiudad}
                                 onChange={(e) => setNuevaCiudad(e.target.value)}
@@ -696,17 +975,18 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
                         <button 
                             type="button"
                             className="eq4-btn eq4-btn-secondary" 
+                            style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
                             onClick={() => document.getElementById('modal-nueva-sede').style.display = 'none'}
                         >
                             Cancelar
                         </button>
                         <button 
                             type="button"
-                            className="eq4-btn eq4-btn-primary"
+                            style={{ padding: '8px 16px', borderRadius: '6px', background: '#0045aa', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '600' }}
                             onClick={handleRegistrarSede}
                         >
                             <i className="fas fa-save"></i> Registrar Sede
@@ -714,12 +994,11 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 }
-
 // ===============================================================
-//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2)
+//   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2) - CON FILTRO POR MES
 // ===============================================================
 function FeriadosModulo({ triggerToast }) {
     // 1. Iniciamos con un arreglo vacío; los datos vendrán de la base de datos
@@ -734,10 +1013,10 @@ function FeriadosModulo({ triggerToast }) {
         estado: 'activo'
     });
 
+    // [NUEVO]: Estado para almacenar el mes seleccionado (vacío significa "Todos los meses")
     const anioActual = String(new Date().getFullYear());
     const [filtroAnio, setFiltroAnio] = useState(anioActual);
     const [filtroMes, setFiltroMes] = useState('todos');
-    const [seccionFeriados, setSeccionFeriados] = useState('activo');
 
     // Cargar feriados desde la Base de Datos
     useEffect(() => {
@@ -758,43 +1037,39 @@ function FeriadosModulo({ triggerToast }) {
     }, [triggerToast]);
   
     const formatearFecha = (fechaStr) => {
-    // Si viene de la BD como "2026-04-30T00:00:00.000Z", nos quedamos solo con "2026-04-30"
-    const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-    const partes = soloFecha.split('-'); // [2026, 04, 30]
-    
-    if (partes.length === 3) {
-        const anio = partes[0];
-        const mesIndex = parseInt(partes[1], 10) - 1;
-        const dia = partes[2];
-        
-        const mesesNombres = [
-            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-            'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
-        ];
-        
-        // Retorna el texto exacto sin intervención de la zona horaria del navegador
-        return `${dia} de ${mesesNombres[mesIndex] || ''}`;
-    }
-    return '';
-};
+        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+        const partes = soloFecha.split('-'); // [YYYY, MM, DD]
+        if (partes.length === 3) {
+            const anio = partes[0];
+            const mesIndex = parseInt(partes[1], 10) - 1;
+            const dia = partes[2];
+            
+            // Creamos una fecha usando componentes UTC o mapeando los nombres de los meses directamente para evitar desfases
+            const mesesNombres = [
+                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
+            ];
+            return `${dia} de ${mesesNombres[mesIndex] || ''}`;
+        }
+        return '';
+    };
 
-const obtenerDiaMes = (fechaStr) => {
-    const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
-    const partes = soloFecha.split('-'); // [YYYY, MM, DD]
-    if (partes.length === 3) {
-        const mesesCortos = [
-            'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-            'JUL', 'AGO', 'SET', 'OCT', 'NOV', 'DIC'
-        ];
-        const mesIndex = parseInt(partes[1], 10) - 1;
-        return {
-            dia: partes[2],
-            mes: mesesCortos[mesIndex] || ''
-        };
-    }
-    return { dia: '--', mes: '---' };
-};
-
+    const obtenerDiaMes = (fechaStr) => {
+        const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
+        const partes = soloFecha.split('-'); // [YYYY, MM, DD]
+        if (partes.length === 3) {
+            const mesesCortos = [
+                'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+                'JUL', 'AGO', 'SET', 'OCT', 'NOV', 'DIC'
+            ];
+            const mesIndex = parseInt(partes[1], 10) - 1;
+            return {
+                dia: partes[2],
+                mes: mesesCortos[mesIndex] || ''
+            };
+        }
+        return { dia: '--', mes: '---' };
+    };
     const aniosDisponibles = [...new Set([
         anioActual,
         feriados
@@ -803,20 +1078,22 @@ const obtenerDiaMes = (fechaStr) => {
             .filter(anio => /^\d{4}$/.test(anio))
     ].flat())].sort((a, b) => b.localeCompare(a));
 
+    // [MODIFICADO]: Filtrar por mes seleccionado además de ordenar cronológicamente
     const feriadosFiltrados = feriados.filter(feriado => {
+        if (filtroMes === 'todos') return true;
         if (!feriado.fecha) return false;
+        const mesFeriado = feriado.fecha.split('T')[0].split('-')[1]; // Extrae el "MM" de YYYY-MM-DD
+        return mesFeriado === filtroMes;
         const [anioFeriado, mesFeriado] = feriado.fecha.split('T')[0].split('-');
         const coincideAnio = anioFeriado === filtroAnio;
         const coincideMes = filtroMes === 'todos' || mesFeriado === filtroMes;
         return coincideAnio && coincideMes;
     });
 
-    const feriadosDeLaSeccion = feriadosFiltrados
-        .filter(feriado => feriado.estado === seccionFeriados)
-        .sort((a, b) => {
-            const fechaA = a.fecha ? a.fecha.split('T')[0] : '';
-            const fechaB = b.fecha ? b.fecha.split('T')[0] : '';
-            return fechaA.localeCompare(fechaB);
+    const feriadosOrdenados = [...feriadosFiltrados].sort((a, b) => {
+        const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; 
+        const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; 
+        return fechaA.localeCompare(fechaB);
     });
 
     const totalFeriados = feriados.length;
@@ -995,6 +1272,32 @@ const obtenerDiaMes = (fechaStr) => {
                     <p className="subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
                 </div>
                 <div className="feriados-actions">
+                    {/* [NUEVO]: Selector de filtro por mes integrado en la cabecera */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <i className="far fa-calendar-alt" style={{ color: 'var(--senati-blue)' }}></i>
+                        <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Filtrar mes:</span>
+                        <select 
+                            value={filtroMes} 
+                            onChange={(e) => setFiltroMes(e.target.value)}
+                            style={{ border: 'none', background: 'transparent', fontWeight: '600', fontSize: '13px', color: 'var(--text-dark)', cursor: 'pointer', outline: 'none' }}
+                        >
+                            <option value="todos">Todos los meses</option>
+                            <option value="01">Enero</option>
+                            <option value="02">Febrero</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Mayo</option>
+                            <option value="06">Junio</option>
+                            <option value="07">Julio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Setiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                    </div>
+
+                    <button className="eq4-btn eq4-btn-primary" onClick={abrirModal}>
                     <button
                         type="button"
                         className="eq4-btn eq4-btn-secondary"
@@ -1043,7 +1346,7 @@ const obtenerDiaMes = (fechaStr) => {
             </div>
 
             <div className="feriados-resumen">
-                <div className="feriado-resumen-card total">
+                <div className="feriado-resumen-card">
                     <div className="feriado-resumen-icon total">
                         <i className="fas fa-calendar-day"></i>
                     </div>
@@ -1052,7 +1355,7 @@ const obtenerDiaMes = (fechaStr) => {
                         <span className="feriado-resumen-label">Total de Feriados</span>
                     </div>
                 </div>
-                <div className="feriado-resumen-card activos">
+                <div className="feriado-resumen-card">
                     <div className="feriado-resumen-icon activos">
                         <i className="fas fa-check-circle"></i>
                     </div>
@@ -1061,7 +1364,7 @@ const obtenerDiaMes = (fechaStr) => {
                         <span className="feriado-resumen-label">Activos</span>
                     </div>
                 </div>
-                <div className="feriado-resumen-card inhabilitados">
+                <div className="feriado-resumen-card">
                     <div className="feriado-resumen-icon inhabilitados">
                         <i className="fas fa-ban"></i>
                     </div>
@@ -1072,37 +1375,8 @@ const obtenerDiaMes = (fechaStr) => {
                 </div>
             </div>
 
-            <div className="feriados-secciones" role="tablist" aria-label="Sección de feriados">
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={seccionFeriados === 'activo'}
-                    className={`feriados-seccion-btn ${seccionFeriados === 'activo' ? 'active' : ''}`}
-                    onClick={() => setSeccionFeriados('activo')}
-                >
-                    <i className="fas fa-check-circle" aria-hidden="true"></i>
-                    Activos
-                    <span className="feriados-seccion-cantidad">
-                        {feriadosFiltrados.filter(feriado => feriado.estado === 'activo').length}
-                    </span>
-                </button>
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={seccionFeriados === 'inhabilitado'}
-                    className={`feriados-seccion-btn ${seccionFeriados === 'inhabilitado' ? 'active' : ''}`}
-                    onClick={() => setSeccionFeriados('inhabilitado')}
-                >
-                    <i className="fas fa-ban" aria-hidden="true"></i>
-                    Inhabilitados
-                    <span className="feriados-seccion-cantidad">
-                        {feriadosFiltrados.filter(feriado => feriado.estado === 'inhabilitado').length}
-                    </span>
-                </button>
-            </div>
-
             <div className="feriados-lista">
-                {feriadosDeLaSeccion.map(feriado => {
+                {feriadosOrdenados.map(feriado => {
                     const { dia, mes } = obtenerDiaMes(feriado.fecha);
                     const esInhabilitado = feriado.estado === 'inhabilitado';
                     return (
@@ -1151,10 +1425,10 @@ const obtenerDiaMes = (fechaStr) => {
                 })}
             </div>
 
-            {feriadosDeLaSeccion.length === 0 && (
-                <div className="workspace-card feriados-vacio">
-                    <h2>No hay feriados {seccionFeriados === 'activo' ? 'activos' : 'inhabilitados'} para los filtros seleccionados</h2>
-                    <p>Prueba con otro año o mes, o cambia de sección.</p>
+            {feriadosOrdenados.length === 0 && (
+                <div className="workspace-card">
+                    <h2>No hay feriados registrados para este mes</h2>
+                    <p>Intenta seleccionando otro mes o agrega un nuevo feriado.</p>
                 </div>
             )}
 
@@ -1165,7 +1439,7 @@ const obtenerDiaMes = (fechaStr) => {
                             <i className="fas fa-flag"></i>
                             {feriadoEditando ? 'Editar Feriado' : 'Registrar Nuevo Feriado'}
                         </div>
-                        <button type="button" className="feriado-modal-close" onClick={cerrarModal} aria-label="Cerrar modal">
+                        <button className="feriado-modal-close" onClick={cerrarModal}>
                             <i className="fas fa-times"></i>
                         </button>
                     </div>
@@ -1209,10 +1483,10 @@ const obtenerDiaMes = (fechaStr) => {
                         </div>
                     </div>
                     <div className="feriado-modal-footer">
-                        <button type="button" className="eq4-btn eq4-btn-secondary" onClick={cerrarModal}>
+                        <button className="btn btn-secondary" onClick={cerrarModal}>
                             Cancelar
                         </button>
-                        <button type="button" className="eq4-btn eq4-btn-primary" onClick={agregarFeriado}>
+                        <button className="btn btn-primary" onClick={agregarFeriado}>
                             <i className="fas fa-save"></i>
                             {feriadoEditando ? 'Guardar Cambios' : 'Guardar Feriado'}
                         </button>
@@ -1222,7 +1496,6 @@ const obtenerDiaMes = (fechaStr) => {
         </>
     );
 }
-
 
 // ===============================================================
 //   MÓDULO AUTÓNOMO: INFRAESTRUCTURA, AULAS Y AMBIENTES (EQUIPO 2)
@@ -1427,6 +1700,7 @@ function AmbientesModulo({ periodoGlobal }) {
         .includes('laboratorio');
 
     const cerrarPanelCursos = () => {
+        if (guardandoCursos) return;
         solicitudCursosRef.current += 1;
         panelCursosActualRef.current = null;
         setLaboratorioSeleccionado(null);
@@ -1485,25 +1759,18 @@ function AmbientesModulo({ periodoGlobal }) {
         setGuardandoCursos(true);
 
         try {
-            const cambios = [...pendientes.values()];
-            const esCambioIndividual = cambios.length === 1;
-            const cambioIndividual = cambios[0];
             const respuesta = await authFetch(
-                esCambioIndividual
-                    ? `${API_BASE_URL}/api/ambientes/${ambienteId}/cursos-permitidos/${cambioIndividual.idCurso}`
-                    : `${API_BASE_URL}/api/ambientes/${ambienteId}/cursos-permitidos`,
+                `${API_BASE_URL}/api/ambientes/${ambienteId}/cursos-permitidos`,
                 {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(esCambioIndividual
-                        ? { codigo_periodo: codigoPeriodo, permitido: cambioIndividual.permitido }
-                        : {
-                            codigo_periodo: codigoPeriodo,
-                            cambios: cambios.map(({ idCurso, permitido }) => ({
-                                id_curso: Number(idCurso),
-                                permitido
-                            }))
-                        })
+                    body: JSON.stringify({
+                        codigo_periodo: codigoPeriodo,
+                        cambios: [...pendientes.values()].map(({ idCurso, permitido }) => ({
+                            id_curso: Number(idCurso),
+                            permitido
+                        }))
+                    })
                 }
             );
             const datos = await respuesta.json();
@@ -1531,7 +1798,7 @@ function AmbientesModulo({ periodoGlobal }) {
             setGuardandoCursos(cambiosEnCursoCursosRef.current.size > 0);
 
             if (cambiosPendientesCursosRef.current.get(claveGrupo)?.size > 0) {
-                enviarCambiosCursos(ambienteId, codigoPeriodo);
+                setTimeout(() => enviarCambiosCursos(ambienteId, codigoPeriodo), 120);
             }
         }
     };
@@ -1548,7 +1815,7 @@ function AmbientesModulo({ periodoGlobal }) {
         temporizadoresCursosRef.current.set(claveGrupo, temporizador);
     };
 
-    const actualizarSeleccionCursos = (cambios, guardarInmediatamente = false) => {
+    const actualizarSeleccionCursos = (cambios) => {
         if (!laboratorioSeleccionado || cambios.length === 0) return;
 
         const ambienteId = laboratorioSeleccionado.id;
@@ -1593,24 +1860,11 @@ function AmbientesModulo({ periodoGlobal }) {
             }
         }
         setErrorCursos('');
-        if (pendientes.size > 0) {
-            if (guardarInmediatamente) {
-                const temporizador = temporizadoresCursosRef.current.get(claveGrupo);
-                if (temporizador) {
-                    clearTimeout(temporizador);
-                    temporizadoresCursosRef.current.delete(claveGrupo);
-                }
-                requestAnimationFrame(() => {
-                    setTimeout(() => enviarCambiosCursos(ambienteId, codigoPeriodo), 0);
-                });
-            } else {
-                programarEnvioCambiosCursos(ambienteId, codigoPeriodo);
-            }
-        }
+        if (pendientes.size > 0) programarEnvioCambiosCursos(ambienteId, codigoPeriodo);
     };
 
     const cambiarCursoPermitido = (cursoId, permitido) => {
-        actualizarSeleccionCursos([{ id_curso: cursoId, permitido }], true);
+        actualizarSeleccionCursos([{ id_curso: cursoId, permitido }]);
     };
 
     const textoBusquedaCursos = busquedaCursos.trim().toLocaleLowerCase();
@@ -1621,7 +1875,9 @@ function AmbientesModulo({ periodoGlobal }) {
         }
         return cursosSeleccionados.has(String(curso.id_curso));
     });
-    const idsParaSeleccionar = cursosVisibles.map((curso) => String(curso.id_curso));
+    const idsParaSeleccionar = textoBusquedaCursos
+        ? cursosVisibles.map((curso) => String(curso.id_curso))
+        : cursos.map((curso) => String(curso.id_curso));
     const todosSeleccionados = idsParaSeleccionar.length > 0 &&
         idsParaSeleccionar.every((idCurso) => cursosSeleccionados.has(idCurso));
 
@@ -1880,6 +2136,7 @@ function AmbientesModulo({ periodoGlobal }) {
                             <button
                                 className="btn-close"
                                 onClick={cerrarPanelCursos}
+                                disabled={guardandoCursos}
                                 aria-label="Cerrar panel de cursos"
                             >
                                 <i className="fas fa-times"></i>
@@ -1919,6 +2176,7 @@ function AmbientesModulo({ periodoGlobal }) {
                         </label>
 
                         {errorCursos && <p className="cursos-panel-error" role="alert">{errorCursos}</p>}
+                        {guardandoCursos && <p className="cursos-panel-status" role="status">Guardando cambios...</p>}
                         {cargandoCursos ? (
                             <p className="cursos-panel-empty">Cargando cursos...</p>
                         ) : cursosVisibles.length > 0 ? (
