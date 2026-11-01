@@ -332,20 +332,13 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                                         )}
 
                                         <div className="carrera-card-body">
-                                            {/* Cabecera de la tarjeta: Título con icono y Badge con número de semestres */}
+                                            {/* Cabecera de la tarjeta: Título con icono */}
                                             <div className="carrera-card-header-row">
                                                 <h3 className="carrera-card-title">
                                                     <i className="fas fa-graduation-cap" style={{ color: 'var(--senati-blue)', marginRight: '8px' }}></i>
                                                     {carrera.nombre}
                                                 </h3>
-                                                <span className="carrera-card-badge-semestres">
-                                                    {carrera.totalSemestres} Semestres
-                                                </span>
                                             </div>
-
-                                            <p className="carrera-card-instructions">
-                                                Seleccione un semestre para ver su malla oficial y fichas curriculares:
-                                            </p>
 
                                             {/* Grilla dinámica con los semestres registrados para esta carrera */}
                                             <div className="carrera-semestres-grid">

@@ -578,6 +578,9 @@ body {
 .aula-estado.disponible { background: #dcfce7; color: #166534; }
 .aula-estado.disponible .estado-dot { background: #16a34a; }
 
+.aula-estado.inactivo { background: #f1f5f9; color: #64748b; }
+.aula-estado.inactivo .estado-dot { background: #94a3b8; }
+
 .aula-estado.mantenimiento { background: #fee2e2; color: #991b1b; }
 .aula-estado.mantenimiento .estado-dot { background: #dc2626; }
 
@@ -665,8 +668,11 @@ body {
 .btn-icon.edit { color: #1037bd; }
 .btn-icon.edit:hover { background: #dfe8ff; }
 
-.btn-icon.delete { color: #dc2626; }
-.btn-icon.delete:hover { background: #fee2e2; }
+.btn-icon.status-active { color: #16a34a; }
+.btn-icon.status-active:hover { background: #dcfce7; }
+
+.btn-icon.status-inactive { color: #94a3b8; }
+.btn-icon.status-inactive:hover { background: #f1f5f9; }
 
 .btn-icon.courses { color: #475569; }
 .btn-icon.courses:hover { background: #e2e8f0; }
@@ -810,8 +816,16 @@ body {
 .curso-opcion-detalle {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
+    flex: 1;
+}
+
+.curso-opcion-encabezado {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .curso-opcion-detalle strong {
@@ -819,10 +833,28 @@ body {
     font-size: 13px;
 }
 
-.curso-opcion-detalle span {
-    color: #64748b;
+.curso-carrera-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.curso-opcion-nombre {
+    color: #334155;
     font-size: 12px;
-    line-height: 1.4;
+    line-height: 1.35;
+}
+
+.curso-opcion-carrera {
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.2;
 }
 
 .cursos-panel-empty,

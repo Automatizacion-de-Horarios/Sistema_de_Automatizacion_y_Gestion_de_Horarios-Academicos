@@ -260,7 +260,7 @@ function Dashboard() {
                 {/*      [ÁREA DE TRABAJO] EQUIPO 1: DOCENTES Y DISPONIBILIDAD      */}
                 {/* =============================================================== */}
                 <section id="docentes-view" className={`view ${activeView === 'docentes-view' ? 'active' : ''}`}>
-                    {/* El Equipo 1 colocará aquí el Módulo de Gestión de Instructores y Disponibilidad */}
+                {activeView === 'docentes-view' && <DocentesView key={periodoGlobal} periodo={periodoGlobal} triggerToast={triggerToast} />}
                 </section>
                 {/* ===================== FIN SECCIÓN EQUIPO 1 ==================== */}
 
@@ -1409,19 +1409,25 @@ function AmbientesModulo({ periodoGlobal }) {
         }
     };
 
-    // Eliminar un ambiente
-    const eliminarAmbiente = async (id, codigo) => {
-        if (window.confirm(`¿Estás seguro de eliminar el ambiente ${codigo}?`)) {
-            try {
-                const respuesta = await authFetch(`${API_BASE_URL}/api/ambientes/${id}`, {
-                    method: 'DELETE'
-                });
-                if (respuesta.ok) {
-                    cargarAmbientesDesdeBD();
-                }
-            } catch (error) {
-                console.error('Error al eliminar:', error);
+    // Activar o Desactivar un ambiente
+    const alternarEstadoAmbiente = async (id, codigo, estadoActual) => {
+        const estaInactivo = String(estadoActual).toUpperCase() === 'INACTIVO';
+        const nuevoEstado = estaInactivo ? 'DISPONIBLE' : 'INACTIVO';
+
+        try {
+            const respuesta = await authFetch(`${API_BASE_URL}/api/ambientes/${id}/estado`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: nuevoEstado })
+            });
+            if (respuesta.ok) {
+                cargarAmbientesDesdeBD();
+            } else {
+                const errorServidor = await respuesta.json();
+                console.error(`Error al cambiar estado de ${codigo}:`, errorServidor.mensaje);
             }
+        } catch (error) {
+            console.error('Error al cambiar estado:', error);
         }
     };
 
@@ -1714,7 +1720,15 @@ function AmbientesModulo({ periodoGlobal }) {
             <div className="ambientes-grid">
                 {ambientesFiltrados.map(ambiente => {
                     const esAforoPequeno = ambiente.aforo_maximo < UMBRAL_AFORO_RESTRINGIDO;
-                    const estiloEstado = ambiente.estado.toLowerCase() === 'disponible' ? 'disponible' : ambiente.estado.toLowerCase().includes('mantenimiento') ? 'mantenimiento' : 'ocupado';
+                    const estadoNormalizado = (ambiente.estado || '').toLowerCase();
+                    const estiloEstado = estadoNormalizado === 'disponible' || estadoNormalizado === 'activo'
+                        ? 'disponible'
+                        : estadoNormalizado === 'inactivo'
+                        ? 'inactivo'
+                        : estadoNormalizado.includes('mantenimiento')
+                        ? 'mantenimiento'
+                        : 'ocupado';
+                    const estaInactivo = estadoNormalizado === 'inactivo';
                     
                     return (
                         <div
@@ -1778,7 +1792,17 @@ function AmbientesModulo({ periodoGlobal }) {
                                         </button>
                                     )}
                                     <button className="btn-icon edit" onClick={(evento) => { evento.stopPropagation(); abrirModal(ambiente); }} title="Editar"><i className="fas fa-pen"></i></button>
-                                    <button className="btn-icon delete" onClick={(evento) => { evento.stopPropagation(); eliminarAmbiente(ambiente.id, ambiente.codigo_ambiente); }} title="Eliminar"><i className="fas fa-trash"></i></button>
+                                    <button
+                                        className={`btn-icon ${estaInactivo ? 'status-active' : 'status-inactive'}`}
+                                        onClick={(evento) => {
+                                            evento.stopPropagation();
+                                            alternarEstadoAmbiente(ambiente.id, ambiente.codigo_ambiente, ambiente.estado);
+                                        }}
+                                        title={estaInactivo ? 'Activar ambiente' : 'Desactivar ambiente'}
+                                        aria-label={estaInactivo ? `Activar ambiente ${ambiente.codigo_ambiente}` : `Desactivar ambiente ${ambiente.codigo_ambiente}`}
+                                    >
+                                        <i className={`fas ${estaInactivo ? 'fa-toggle-off' : 'fa-toggle-on'}`}></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1842,18 +1866,9 @@ function AmbientesModulo({ periodoGlobal }) {
                                     <input type="number" name="piso_ubicacion" className="input-modern" value={datosFormulario.piso_ubicacion} onChange={manejarCambioInput} required placeholder="Ej: 1" />
                                 </div>
 
-                                <div className="form-group">
+                                <div className="form-group col-span-2">
                                     <label><i className="far fa-building"></i> Pabellón</label>
                                     <input type="text" name="pabellon" className="input-modern" value={datosFormulario.pabellon} onChange={manejarCambioInput} required placeholder="Ej: Pabellón 1" />
-                                </div>
-
-                                <div className="form-group">
-                                    <label><i className="fas fa-toggle-on"></i> Estado</label>
-                                    <select name="estado" className="input-modern" value={datosFormulario.estado} onChange={manejarCambioInput}>
-                                        <option value="DISPONIBLE">Disponible</option>
-                                        <option value="EN MANTENIMIENTO">En Mantenimiento</option>
-                                        <option value="OCUPADO">Ocupado</option>
-                                    </select>
                                 </div>
 
                             </div>
@@ -1948,8 +1963,18 @@ function AmbientesModulo({ periodoGlobal }) {
                                                 }}
                                             />
                                             <span className="curso-opcion-detalle">
-                                                <strong>{curso.mat_cur}</strong>
-                                                <span>{curso.nombre_curso}</span>
+                                                <div className="curso-opcion-encabezado">
+                                                    <strong>{curso.mat_cur}</strong>
+                                                    {(curso.codigo_carrera || curso.semestre) && (
+                                                        <span className="curso-carrera-badge">
+                                                            {curso.codigo_carrera || 'Carrera'} • Semestre {curso.semestre || '-'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="curso-opcion-nombre">{curso.nombre_curso}</span>
+                                                {curso.nombre_carrera && (
+                                                    <small className="curso-opcion-carrera">{curso.nombre_carrera}</small>
+                                                )}
                                             </span>
                                         </label>
                                     );

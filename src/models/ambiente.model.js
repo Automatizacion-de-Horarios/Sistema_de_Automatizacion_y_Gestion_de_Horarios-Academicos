@@ -1,4 +1,4 @@
-const db = require('../config/db'); 
+const db = require('../config/db');
 
 const Ambiente = { 
   async obtenerTodos() { 
@@ -13,7 +13,16 @@ const Ambiente = {
 
   async obtenerCursos() {
     const [filas] = await db.query(
-      'SELECT id_curso, mat_cur, nombre_curso FROM cursos ORDER BY mat_cur, nombre_curso'
+      `SELECT c.id_curso,
+              c.mat_cur,
+              c.nombre_curso,
+              car.codigo_carrera,
+              car.nombre_carrera,
+              s.semestre
+         FROM cursos c
+         LEFT JOIN semestres s ON c.id_semestre = s.id_semestre
+         LEFT JOIN carreras car ON s.id_carrera = car.id_carrera
+        ORDER BY c.mat_cur, car.codigo_carrera, c.nombre_curso`
     );
     return filas;
   },
@@ -135,6 +144,14 @@ const Ambiente = {
     return resultado.affectedRows; 
   }, 
  
+  async cambiarEstado(id, nuevoEstado) {
+    const [resultado] = await db.query(
+      'UPDATE ambientes SET estado = ? WHERE id = ?',
+      [nuevoEstado, id]
+    );
+    return resultado.affectedRows;
+  },
+
   async eliminar(id) { 
     const [resultado] = await db.query('DELETE FROM ambientes WHERE id = ?', [id]); 
     return resultado.affectedRows; 
