@@ -122,7 +122,7 @@ function obtenerFranjas(celdas) {
         const unidas = [];
         for (const minuto of minutos) {
             const ultima = unidas[unidas.length - 1];
-            if (ultima && minuto - ultima.fin <= 45) ultima.fin = minuto + 15;
+            if (ultima && minuto <= ultima.fin) ultima.fin = Math.max(ultima.fin, minuto + 15);
             else unidas.push({ inicio: minuto, fin: minuto + 15 });
         }
         unidas.forEach((f) => resultado.push({ dia_semana: dia, hora_inicio: hora(f.inicio) + ':00', hora_fin: hora(f.fin) + ':00' }));

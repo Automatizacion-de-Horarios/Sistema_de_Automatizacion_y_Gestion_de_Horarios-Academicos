@@ -145,7 +145,7 @@ function hora(n) {
     );
 }
 
-// Une superposiciones y separaciones de hasta 45 minutos.
+// Une solo franjas superpuestas o contiguas; los espacios libres se conservan.
 function consolidar(franjas, horario) {
     exigir(
         Array.isArray(franjas) && franjas.length <= 1000,
@@ -197,7 +197,7 @@ function consolidar(franjas, horario) {
         if (
             ultima &&
             ultima.dia === fila.dia &&
-            fila.inicio - ultima.fin <= 45
+            fila.inicio <= ultima.fin
         ) {
             ultima.fin = Math.max(ultima.fin, fila.fin);
         } else {
