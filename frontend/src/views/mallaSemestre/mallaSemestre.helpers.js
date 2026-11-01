@@ -28,12 +28,12 @@ export const obtenerTextoTurno = (idTurno) => {
     return `Turno ${idTurno}`;
 };
 
-// Obtener clase CSS para el badge de TIPO (TAL, TEC, TEC-TAL, EMP, SEM)
+// Obtener clase CSS para el badge de TIPO (TAL, TEC, TEC-TAL, EMP)
 export const getClaseTipo = (curso) => {
-    if (/seminario/i.test(curso?.nombre_curso || '')) return 'sem';
+    if (/seminario/i.test(curso?.nombre_curso || '')) return 'tal';
     const h = String(curso?.horario_sinfo || '').toUpperCase();
-    if (h.includes('TAL')) return 'tal';
     if (h.includes('TEC-TAL')) return 'tec-tal';
+    if (h.includes('TAL')) return 'tal';
     if (h.includes('TEC')) return 'tec';
     if (h.includes('EMP')) return 'emp';
     return 'tec';
@@ -68,4 +68,22 @@ export const calcularDistribucionHorasAuto = (totalHoras, horarioSinfo) => {
         total_horas: total
     };
 };
+
+// Limpia recursivamente objetos vacíos o valores nulos/vacíos para comparaciones exactas de asignaciones
+export const limpiarAsignaciones = (obj) => {
+    if (!obj || typeof obj !== 'object') return {};
+    const limpio = {};
+    for (const [k, v] of Object.entries(obj)) {
+        if (v && typeof v === 'object') {
+            const subLimpio = limpiarAsignaciones(v);
+            if (Object.keys(subLimpio).length > 0) {
+                limpio[k] = subLimpio;
+            }
+        } else if (v !== undefined && v !== null && v !== '') {
+            limpio[k] = String(v);
+        }
+    }
+    return limpio;
+};
+
 

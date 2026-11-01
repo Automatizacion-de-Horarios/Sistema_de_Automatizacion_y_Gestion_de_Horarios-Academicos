@@ -108,7 +108,13 @@ export default function MallaSemestreView(props) {
                     <button
                         type="button"
                         className="malla-btn-volver-pill"
-                        onClick={() => setModalAlertaVolver(true)}
+                        onClick={() => {
+                            if (hayCambiosSinGuardar) {
+                                setModalAlertaVolver(true);
+                            } else {
+                                if (typeof onVolver === 'function') onVolver();
+                            }
+                        }}
                         title="Regresar al Directorio de Carreras"
                     >
                         <i className="fas fa-arrow-left"></i>

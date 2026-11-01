@@ -10,7 +10,7 @@ export default function ModalConfirmarSalir({
     onCerrar,
     onConfirmar
 }) {
-    if (!abierto) return null;
+    if (!abierto || !hayCambiosSinGuardar) return null;
 
     return (
         <div className="eq4-modal-overlay" onClick={onCerrar}>

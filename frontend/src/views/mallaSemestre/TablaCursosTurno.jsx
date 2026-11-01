@@ -50,7 +50,10 @@ export default function TablaCursosTurno({
         <>
             {semestres.map((semestre) => {
                 const cursosDelCiclo = semestre.cursos || [];
-                const totalHorasCiclo = semestre.total_horas || 0;
+                // Calcular únicamente las horas de los cursos activos (los inactivos se descuentan)
+                const totalHorasCiclo = cursosDelCiclo
+                    .filter((c) => c.estado !== 'I')
+                    .reduce((acc, c) => acc + (Number(c.total_horas) || 0), 0);
 
                 // Asignaciones del turno activo para este ciclo
                 const asignacionTurno = asignacionesDocentes[semestre.semestre]?.[turnoActivo] || {};
@@ -172,9 +175,17 @@ export default function TablaCursosTurno({
                                             const esEmpresa = String(curso.horario_sinfo || '').toUpperCase().includes('EMP');
                                             const esDeCarrera = Number(curso.is_carrera) === 1;
                                             const esInactivo = curso.estado === 'I';
+                                            const esNCCU = String(curso.mat_cur || '').toUpperCase().startsWith('NCCU');
 
                                             const esTaller = String(curso.horario_sinfo || '').toUpperCase().includes('TAL') || esSeminario;
                                             const docenteAsignadoCarrera = esTaller ? docenteTalAsignado : docenteTecAsignado;
+
+                                            // Todos los cursos con código NCCU y complementarios permiten modificar el docente en su fila
+                                            const permitirDocenteIndividual = esNCCU || !esDeCarrera;
+                                            const asignacionManual = asignacionesCursos[curso.id_curso]?.[turnoActivo];
+                                            const docenteIdActual = (asignacionManual !== undefined && asignacionManual !== '')
+                                                ? asignacionManual
+                                                : (esNCCU && docenteAsignadoCarrera ? String(docenteAsignadoCarrera.id_docente) : '');
 
                                             return (
                                                 <tr key={curso.id_curso || curso.mat_cur} className={esInactivo ? 'malla-row-inactivo' : ''}>
@@ -195,7 +206,7 @@ export default function TablaCursosTurno({
                                                     </td>
                                                     <td>
                                                         <span className={`malla-badge-tipo ${getClaseTipo(curso)}`}>
-                                                            {esSeminario ? 'SEMINARIO' : (curso.horario_sinfo || 'TEC')}
+                                                            {esSeminario ? 'TAL' : (curso.horario_sinfo || 'TEC')}
                                                         </span>
                                                     </td>
                                                     <td>
@@ -216,7 +227,7 @@ export default function TablaCursosTurno({
                                                                 <i className="fas fa-building" style={{ color: '#ca8a04' }}></i>
                                                                 Empresa Formadora (Sin docente)
                                                             </span>
-                                                        ) : esDeCarrera ? (
+                                                        ) : !permitirDocenteIndividual ? (
                                                             docenteAsignadoCarrera ? (
                                                                 <span className="malla-docente-asignado-pill">
                                                                     <i className="fas fa-user-check" style={{ color: '#059669' }}></i>
@@ -230,12 +241,18 @@ export default function TablaCursosTurno({
                                                         ) : (
                                                             <select
                                                                 className={`malla-docente-row-combobox ${esInactivo ? 'disabled' : ''}`}
-                                                                value={asignacionesCursos[curso.id_curso]?.[turnoActivo] || ''}
+                                                                value={docenteIdActual}
                                                                 onChange={(e) => onCambiarDocenteCurso(curso.id_curso, turnoActivo, e.target.value)}
                                                                 disabled={esInactivo}
-                                                                title={esInactivo ? "Curso inactivo (no editable)" : "Seleccionar docente complementario"}
+                                                                title={esInactivo ? "Curso inactivo (no editable)" : `Seleccionar docente para ${curso.nombre_curso}`}
                                                             >
-                                                                <option value="">-- Seleccionar docente complementario --</option>
+                                                                <option value="">
+                                                                    {esNCCU
+                                                                        ? (docenteAsignadoCarrera
+                                                                            ? `-- Por defecto (${docenteAsignadoCarrera.nombre_completo}) --`
+                                                                            : `-- Seleccionar docente (${curso.nombre_curso}) --`)
+                                                                        : '-- Seleccionar docente complementario --'}
+                                                                </option>
                                                                 {listaDocentes.map((d) => (
                                                                     <option key={d.id_docente} value={d.id_docente}>
                                                                         {d.nombre_completo} ({d.especialidad})

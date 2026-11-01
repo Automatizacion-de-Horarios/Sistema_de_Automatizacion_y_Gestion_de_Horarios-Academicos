@@ -84,18 +84,23 @@ const mallaSemestreController = {
                 // Si la fila tiene un curso registrado (LEFT JOIN no nulo)
                 if (f.id_curso) {
                     const horasCurso = Number(f.total_horas) || 0;
-                    semestreObj.total_horas += horasCurso;
-                    totalHorasCarrera += horasCurso;
+                    if (f.estado_curso !== 'I') {
+                        semestreObj.total_horas += horasCurso;
+                        totalHorasCarrera += horasCurso;
+                    }
                     totalCursos++;
+
+                    const esSeminario = /seminario/i.test(f.nombre_curso || '');
+                    const horarioFinal = esSeminario ? 'TAL' : (f.horario_sinfo || 'TEC');
 
                     semestreObj.cursos.push({
                         id_curso: f.id_curso,
                         mat_cur: f.mat_cur,
-                        horario_sinfo: f.horario_sinfo,
+                        horario_sinfo: horarioFinal,
                         nombre_curso: f.nombre_curso,
                         semanas: f.semanas,
-                        horas_teoria: Number(f.horas_teoria) || 0,
-                        horas_taller: Number(f.horas_taller) || 0,
+                        horas_teoria: esSeminario ? 0 : (Number(f.horas_teoria) || 0),
+                        horas_taller: esSeminario ? horasCurso : (Number(f.horas_taller) || 0),
                         horas_virtual: Number(f.horas_virtual) || 0,
                         horas_evaluacion: Number(f.horas_evaluacion) || 0,
                         total_horas: horasCurso,
@@ -184,7 +189,7 @@ const mallaSemestreController = {
      */
     guardarProgramacion: async (req, res) => {
         try {
-            const { asignaciones } = req.body;
+            const { asignaciones, id_carrera } = req.body;
 
             if (!asignaciones || !Array.isArray(asignaciones)) {
                 return res.status(400).json({
@@ -193,7 +198,7 @@ const mallaSemestreController = {
                 });
             }
 
-            const totalGuardados = await MallaSemestre.guardarProgramacion(asignaciones);
+            const totalGuardados = await MallaSemestre.guardarProgramacion(asignaciones, id_carrera);
 
             return res.json({
                 status: 'ok',

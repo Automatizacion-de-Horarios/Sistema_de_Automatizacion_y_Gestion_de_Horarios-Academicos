@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { API_BASE_URL } from '../../config/api';
 import { authFetch } from '../../lib/authFetch';
-import { matchSemestre } from './mallaSemestre.helpers';
+import { matchSemestre, limpiarAsignaciones } from './mallaSemestre.helpers';
 
 /**
  * Custom Hook: useMallaSemestre (Equipo 4)
@@ -111,16 +111,17 @@ export function useMallaSemestre({
         setSemestreModal(semestre);
         setModoModalCurso('editar');
         setErrorModalCurso(null);
+        const esSeminario = /seminario/i.test(curso.nombre_curso || '');
         setFormCurso({
             id_curso: curso.id_curso,
             mat_cur: curso.mat_cur || '',
             catalogo: curso.catalogo || '',
             nombre_curso: curso.nombre_curso || '',
-            horario_sinfo: curso.horario_sinfo || 'TEC',
+            horario_sinfo: esSeminario ? 'TAL' : (curso.horario_sinfo || 'TEC'),
             is_carrera: curso.is_carrera !== undefined ? Number(curso.is_carrera) : 1,
             semanas: curso.semanas || 16,
-            horas_teoria: Number(curso.horas_teoria) || 0,
-            horas_taller: Number(curso.horas_taller) || 0,
+            horas_teoria: esSeminario ? 0 : (Number(curso.horas_teoria) || 0),
+            horas_taller: esSeminario ? (Number(curso.total_horas) || 0) : (Number(curso.horas_taller) || 0),
             horas_virtual: Number(curso.horas_virtual) || 0,
             horas_evaluacion: Number(curso.horas_evaluacion) || 0,
             total_horas: Number(curso.total_horas) || 0,
@@ -161,13 +162,19 @@ export function useMallaSemestre({
                 : `${API_BASE_URL}/api/malla-semestre/cursos/${formCurso.id_curso}`;
             const method = modoModalCurso === 'crear' ? 'POST' : 'PUT';
 
+            const esSeminario = /seminario/i.test(formCurso.nombre_curso || '');
+            const formAEnviar = {
+                ...formCurso,
+                horario_sinfo: esSeminario ? 'TAL' : formCurso.horario_sinfo,
+                horas_teoria: esSeminario ? 0 : formCurso.horas_teoria,
+                horas_taller: esSeminario ? formCurso.total_horas : formCurso.horas_taller,
+                id_semestre: semestreModal?.id_semestre
+            };
+
             const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...formCurso,
-                    id_semestre: semestreModal?.id_semestre
-                })
+                body: JSON.stringify(formAEnviar)
             });
 
             const data = await res.json();
@@ -254,27 +261,108 @@ export function useMallaSemestre({
             const asigCursos = {};
             const turnosPorCicloDetectados = {};
 
+            // Crear mapa de cursos de la carrera con metadatos completos
+            const mapaCursosInfo = new Map();
+            (data.semestres || []).forEach((s) => {
+                (s.cursos || []).forEach((c) => {
+                    const esNCCU = String(c.mat_cur || '').toUpperCase().startsWith('NCCU');
+                    const esComp = Number(c.is_carrera) !== 1;
+                    const esTaller = String(c.horario_sinfo || '').toUpperCase().includes('TAL') || /seminario/i.test(c.nombre_curso || '');
+                    mapaCursosInfo.set(Number(c.id_curso), {
+                        esNCCU,
+                        esComp,
+                        esTaller,
+                        is_carrera: Number(c.is_carrera) === 1
+                    });
+                });
+            });
+
             if (Array.isArray(data.programacion)) {
+                // Paso 1: Agrupar registros por ciclo y turno
+                const itemsPorCicloTurno = {};
+
                 for (const item of data.programacion) {
                     const ciclo = item.semestre;
                     const idTurno = Number(item.id_turno);
+                    if (!ciclo || !idTurno) continue;
 
-                    if (ciclo && idTurno) {
-                        turnosPorCicloDetectados[ciclo] = Math.max(
-                            turnosPorCicloDetectados[ciclo] || 1,
-                            idTurno
-                        );
+                    turnosPorCicloDetectados[ciclo] = Math.max(
+                        turnosPorCicloDetectados[ciclo] || 1,
+                        idTurno
+                    );
 
-                        if (!asigDocentes[ciclo]) asigDocentes[ciclo] = {};
-                        if (!asigDocentes[ciclo][idTurno]) asigDocentes[ciclo][idTurno] = {};
+                    const key = `${ciclo}_${idTurno}`;
+                    if (!itemsPorCicloTurno[key]) itemsPorCicloTurno[key] = { ciclo, idTurno, items: [] };
+                    itemsPorCicloTurno[key].items.push(item);
+                }
 
-                        if (item.id_docente_tec) asigDocentes[ciclo][idTurno].tec = String(item.id_docente_tec);
-                        if (item.id_docente_tal) asigDocentes[ciclo][idTurno].tal = String(item.id_docente_tal);
+                // Función auxiliar para obtener el docente con más cursos asignados (moda)
+                const obtenerModa = (conteo) => {
+                    let maxDoc = null;
+                    let maxCount = 0;
+                    for (const [docId, count] of Object.entries(conteo)) {
+                        if (count > maxCount) {
+                            maxCount = count;
+                            maxDoc = docId;
+                        }
+                    }
+                    return maxDoc;
+                };
 
-                        if (item.id_curso) {
-                            if (!asigCursos[item.id_curso]) asigCursos[item.id_curso] = {};
-                            const docAsignado = item.id_docente_tal || item.id_docente_tec;
-                            if (docAsignado) asigCursos[item.id_curso][idTurno] = String(docAsignado);
+                // Paso 2: Para cada ciclo y turno, determinar el docente general de TEC y TAL por prioridad y mayoría
+                for (const group of Object.values(itemsPorCicloTurno)) {
+                    const { ciclo, idTurno, items } = group;
+
+                    if (!asigDocentes[ciclo]) asigDocentes[ciclo] = {};
+                    if (!asigDocentes[ciclo][idTurno]) asigDocentes[ciclo][idTurno] = {};
+
+                    // Contadores de votos de docentes para TEC y TAL
+                    const conteoTecTroncal = {};
+                    const conteoTecCarrera = {};
+                    const conteoTalTroncal = {};
+                    const conteoTalCarrera = {};
+
+                    for (const item of items) {
+                        const info = mapaCursosInfo.get(Number(item.id_curso));
+                        const esDeCarrera = info ? info.is_carrera : true;
+                        const esTroncal = esDeCarrera && (!info || !info.esNCCU);
+
+                        if (item.id_docente_tec) {
+                            const dId = String(item.id_docente_tec);
+                            if (esTroncal) conteoTecTroncal[dId] = (conteoTecTroncal[dId] || 0) + 1;
+                            if (esDeCarrera) conteoTecCarrera[dId] = (conteoTecCarrera[dId] || 0) + 1;
+                        }
+
+                        if (item.id_docente_tal) {
+                            const dId = String(item.id_docente_tal);
+                            if (esTroncal) conteoTalTroncal[dId] = (conteoTalTroncal[dId] || 0) + 1;
+                            if (esDeCarrera) conteoTalCarrera[dId] = (conteoTalCarrera[dId] || 0) + 1;
+                        }
+                    }
+
+                    // TEC: Prioridad 1 cursos troncales; si no hay (ej. Semestre II donde todos son NCCU), mayoría de carrera
+                    const docTecFinal = obtenerModa(conteoTecTroncal) || obtenerModa(conteoTecCarrera);
+                    // TAL: Prioridad 1 cursos troncales; si no hay, mayoría de carrera
+                    const docTalFinal = obtenerModa(conteoTalTroncal) || obtenerModa(conteoTalCarrera);
+
+                    if (docTecFinal) asigDocentes[ciclo][idTurno].tec = docTecFinal;
+                    if (docTalFinal) asigDocentes[ciclo][idTurno].tal = docTalFinal;
+
+                    // Paso 3: Asignaciones individuales por curso
+                    for (const item of items) {
+                        if (!item.id_curso) continue;
+                        const info = mapaCursosInfo.get(Number(item.id_curso));
+                        const docAsignado = item.id_docente_tal || item.id_docente_tec;
+
+                        if (info && (info.esNCCU || info.esComp)) {
+                            if (docAsignado) {
+                                const docCarreraEsperado = info.esTaller ? docTalFinal : docTecFinal;
+                                // Si es complementario o si es NCCU con un docente distinto al de carrera (excepción individual como inglés)
+                                if (info.esComp || String(docAsignado) !== String(docCarreraEsperado)) {
+                                    if (!asigCursos[item.id_curso]) asigCursos[item.id_curso] = {};
+                                    asigCursos[item.id_curso][idTurno] = String(docAsignado);
+                                }
+                            }
                         }
                     }
                 }
@@ -317,13 +405,15 @@ export function useMallaSemestre({
             return;
         }
 
-        const hayCambiosEnDocentesOCursos = JSON.stringify({
-            docentes: asignacionesDocentes,
-            cursos: asignacionesCursos
-        }) !== JSON.stringify({
-            docentes: JSON.parse(snapshotInicial.current).docentes,
-            cursos: JSON.parse(snapshotInicial.current).cursos
-        });
+        const snapshotParsed = JSON.parse(snapshotInicial.current || '{}');
+        const docentesActualesLimpio = limpiarAsignaciones(asignacionesDocentes);
+        const docentesInicialLimpio = limpiarAsignaciones(snapshotParsed.docentes);
+        const cursosActualesLimpio = limpiarAsignaciones(asignacionesCursos);
+        const cursosInicialLimpio = limpiarAsignaciones(snapshotParsed.cursos);
+
+        const hayCambiosEnDocentesOCursos =
+            JSON.stringify(docentesActualesLimpio) !== JSON.stringify(docentesInicialLimpio) ||
+            JSON.stringify(cursosActualesLimpio) !== JSON.stringify(cursosInicialLimpio);
 
         // Regla: Si vuelve a 1 Turno (por defecto), no se considera cambio de turno
         let hayCambiosEnTurnos = false;
@@ -387,21 +477,42 @@ export function useMallaSemestre({
 
     // Asignar docente general para TEC o TAL en un semestre y turno
     const handleCambiarDocente = (semestreRomano, tipoDocente, idDocente) => {
+        const semObj = (mallaData?.semestres || []).find((s) => matchSemestre(s.semestre, semestreRomano));
+        const tieneTecTal = semObj?.cursos?.some((c) => String(c.horario_sinfo || '').toUpperCase() === 'TEC-TAL');
+
         setAsignacionesDocentes((prev) => {
             const copiaSemestre = { ...(prev[semestreRomano] || {}) };
             const copiaTurno = { ...(copiaSemestre[turnoActivo] || {}) };
 
             if (!idDocente) {
                 delete copiaTurno[tipoDocente];
+                if (tieneTecTal) {
+                    delete copiaTurno.tec;
+                    delete copiaTurno.tal;
+                }
             } else {
                 copiaTurno[tipoDocente] = String(idDocente);
+                // Sincronización automática TEC-TAL: ambos comparten el mismo docente
+                if (tieneTecTal) {
+                    copiaTurno.tec = String(idDocente);
+                    copiaTurno.tal = String(idDocente);
+                }
             }
 
-            copiaSemestre[turnoActivo] = copiaTurno;
-            return {
-                ...prev,
-                [semestreRomano]: copiaSemestre
-            };
+            if (Object.keys(copiaTurno).length === 0) {
+                delete copiaSemestre[turnoActivo];
+            } else {
+                copiaSemestre[turnoActivo] = copiaTurno;
+            }
+
+            const copiaTotal = { ...prev };
+            if (Object.keys(copiaSemestre).length === 0) {
+                delete copiaTotal[semestreRomano];
+            } else {
+                copiaTotal[semestreRomano] = copiaSemestre;
+            }
+
+            return copiaTotal;
         });
     };
 
@@ -414,10 +525,14 @@ export function useMallaSemestre({
             } else {
                 copiaCurso[idTurno] = String(idDocente);
             }
-            return {
-                ...prev,
-                [idCurso]: copiaCurso
-            };
+
+            const copiaTotal = { ...prev };
+            if (Object.keys(copiaCurso).length === 0) {
+                delete copiaTotal[idCurso];
+            } else {
+                copiaTotal[idCurso] = copiaCurso;
+            }
+            return copiaTotal;
         });
     };
 
@@ -519,17 +634,55 @@ export function useMallaSemestre({
                         let idDocenteTec = null;
                         let idDocenteTal = null;
 
-                        if (Number(curso.is_carrera) === 1) {
-                            const esTaller = String(curso.horario_sinfo || '').toUpperCase().includes('TAL') || /seminario/i.test(curso.nombre_curso || '');
-                            if (esTaller) {
-                                idDocenteTal = docTal;
-                            } else {
-                                idDocenteTec = docTec;
+                        const esEmpresa = String(curso.horario_sinfo || '').toUpperCase().includes('EMP');
+                        const esNCCU = String(curso.mat_cur || '').toUpperCase().startsWith('NCCU');
+                        const esComplementario = Number(curso.is_carrera) !== 1;
+                        const tipoHorario = String(curso.horario_sinfo || '').toUpperCase();
+                        const esTecTal = tipoHorario === 'TEC-TAL';
+                        const esTaller = tipoHorario.includes('TAL') || /seminario/i.test(curso.nombre_curso || '');
+
+                        if (esEmpresa) {
+                            idDocenteTec = null;
+                            idDocenteTal = null;
+                        } else if (esNCCU || esComplementario) {
+                            const docIndiv = asignacionesCursos[curso.id_curso]?.[turno];
+                            if (docIndiv !== undefined && docIndiv !== '' && docIndiv !== null) {
+                                const docNum = Number(docIndiv);
+                                if (esTecTal) {
+                                    idDocenteTec = docNum;
+                                    idDocenteTal = docNum;
+                                } else if (esTaller) {
+                                    idDocenteTec = null;
+                                    idDocenteTal = docNum;
+                                } else {
+                                    idDocenteTec = docNum;
+                                    idDocenteTal = null;
+                                }
+                            } else if (!esComplementario) {
+                                // Curso NCCU de carrera sin selección manual individual: hereda docente de carrera
+                                if (esTecTal) {
+                                    idDocenteTec = docTec ? Number(docTec) : null;
+                                    idDocenteTal = docTal ? Number(docTal) : null;
+                                } else if (esTaller) {
+                                    idDocenteTec = null;
+                                    idDocenteTal = docTal ? Number(docTal) : null;
+                                } else {
+                                    idDocenteTec = docTec ? Number(docTec) : null;
+                                    idDocenteTal = null;
+                                }
                             }
                         } else {
-                            const docComp = asignacionesCursos[curso.id_curso]?.[turno] || null;
-                            idDocenteTec = docComp;
-                            idDocenteTal = docComp;
+                            // Curso estándar de carrera
+                            if (esTecTal) {
+                                idDocenteTec = docTec ? Number(docTec) : null;
+                                idDocenteTal = docTal ? Number(docTal) : null;
+                            } else if (esTaller) {
+                                idDocenteTec = null;
+                                idDocenteTal = docTal ? Number(docTal) : null;
+                            } else {
+                                idDocenteTec = docTec ? Number(docTec) : null;
+                                idDocenteTal = null;
+                            }
                         }
 
                         asignaciones.push({
@@ -546,7 +699,10 @@ export function useMallaSemestre({
             const res = await authFetch(`${API_BASE_URL}/api/malla-semestre/programacion`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ asignaciones })
+                body: JSON.stringify({
+                    id_carrera: mallaData?.carrera?.id_carrera || idCarrera,
+                    asignaciones
+                })
             });
 
             const data = await res.json();

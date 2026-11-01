@@ -108,8 +108,10 @@ const MallaSemestre = {
     /**
      * Guarda la configuración de docentes por curso y turno en programacion_academica.
      * Solo hay 1 sede (UCP - id_sede 1) y 1 periodo (202620 - id_periodo 1).
+     * Si se reduce la cantidad de turnos (ej. de 2 turnos a 1 turno), elimina de la base de datos
+     * los turnos sobrantes para los cursos afectados.
      */
-    async guardarProgramacion(asignaciones, conexion) {
+    async guardarProgramacion(asignaciones, idCarrera, conexion) {
         if (!asignaciones || asignaciones.length === 0) return 0;
         const ejecutor = obtenerEjecutor(conexion);
 
@@ -117,6 +119,32 @@ const MallaSemestre = {
         const idSede = 1;
         let guardados = 0;
 
+        // Limpieza de turnos eliminados: agrupamos los turnos válidos enviados por curso
+        const turnosValidosPorCurso = new Map();
+        for (const item of asignaciones) {
+            if (!item.id_curso || !item.id_turno) continue;
+            const idC = Number(item.id_curso);
+            const idT = Number(item.id_turno);
+            if (!turnosValidosPorCurso.has(idC)) {
+                turnosValidosPorCurso.set(idC, new Set());
+            }
+            turnosValidosPorCurso.get(idC).add(idT);
+        }
+
+        // Para cada curso enviado, eliminamos los turnos de programacion_academica que el usuario retiró
+        for (const [idCurso, turnosSet] of turnosValidosPorCurso.entries()) {
+            const turnosArray = Array.from(turnosSet).map(Number).filter((n) => !isNaN(n));
+            if (turnosArray.length > 0) {
+                const turnosInSql = turnosArray.join(', ');
+                await ejecutor.query(
+                    `DELETE FROM programacion_academica 
+                     WHERE id_periodo = ? AND id_sede = ? AND id_curso = ? AND id_turno NOT IN (${turnosInSql})`,
+                    [idPeriodo, idSede, idCurso]
+                );
+            }
+        }
+
+        // Insertar o actualizar asignaciones activas
         for (const item of asignaciones) {
             if (!item.id_curso || !item.id_turno) continue;
 
@@ -156,13 +184,19 @@ const MallaSemestre = {
      * chk_horas_cuadran_exacto: (horas_teoria + horas_taller + horas_virtual + horas_evaluacion) = total_horas
      */
     calcularDistribucionHoras(datos) {
+        const esSeminario = /seminario/i.test(datos.nombre_curso || '');
         const total = Number(datos.total_horas) || 0;
         let teoria = Number(datos.horas_teoria) || 0;
         let taller = Number(datos.horas_taller) || 0;
         let virtualH = Number(datos.horas_virtual) || 0;
         let evaluacion = Number(datos.horas_evaluacion) || 0;
 
-        if ((teoria + taller + virtualH + evaluacion) !== total) {
+        if (esSeminario) {
+            teoria = 0;
+            taller = total;
+            virtualH = 0;
+            evaluacion = 0;
+        } else if ((teoria + taller + virtualH + evaluacion) !== total) {
             const horario = String(datos.horario_sinfo || '').toUpperCase();
             if (horario === 'TEC') {
                 teoria = total;
@@ -188,6 +222,8 @@ const MallaSemestre = {
      * Inserta un nuevo curso en la tabla cursos.
      */
     async crearCurso(datos, conexion) {
+        const esSeminario = /seminario/i.test(datos.nombre_curso || '');
+        const horarioSinfo = esSeminario ? 'TAL' : (datos.horario_sinfo || 'TEC');
         const { teoria, taller, virtualH, evaluacion, total } = this.calcularDistribucionHoras(datos);
         const [resultado] = await obtenerEjecutor(conexion).query(
             `INSERT INTO cursos 
@@ -196,7 +232,7 @@ const MallaSemestre = {
             [
                 datos.id_semestre,
                 String(datos.mat_cur || '').trim().toUpperCase(),
-                datos.horario_sinfo || 'TEC',
+                horarioSinfo,
                 String(datos.nombre_curso || '').trim().toUpperCase(),
                 Number(datos.semanas) || 16,
                 teoria,
@@ -215,6 +251,8 @@ const MallaSemestre = {
      * Actualiza los datos de un curso existente en la tabla cursos.
      */
     async actualizarCurso(idCurso, datos, conexion) {
+        const esSeminario = /seminario/i.test(datos.nombre_curso || '');
+        const horarioSinfo = esSeminario ? 'TAL' : (datos.horario_sinfo || 'TEC');
         const { teoria, taller, virtualH, evaluacion, total } = this.calcularDistribucionHoras(datos);
         const [resultado] = await obtenerEjecutor(conexion).query(
             `UPDATE cursos SET
@@ -232,7 +270,7 @@ const MallaSemestre = {
              WHERE id_curso = ?`,
             [
                 String(datos.mat_cur || '').trim().toUpperCase(),
-                datos.horario_sinfo || 'TEC',
+                horarioSinfo,
                 String(datos.nombre_curso || '').trim().toUpperCase(),
                 Number(datos.semanas) || 16,
                 teoria,
