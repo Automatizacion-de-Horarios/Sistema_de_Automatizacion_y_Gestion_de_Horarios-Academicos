@@ -1080,15 +1080,14 @@ function FeriadosModulo({ triggerToast }) {
 
     // [MODIFICADO]: Filtrar por mes seleccionado además de ordenar cronológicamente
     const feriadosFiltrados = feriados.filter(feriado => {
-        if (filtroMes === 'todos') return true;
-        if (!feriado.fecha) return false;
-        const mesFeriado = feriado.fecha.split('T')[0].split('-')[1]; // Extrae el "MM" de YYYY-MM-DD
-        return mesFeriado === filtroMes;
-        const [anioFeriado, mesFeriado] = feriado.fecha.split('T')[0].split('-');
-        const coincideAnio = anioFeriado === filtroAnio;
-        const coincideMes = filtroMes === 'todos' || mesFeriado === filtroMes;
-        return coincideAnio && coincideMes;
-    });
+    if (!feriado.fecha) return false;
+
+    const [anioFeriado, mesFeriado] = feriado.fecha.split('T')[0].split('-');
+    const coincideAnio = anioFeriado === filtroAnio;
+    const coincideMes = filtroMes === 'todos' || mesFeriado === filtroMes;
+
+    return coincideAnio && coincideMes;
+});
 
     const feriadosOrdenados = [...feriadosFiltrados].sort((a, b) => {
         const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; 
