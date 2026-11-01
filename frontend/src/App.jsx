@@ -6,8 +6,10 @@ import { authFetch } from './lib/authFetch';
 import { API_BASE_URL } from './config/api';
 import ProtectedRoute from './components/ProtectedRoute';
 import CarrerasView from './views/CarrerasView';
+import DocentesView from './views/DocentesView';
 // [CONFIGURACIÓN DE DISEÑO] Importación de la imagen de fondo compartida con CarrerasView
 import fondoCarreras from './assets/fondoCarreras.png';
+
 
 function App() {
     return (
