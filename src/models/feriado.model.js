@@ -45,6 +45,46 @@ const Feriado = {
         return resultado.affectedRows;
     },
 
+    async replicarSiguienteAnio(anioOrigen) {
+        const anioDestino = Number(anioOrigen) + 1;
+        const conexion = await db.getConnection();
+
+        try {
+            await conexion.beginTransaction();
+            const [[{ totalOrigen }]] = await conexion.query(
+                'SELECT COUNT(*) AS totalOrigen FROM feriados WHERE YEAR(fecha) = ?',
+                [anioOrigen]
+            );
+            const [resultado] = await conexion.query(
+                `INSERT INTO feriados (fecha, descripcion, estado)
+                 SELECT DATE_ADD(origen.fecha, INTERVAL 1 YEAR), origen.descripcion, origen.estado
+                 FROM feriados AS origen
+                 LEFT JOIN feriados AS destino
+                    ON destino.fecha = DATE_ADD(origen.fecha, INTERVAL 1 YEAR)
+                 WHERE YEAR(origen.fecha) = ?
+                   AND destino.id_feriado IS NULL`,
+                [anioOrigen]
+            );
+            const [feriadosDestino] = await conexion.query(
+                'SELECT * FROM feriados WHERE YEAR(fecha) = ?',
+                [anioDestino]
+            );
+            await conexion.commit();
+
+            return {
+                anioDestino,
+                creados: resultado.affectedRows,
+                omitidos: totalOrigen - resultado.affectedRows,
+                feriados: feriadosDestino
+            };
+        } catch (error) {
+            await conexion.rollback();
+            throw error;
+        } finally {
+            conexion.release();
+        }
+    },
+
     async eliminar(id) {
         const [resultado] = await db.query('DELETE FROM feriados WHERE id_feriado = ?', [id]);
         return resultado.affectedRows;

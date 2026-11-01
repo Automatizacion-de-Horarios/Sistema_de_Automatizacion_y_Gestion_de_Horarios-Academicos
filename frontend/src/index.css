@@ -1129,6 +1129,13 @@ body {
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.feriados-actions .eq4-btn:disabled {
+    cursor: wait;
+    opacity: 0.7;
 }
 
 /* --- Resumen de Feriados --- */
@@ -1365,6 +1372,25 @@ body {
     color: #991b1b;
 }
 
+.btn-editar-feriado {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--senati-blue);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-editar-feriado:hover {
+    background: var(--active-bg);
+    border-color: #bfdbfe;
+}
+
 /* --- Modal Nuevo Feriado --- */
 .feriado-modal-backdrop {
     position: fixed;
@@ -1471,6 +1497,45 @@ body {
     padding: 16px 24px;
     border-top: 1px solid var(--border-light);
     background: #f8fafc;
+}
+
+@media (max-width: 600px) {
+    .feriados-filtros {
+        margin-top: -4px;
+    }
+
+    .feriado-filtro {
+        flex: 1 1 180px;
+        justify-content: space-between;
+    }
+
+    .feriado-filtro select {
+        max-width: 150px;
+    }
+
+    .feriados-secciones {
+        width: 100%;
+    }
+
+    .feriados-actions {
+        width: 100%;
+    }
+
+    .feriados-actions .eq4-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .feriados-seccion-btn {
+        flex: 1;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+
+    .feriado-modal-footer .eq4-btn {
+        flex: 1;
+        justify-content: center;
+    }
 }
 
 @keyframes feriadoFadeIn {

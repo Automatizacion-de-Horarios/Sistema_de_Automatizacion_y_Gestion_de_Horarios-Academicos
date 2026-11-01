@@ -1005,6 +1005,8 @@ function FeriadosModulo({ triggerToast }) {
     const [feriados, setFeriados] = useState([]);
 
     const [mostrarModal, setMostrarModal] = useState(false);
+    const [feriadoEditando, setFeriadoEditando] = useState(null);
+    const [replicando, setReplicando] = useState(false);
     const [nuevoFeriado, setNuevoFeriado] = useState({
         fecha: '',
         descripcion: '',
@@ -1012,6 +1014,8 @@ function FeriadosModulo({ triggerToast }) {
     });
 
     // [NUEVO]: Estado para almacenar el mes seleccionado (vacío significa "Todos los meses")
+    const anioActual = String(new Date().getFullYear());
+    const [filtroAnio, setFiltroAnio] = useState(anioActual);
     const [filtroMes, setFiltroMes] = useState('todos');
 
     // Cargar feriados desde la Base de Datos
@@ -1066,6 +1070,13 @@ function FeriadosModulo({ triggerToast }) {
         }
         return { dia: '--', mes: '---' };
     };
+    const aniosDisponibles = [...new Set([
+        anioActual,
+        feriados
+            .filter(feriado => feriado.fecha)
+            .map(feriado => feriado.fecha.split('T')[0].slice(0, 4))
+            .filter(anio => /^\d{4}$/.test(anio))
+    ].flat())].sort((a, b) => b.localeCompare(a));
 
     // [MODIFICADO]: Filtrar por mes seleccionado además de ordenar cronológicamente
     const feriadosFiltrados = feriados.filter(feriado => {
@@ -1073,6 +1084,10 @@ function FeriadosModulo({ triggerToast }) {
         if (!feriado.fecha) return false;
         const mesFeriado = feriado.fecha.split('T')[0].split('-')[1]; // Extrae el "MM" de YYYY-MM-DD
         return mesFeriado === filtroMes;
+        const [anioFeriado, mesFeriado] = feriado.fecha.split('T')[0].split('-');
+        const coincideAnio = anioFeriado === filtroAnio;
+        const coincideMes = filtroMes === 'todos' || mesFeriado === filtroMes;
+        return coincideAnio && coincideMes;
     });
 
     const feriadosOrdenados = [...feriadosFiltrados].sort((a, b) => {
@@ -1129,6 +1144,7 @@ function FeriadosModulo({ triggerToast }) {
     };
 
     const abrirModal = () => {
+        setFeriadoEditando(null);
         setNuevoFeriado({
             fecha: '',
             descripcion: '',
@@ -1137,8 +1153,19 @@ function FeriadosModulo({ triggerToast }) {
         setMostrarModal(true);
     };
 
+    const abrirModalEdicion = (feriado) => {
+        setFeriadoEditando(feriado.id_feriado);
+        setNuevoFeriado({
+            fecha: feriado.fecha ? feriado.fecha.split('T')[0] : '',
+            descripcion: feriado.descripcion || '',
+            estado: feriado.estado
+        });
+        setMostrarModal(true);
+    };
+
     const cerrarModal = () => {
         setMostrarModal(false);
+        setFeriadoEditando(null);
     };
 
     const agregarFeriado = async () => {
@@ -1156,31 +1183,76 @@ function FeriadosModulo({ triggerToast }) {
         }
 
         try {
-            const response = await authFetch(`${API_BASE_URL}/api/feriados`, {
-                method: 'POST',
+            const response = await authFetch(
+                feriadoEditando
+                    ? `${API_BASE_URL}/api/feriados/${feriadoEditando}`
+                    : `${API_BASE_URL}/api/feriados`,
+                {
+                method: feriadoEditando ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     fecha: nuevoFeriado.fecha,
                     descripcion: nuevoFeriado.descripcion.trim(),
                     estado: nuevoFeriado.estado
                 })
-            });
+                }
+            );
 
-            if (!response.ok) throw new Error('Error al registrar el feriado');
+            if (!response.ok) throw new Error('Error al guardar el feriado');
 
-            const feriadoCreado = await response.json();
-            setFeriados(prev => [...prev, feriadoCreado]);
+            const feriadoGuardado = await response.json();
+            setFeriados(prev => feriadoEditando
+                ? prev.map(feriado => feriado.id_feriado === feriadoEditando ? feriadoGuardado : feriado)
+                : [...prev, feriadoGuardado]
+            );
 
             if (typeof triggerToast === 'function') {
-                triggerToast('Feriado registrado correctamente en la base de datos.');
+                triggerToast(feriadoEditando
+                    ? 'Feriado actualizado correctamente.'
+                    : 'Feriado registrado correctamente en la base de datos.');
             }
 
-            setMostrarModal(false);
+            cerrarModal();
         } catch (error) {
             console.error(error);
             if (typeof triggerToast === 'function') {
                 triggerToast('Error al guardar el feriado en el servidor.');
             }
+        }
+    };
+
+    const replicarFeriadosSiguienteAnio = async () => {
+        setReplicando(true);
+        try {
+            const response = await authFetch(`${API_BASE_URL}/api/feriados/replicar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ anioOrigen: filtroAnio })
+            });
+            if (!response.ok) throw new Error('Error al replicar los feriados');
+
+            const resultado = await response.json();
+            setFeriados(prev => [
+                ...prev.filter(feriado => {
+                    const anio = feriado.fecha ? feriado.fecha.split('T')[0].slice(0, 4) : '';
+                    return anio !== String(resultado.anioDestino);
+                }),
+                ...resultado.feriados
+            ]);
+            setFiltroAnio(String(resultado.anioDestino));
+
+            if (typeof triggerToast === 'function') {
+                triggerToast(resultado.creados > 0
+                    ? `Se replicaron ${resultado.creados} feriados a ${resultado.anioDestino}${resultado.omitidos > 0 ? `; ${resultado.omitidos} ya existían y se omitieron` : ''}.`
+                    : `No había feriados nuevos para replicar a ${resultado.anioDestino}.`);
+            }
+        } catch (error) {
+            console.error(error);
+            if (typeof triggerToast === 'function') {
+                triggerToast('No se pudieron replicar los feriados.');
+            }
+        } finally {
+            setReplicando(false);
         }
     };
 
@@ -1226,11 +1298,52 @@ function FeriadosModulo({ triggerToast }) {
                     </div>
 
                     <button className="eq4-btn eq4-btn-primary" onClick={abrirModal}>
+                    <button
+                        type="button"
+                        className="eq4-btn eq4-btn-secondary"
+                        onClick={replicarFeriadosSiguienteAnio}
+                        disabled={replicando}
+                    >
+                        <i className={`fas ${replicando ? 'fa-spinner fa-spin' : 'fa-clone'}`}></i>
+                        {replicando ? 'Replicando...' : `Replicar a ${Number(filtroAnio) + 1}`}
+                    </button>
+                    <button type="button" className="eq4-btn eq4-btn-primary" onClick={abrirModal}>
                         <i className="fas fa-plus"></i>
                         Nuevo Feriado
                     </button>
                 </div>
             </header>
+
+            <div className="feriados-filtros">
+                <label className="feriado-filtro">
+                    <i className="far fa-calendar-alt" aria-hidden="true"></i>
+                    <span>Año</span>
+                    <select value={filtroAnio} onChange={(e) => setFiltroAnio(e.target.value)}>
+                        {aniosDisponibles.map(anio => (
+                            <option key={anio} value={anio}>{anio}</option>
+                        ))}
+                    </select>
+                </label>
+                <label className="feriado-filtro">
+                    <i className="far fa-calendar" aria-hidden="true"></i>
+                    <span>Mes</span>
+                    <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)}>
+                        <option value="todos">Todos los meses</option>
+                        <option value="01">Enero</option>
+                        <option value="02">Febrero</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Mayo</option>
+                        <option value="06">Junio</option>
+                        <option value="07">Julio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Setiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </label>
+            </div>
 
             <div className="feriados-resumen">
                 <div className="feriado-resumen-card">
@@ -1290,6 +1403,16 @@ function FeriadosModulo({ triggerToast }) {
                                     {feriado.estado === 'activo' ? 'Activo' : 'Inhabilitado'}
                                 </span>
                                 <button
+                                    type="button"
+                                    className="btn-editar-feriado"
+                                    onClick={() => abrirModalEdicion(feriado)}
+                                    aria-label={`Editar feriado ${feriado.descripcion}`}
+                                    title="Editar feriado"
+                                >
+                                    <i className="fas fa-pen"></i>
+                                </button>
+                                <button
+                                    type="button"
                                     className={`btn-toggle-estado ${feriado.estado === 'activo' ? 'desactivar' : 'activar'}`}
                                     onClick={() => toggleEstadoFeriado(feriado.id_feriado)}
                                 >
@@ -1314,7 +1437,7 @@ function FeriadosModulo({ triggerToast }) {
                     <div className="feriado-modal-header">
                         <div className="feriado-modal-title">
                             <i className="fas fa-flag"></i>
-                            Registrar Nuevo Feriado
+                            {feriadoEditando ? 'Editar Feriado' : 'Registrar Nuevo Feriado'}
                         </div>
                         <button className="feriado-modal-close" onClick={cerrarModal}>
                             <i className="fas fa-times"></i>
@@ -1365,7 +1488,7 @@ function FeriadosModulo({ triggerToast }) {
                         </button>
                         <button className="btn btn-primary" onClick={agregarFeriado}>
                             <i className="fas fa-save"></i>
-                            Guardar Feriado
+                            {feriadoEditando ? 'Guardar Cambios' : 'Guardar Feriado'}
                         </button>
                     </div>
                 </div>
