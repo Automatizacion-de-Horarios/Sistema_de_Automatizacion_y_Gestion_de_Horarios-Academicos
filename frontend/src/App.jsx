@@ -239,8 +239,6 @@ function Dashboard() {
                 {/*      [ÁREA DE TRABAJO] EQUIPO 4: MOTOR, MATRIZ Y EXPORTADOR     */}
                 {/* =============================================================== */}
 
-
-
                 {/* ===================== FIN SECCIÓN EQUIPO 4 ==================== */}
 
 
@@ -1271,15 +1269,19 @@ function FeriadosModulo({ triggerToast }) {
                     <p className="subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
                 </div>
                 <div className="feriados-actions">
-                    {/* Selector de filtro por mes integrado en la cabecera */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                        <i className="far fa-calendar-alt" style={{ color: 'var(--senati-blue)' }}></i>
-                        <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-muted)' }}>Filtrar mes:</span>
-                        <select 
-                            value={filtroMes} 
-                            onChange={(e) => setFiltroMes(e.target.value)}
-                            style={{ border: 'none', background: 'transparent', fontWeight: '600', fontSize: '13px', color: 'var(--text-dark)', cursor: 'pointer', outline: 'none' }}
-                        >
+                    <label className="feriado-filtro">
+                        <i className="far fa-calendar-alt" aria-hidden="true"></i>
+                        <span>Año</span>
+                        <select aria-label="Filtrar por año" value={filtroAnio} onChange={(e) => setFiltroAnio(e.target.value)}>
+                            {aniosDisponibles.map(anio => (
+                                <option key={anio} value={anio}>{anio}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="feriado-filtro">
+                        <i className="far fa-calendar" aria-hidden="true"></i>
+                        <span>Mes</span>
+                        <select aria-label="Filtrar por mes" value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)}>
                             <option value="todos">Todos los meses</option>
                             <option value="01">Enero</option>
                             <option value="02">Febrero</option>
@@ -1294,7 +1296,7 @@ function FeriadosModulo({ triggerToast }) {
                             <option value="11">Noviembre</option>
                             <option value="12">Diciembre</option>
                         </select>
-                    </div>
+                    </label>
 
                     <button
                         type="button"
@@ -1311,37 +1313,6 @@ function FeriadosModulo({ triggerToast }) {
                     </button>
                 </div>
             </header>
-
-            <div className="feriados-filtros">
-                <label className="feriado-filtro">
-                    <i className="far fa-calendar-alt" aria-hidden="true"></i>
-                    <span>Año</span>
-                    <select value={filtroAnio} onChange={(e) => setFiltroAnio(e.target.value)}>
-                        {aniosDisponibles.map(anio => (
-                            <option key={anio} value={anio}>{anio}</option>
-                        ))}
-                    </select>
-                </label>
-                <label className="feriado-filtro">
-                    <i className="far fa-calendar" aria-hidden="true"></i>
-                    <span>Mes</span>
-                    <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)}>
-                        <option value="todos">Todos los meses</option>
-                        <option value="01">Enero</option>
-                        <option value="02">Febrero</option>
-                        <option value="03">Marzo</option>
-                        <option value="04">Abril</option>
-                        <option value="05">Mayo</option>
-                        <option value="06">Junio</option>
-                        <option value="07">Julio</option>
-                        <option value="08">Agosto</option>
-                        <option value="09">Setiembre</option>
-                        <option value="10">Octubre</option>
-                        <option value="11">Noviembre</option>
-                        <option value="12">Diciembre</option>
-                    </select>
-                </label>
-            </div>
 
             <div className="feriados-resumen">
                 <div className="feriado-resumen-card">

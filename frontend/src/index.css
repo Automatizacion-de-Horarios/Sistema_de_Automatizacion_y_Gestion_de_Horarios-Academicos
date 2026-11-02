@@ -1133,6 +1133,41 @@ body {
     justify-content: flex-end;
 }
 
+.feriado-filtro {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.feriado-filtro i {
+    color: var(--senati-blue);
+}
+
+.feriado-filtro select {
+    min-width: 0;
+    max-width: 150px;
+    border: 0;
+    background: transparent;
+    color: var(--text-dark);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+}
+
+.feriado-filtro:focus-within {
+    border-color: var(--active-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
 .feriados-actions .eq4-btn:disabled {
     cursor: wait;
     opacity: 0.7;
@@ -1500,17 +1535,15 @@ body {
 }
 
 @media (max-width: 600px) {
-    .feriados-filtros {
-        margin-top: -4px;
-    }
-
     .feriado-filtro {
-        flex: 1 1 180px;
+        flex: 1 1 100%;
         justify-content: space-between;
     }
 
     .feriado-filtro select {
-        max-width: 150px;
+        flex: 1;
+        max-width: none;
+        text-align: right;
     }
 
     .feriados-secciones {

@@ -38,6 +38,20 @@ const camposDocente = "id_docente, nombres, apellidos, especialidad, tipo_contra
 // La configuración cambia poco: se reutiliza durante un minuto para no repetir la consulta remota.
 const cacheConfiguracion = new Map();
 const VIGENCIA_CONFIGURACION = 60000;
+let estadoDisponibilidadDisponible;
+
+async function disponibilidadTieneEstado() {
+    if (!estadoDisponibilidadDisponible) {
+        estadoDisponibilidadDisponible = db.query(
+            'SELECT COUNT(*) AS cantidad FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            ['disponibilidad_docentes', 'estado']
+        ).then(([filas]) => Number(filas[0].cantidad) > 0).catch((error) => {
+            estadoDisponibilidadDisponible = null;
+            throw error;
+        });
+    }
+    return estadoDisponibilidadDisponible;
+}
 
 const Docente = {
     async configuracion(codigoPeriodo) {
@@ -74,9 +88,11 @@ const Docente = {
     },
 
     async listar() {
+        const tieneEstado = await disponibilidadTieneEstado();
+        const filtroEstado = tieneEstado ? " WHERE dd.estado = 'A'" : '';
         const [[docentes], [franjas]] = await Promise.all([
             db.query('SELECT ' + camposDocente + ' FROM docentes ORDER BY apellidos, nombres, id_docente'),
-            db.query("SELECT dd.id_docente, dd.dia_semana, dd.hora_inicio, dd.hora_fin FROM disponibilidad_docentes dd WHERE dd.estado = 'A'"),
+            db.query('SELECT dd.id_docente, dd.dia_semana, dd.hora_inicio, dd.hora_fin FROM disponibilidad_docentes dd' + filtroEstado),
         ]);
 
         // Agrupa una sola vez para no recorrer toda la disponibilidad por cada docente.
@@ -175,6 +191,8 @@ const Docente = {
     },
 
     async disponibilidad(identificador) {
+        const tieneEstado = await disponibilidadTieneEstado();
+        const filtroEstado = tieneEstado ? " AND estado = 'A'" : '';
         const [docentes] = await db.query(
             'SELECT usa_restriccion_horaria FROM docentes WHERE id_docente = ?',
             [identificador]
@@ -182,7 +200,7 @@ const Docente = {
         exigir(docentes.length, 'No se encontró el docente.', 404);
 
         const [franjas] = await db.query(
-            "SELECT dia_semana, hora_inicio, hora_fin FROM disponibilidad_docentes WHERE id_docente = ? AND estado = 'A' ORDER BY FIELD(dia_semana,'LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO','DOMINGO'), hora_inicio",
+            "SELECT dia_semana, hora_inicio, hora_fin FROM disponibilidad_docentes WHERE id_docente = ?" + filtroEstado + " ORDER BY FIELD(dia_semana,'LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO','DOMINGO'), hora_inicio",
             [identificador]
         );
 
@@ -193,6 +211,7 @@ const Docente = {
     },
 
     async guardarDisponibilidad(identificador, franjas, usuario, restriccionSolicitada = null) {
+        const tieneEstado = await disponibilidadTieneEstado();
         return transaccion(identificador, async (conexion) => {
             const [docentes] = await conexion.query(
                 'SELECT tipo_contrato, usa_restriccion_horaria FROM docentes WHERE id_docente = ? FOR UPDATE',
@@ -226,16 +245,15 @@ const Docente = {
             // El contrato nunca borra la cuadrícula. Sólo esta acción la reemplaza.
             await conexion.query('DELETE FROM disponibilidad_docentes WHERE id_docente = ?', [identificador]);
             if (franjas.length) {
-                const valores = franjas.map((franja) => [
-                    identificador,
-                    franja.dia_semana,
-                    franja.hora_inicio,
-                    franja.hora_fin,
-                    'A',
-                    usuario,
-                ]);
+                const valores = franjas.map((franja) => {
+                    const valor = [identificador, franja.dia_semana, franja.hora_inicio, franja.hora_fin];
+                    if (tieneEstado) valor.push('A');
+                    valor.push(usuario);
+                    return valor;
+                });
+                const columnasEstado = tieneEstado ? ', estado' : '';
                 await conexion.query(
-                    'INSERT INTO disponibilidad_docentes (id_docente, dia_semana, hora_inicio, hora_fin, estado, usuario_modificacion) VALUES ?',
+                    'INSERT INTO disponibilidad_docentes (id_docente, dia_semana, hora_inicio, hora_fin' + columnasEstado + ', usuario_modificacion) VALUES ?',
                     [valores]
                 );
             }
