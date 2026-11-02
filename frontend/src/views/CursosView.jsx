@@ -457,7 +457,8 @@ const CursosView = forwardRef(function CursosView({ onRegistrarCarrera, onProces
                                             <div>Carreras verificadas: <strong>{resultadoImportacion.reporte?.carrerasVerificadas}</strong></div>
                                             <div>Semestres nuevos: <strong>{resultadoImportacion.reporte?.semestresCreados}</strong></div>
                                             <div>Cursos insertados: <strong style={{ color: '#059669' }}>{resultadoImportacion.reporte?.cursosInsertados}</strong></div>
-                                            <div>Catálogo / tipo actualizado: <strong style={{ color: '#1D4ED8' }}>{resultadoImportacion.reporte?.cursosActualizados || 0}</strong></div>
+                                            <div>Cursos actualizados: <strong style={{ color: '#1D4ED8' }}>{resultadoImportacion.reporte?.cursosActualizados || 0}</strong></div>
+                                            <div>Sin cambios: <strong style={{ color: '#475569' }}>{resultadoImportacion.reporte?.cursosSinCambios || 0}</strong></div>
                                             <div>Duplicados por carrera ignorados: <strong style={{ color: '#D97706' }}>{resultadoImportacion.reporte?.filasIgnoradasPorRepetido}</strong></div>
                                         </div>
                                         <div style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '8px', lineHeight: '1.5' }}>
@@ -590,6 +591,7 @@ const CursosView = forwardRef(function CursosView({ onRegistrarCarrera, onProces
                                 <span>Filas revisadas: <strong>{datosProgreso.filasProcesadas || 0} / {datosProgreso.totalFilas || 0}</strong></span>
                                 <span>Cursos insertados: <strong style={{ color: '#059669' }}>{datosProgreso.cursosInsertados || 0}</strong></span>
                                 <span>Cursos actualizados: <strong style={{ color: '#1D4ED8' }}>{datosProgreso.cursosActualizados || 0}</strong></span>
+                                <span>Sin cambios: <strong style={{ color: '#475569' }}>{datosProgreso.cursosSinCambios || 0}</strong></span>
                                 <span>Duplicados ignorados: <strong style={{ color: '#D97706' }}>{datosProgreso.filasIgnoradas || 0}</strong></span>
                                 <span>Semestres nuevos: <strong>{datosProgreso.semestresCreados || 0}</strong></span>
                             </div>
@@ -600,6 +602,7 @@ const CursosView = forwardRef(function CursosView({ onRegistrarCarrera, onProces
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 12px', fontSize: '11px', color: 'var(--text-normal)' }}>
                                     <span>Cursos insertados: <strong style={{ color: '#059669' }}>{resultadoImportacion.reporte?.cursosInsertados}</strong></span>
                                     <span>Cursos actualizados: <strong style={{ color: '#1D4ED8' }}>{resultadoImportacion.reporte?.cursosActualizados || 0}</strong></span>
+                                    <span>Sin cambios: <strong style={{ color: '#475569' }}>{resultadoImportacion.reporte?.cursosSinCambios || 0}</strong></span>
                                     <span>Duplicados ignorados: <strong style={{ color: '#D97706' }}>{resultadoImportacion.reporte?.filasIgnoradasPorRepetido}</strong></span>
                                     <span>Semestres nuevos: <strong>{resultadoImportacion.reporte?.semestresCreados}</strong></span>
                                     <span>Filas leídas: <strong>{resultadoImportacion.reporte?.totalFilasLeidas}</strong></span>

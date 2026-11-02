@@ -17,7 +17,10 @@ const Malla = require('../models/mallasImpExp.model');
  * ../models/mallasImpExp.model.js.
  *
  * REGLA DE DUPLICADOS:
- * - Si un MAT CUR ya fue registrado para la MISMA carrera, se ignora toda la fila.
+ * - Si un MAT CUR ya fue registrado para la MISMA carrera, no se duplica:
+ *   se comparan todos sus datos con el Excel y se actualizan solo los campos
+ *   que cambiaron (nombre, semanas, horas, horario, semestre, catálogo e
+ *   IS_CARRERA). Si no cambió nada, la fila queda intacta.
  * - Si el MAT CUR se repite pero pertenece a OTRA carrera, sí se registra.
  *   Ejemplo: SCIU-185 se comparte entre PIAD, NAED, PCBD, etc., y debe existir en cada una.
  */
@@ -61,6 +64,7 @@ const crearTrabajo = (nombreArchivo) => {
             filasProcesadas: 0,
             cursosInsertados: 0,
             cursosActualizados: 0,
+            cursosSinCambios: 0,
             filasIgnoradas: 0,
             semestresCreados: 0
         },
@@ -95,6 +99,15 @@ const normalizarCatalogo = (valor) => {
     const texto = String(valor).trim();
     return texto ? texto.slice(0, 20) : null;
 };
+
+// Comparaciones usadas para detectar qué campos cambiaron respecto de la BD.
+const mismoValorTexto = (valorBD, valorExcel) => {
+    const textoBD = valorBD === null || valorBD === undefined ? '' : String(valorBD).trim();
+    const textoExcel = valorExcel === null || valorExcel === undefined ? '' : String(valorExcel).trim();
+    return textoBD === textoExcel;
+};
+
+const mismoValorNumerico = (valorBD, valorExcel) => Number(valorBD ?? 0) === Number(valorExcel ?? 0);
 
 // Obtiene el prefijo del MAT CUR (ej. "PIAD-525" -> "PIAD").
 const obtenerPrefijoMatCur = (matCur) => {
@@ -223,6 +236,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
         let semestresCreados = 0;
         let cursosInsertados = 0;
         let cursosActualizados = 0;
+        let cursosSinCambios = 0;
         let filasIgnoradasPorRepetido = 0;
 
         const totalFilasArchivo = Math.max(filas.length - 2, 1);
@@ -262,6 +276,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
                         filasProcesadas: i - 1,
                         cursosInsertados,
                         cursosActualizados,
+                        cursosSinCambios,
                         filasIgnoradas: filasIgnoradasPorRepetido,
                         semestresCreados
                     }
@@ -269,59 +284,14 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
                 continue;
             }
 
-            // 2.3. Verificar en la BD si ya existe para ESA MISMA carrera.
-            const cursoExistente = await Malla.obtenerCursoPorCarreraYMatricula(idCarrera, matCur, conexion);
-
-            if (cursoExistente) {
-                // El curso no se duplica, pero sí se completan/refrescan CATALOGO e IS_CARRERA.
-                const actualizado = await Malla.actualizarDatosClasificacionCurso(
-                    cursoExistente.id_curso,
-                    { catalogo, isCarrera },
-                    conexion
-                );
-
-                if (actualizado) cursosActualizados++;
-
-                clavesProcesadasEnArchivo.add(claveCurso);
-                filasIgnoradasPorRepetido++;
-                alProgresar({
-                    porcentaje: Math.min(99, Math.round(20 + (i / totalFilasArchivo) * 75)),
-                    paso: 'Procesando cursos',
-                    mensaje: `Fila ${numeroFilaExcel}: ${matCur} ya existe en la base de datos para ${codigoCarrera}, se omite.`,
-                    datos: {
-                        totalFilas: totalFilasArchivo,
-                        filasProcesadas: i - 1,
-                        cursosInsertados,
-                        cursosActualizados,
-                        filasIgnoradas: filasIgnoradasPorRepetido,
-                        semestresCreados
-                    }
-                });
-                continue;
-            }
-
-            // 2.4. Buscar el semestre (ciclo) de esa carrera; si no existe, crearlo
-            const semestreRomano = fila[5] ? String(fila[5]).trim().toUpperCase() : 'I';
-
-            let idSemestre;
-
-            const semestreBD = await Malla.obtenerSemestre(idCarrera, semestreRomano, conexion);
-
-            if (semestreBD) {
-                idSemestre = semestreBD.id_semestre;
-            } else {
-                idSemestre = await Malla.crearSemestre(
-                    { idCarrera, semestre: semestreRomano, horasMeta: 510, estado: 'A' },
-                    conexion
-                );
-                semestresCreados++;
-            }
-
-            // 2.5. EXTRAER DATOS DEL CURSO:
+            // 2.3. Extraer los datos del curso ANTES de decidir si se inserta o
+            // se actualiza. Así ambas rutas usan exactamente los mismos valores.
             // fila[1] -> CATALOGO (se guarda en la columna catalogo)
             // fila[4] -> CLASIFICACION BLACKBOARD (IGNORADA)
+            const horarioExcel = fila[3] ? String(fila[3]).trim().toUpperCase() : '';
             const horarioSinfo = normalizarHorario(fila[3]);
-            const nombreCurso = fila[6] ? String(fila[6]).trim().slice(0, 180) : matCur;
+            const nombreCursoExcel = fila[6] ? String(fila[6]).trim().slice(0, 180) : '';
+            const nombreCurso = nombreCursoExcel || matCur;
             const semanas = aEntero(fila[7], 16);
             const horasTeoria = aEntero(fila[8], 0);
             const horasTaller = aEntero(fila[9], 0);
@@ -347,11 +317,129 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
                         filasProcesadas: i - 1,
                         cursosInsertados,
                         cursosActualizados,
+                        cursosSinCambios,
                         filasIgnoradas: filasIgnoradasPorRepetido,
                         semestresCreados
                     }
                 });
                 continue;
+            }
+
+            // 2.4. Verificar en la BD si ya existe para ESA MISMA carrera.
+            const cursoExistente = await Malla.obtenerCursoPorCarreraYMatricula(idCarrera, matCur, conexion);
+
+            if (cursoExistente) {
+                // El curso no se duplica. Se comparan TODOS sus campos contra el
+                // Excel y solo se actualizan los que realmente cambiaron.
+                const semestreRomanoExcel = fila[5] ? String(fila[5]).trim().toUpperCase() : null;
+
+                let idSemestreDestino = cursoExistente.id_semestre;
+
+                // Si el Excel indica otro semestre, se mueve el curso respetando
+                // la restricción uk_semestre_matcur (id_semestre + mat_cur).
+                if (semestreRomanoExcel && !mismoValorTexto(cursoExistente.semestre_actual, semestreRomanoExcel)) {
+                    const semestreDestino = await Malla.obtenerSemestre(idCarrera, semestreRomanoExcel, conexion);
+
+                    if (semestreDestino) {
+                        const conflicto = await Malla.obtenerCursoPorSemestreYMatricula(
+                            semestreDestino.id_semestre,
+                            matCur,
+                            conexion
+                        );
+
+                        if (!conflicto || conflicto.id_curso === cursoExistente.id_curso) {
+                            idSemestreDestino = semestreDestino.id_semestre;
+                        }
+                    } else {
+                        idSemestreDestino = await Malla.crearSemestre(
+                            { idCarrera, semestre: semestreRomanoExcel, horasMeta: 510, estado: 'A' },
+                            conexion
+                        );
+                        semestresCreados++;
+                    }
+                }
+
+                const cambios = {};
+
+                if (!mismoValorNumerico(cursoExistente.id_semestre, idSemestreDestino)) {
+                    cambios.id_semestre = idSemestreDestino;
+                }
+                if (horarioExcel && !mismoValorTexto(cursoExistente.horario_sinfo, horarioSinfo)) {
+                    cambios.horario_sinfo = horarioSinfo;
+                }
+                if (nombreCursoExcel && !mismoValorTexto(cursoExistente.nombre_curso, nombreCurso)) {
+                    cambios.nombre_curso = nombreCurso;
+                }
+                if (fila[7] !== undefined && fila[7] !== null && String(fila[7]).trim() !== '' &&
+                    !mismoValorNumerico(cursoExistente.semanas, semanas)) {
+                    cambios.semanas = semanas;
+                }
+                if (!mismoValorNumerico(cursoExistente.horas_teoria, horasTeoria)) {
+                    cambios.horas_teoria = horasTeoria;
+                }
+                if (!mismoValorNumerico(cursoExistente.horas_taller, horasTaller)) {
+                    cambios.horas_taller = horasTaller;
+                }
+                if (!mismoValorNumerico(cursoExistente.horas_virtual, horasVirtual)) {
+                    cambios.horas_virtual = horasVirtual;
+                }
+                if (!mismoValorNumerico(cursoExistente.horas_evaluacion, horasEvaluacion)) {
+                    cambios.horas_evaluacion = horasEvaluacion;
+                }
+                if (!mismoValorNumerico(cursoExistente.total_horas, totalHoras)) {
+                    cambios.total_horas = totalHoras;
+                }
+                if (!mismoValorTexto(cursoExistente.catalogo, catalogo)) {
+                    cambios.catalogo = catalogo;
+                }
+                if (!mismoValorNumerico(cursoExistente.is_carrera, isCarrera)) {
+                    cambios.is_carrera = isCarrera;
+                }
+
+                const camposActualizados = Object.keys(cambios);
+
+                if (camposActualizados.length > 0) {
+                    await Malla.actualizarCurso(cursoExistente.id_curso, cambios, conexion);
+                    cursosActualizados++;
+                } else {
+                    cursosSinCambios++;
+                }
+
+                clavesProcesadasEnArchivo.add(claveCurso);
+                alProgresar({
+                    porcentaje: Math.min(99, Math.round(20 + (i / totalFilasArchivo) * 75)),
+                    paso: 'Procesando cursos',
+                    mensaje: camposActualizados.length > 0
+                        ? `Fila ${numeroFilaExcel}: ${matCur} actualizado (${camposActualizados.join(', ')}).`
+                        : `Fila ${numeroFilaExcel}: ${matCur} sin cambios, se mantiene igual.`,
+                    datos: {
+                        totalFilas: totalFilasArchivo,
+                        filasProcesadas: i - 1,
+                        cursosInsertados,
+                        cursosActualizados,
+                        cursosSinCambios,
+                        filasIgnoradas: filasIgnoradasPorRepetido,
+                        semestresCreados
+                    }
+                });
+                continue;
+            }
+
+            // 2.5. Buscar el semestre (ciclo) de esa carrera; si no existe, crearlo
+            const semestreRomano = fila[5] ? String(fila[5]).trim().toUpperCase() : 'I';
+
+            let idSemestre;
+
+            const semestreBD = await Malla.obtenerSemestre(idCarrera, semestreRomano, conexion);
+
+            if (semestreBD) {
+                idSemestre = semestreBD.id_semestre;
+            } else {
+                idSemestre = await Malla.crearSemestre(
+                    { idCarrera, semestre: semestreRomano, horasMeta: 510, estado: 'A' },
+                    conexion
+                );
+                semestresCreados++;
             }
 
             // 2.6. Inserción limpia del curso
@@ -386,6 +474,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
                     filasProcesadas: i - 1,
                     cursosInsertados,
                     cursosActualizados,
+                    cursosSinCambios,
                     filasIgnoradas: filasIgnoradasPorRepetido,
                     semestresCreados
                 }
@@ -398,6 +487,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
             semestresCreados,
             cursosInsertados,
             cursosActualizados,
+            cursosSinCambios,
             filasIgnoradasPorRepetido
         };
     });
@@ -407,7 +497,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
         mensaje: 'Archivo analizado y cursos importados exitosamente sin duplicados por carrera.',
         nombreArchivo,
         columnasIgnoradas: ['CLASIFICACION BLACKBOARD'],
-        reglaDuplicados: 'Se omite una fila solo cuando el MAT CUR ya existe para la misma carrera. El mismo curso sí puede registrarse en carreras diferentes. Al reimportar se actualizan CATALOGO e IS_CARRERA del curso existente.',
+        reglaDuplicados: 'Se omite una fila solo cuando el MAT CUR ya existe para la misma carrera. El mismo curso sí puede registrarse en carreras diferentes. Al reimportar se actualizan únicamente los datos que cambiaron (nombre, semanas, horas, horario, semestre, catálogo e IS_CARRERA) sin duplicar el curso.',
         reporte
     };
 };

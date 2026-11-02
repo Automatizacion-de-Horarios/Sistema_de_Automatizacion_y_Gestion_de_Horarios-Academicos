@@ -59,17 +59,47 @@ const Malla = {
     },
 
     /**
-     * Verifica si un MAT CUR ya existe para una carrera determinada.
-     * Se une cursos con semestres para conocer el id_carrera real del curso.
+     * Verifica si un MAT CUR ya existe para una carrera determinada y devuelve
+     * todos sus datos. Se une cursos con semestres para conocer el id_carrera
+     * real del curso y el semestre (romano) en el que está ubicado.
+     * Esos datos se usan para actualizar únicamente los campos que cambiaron
+     * en el Excel.
      */
     async obtenerCursoPorCarreraYMatricula(idCarrera, matCur, conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
-            `SELECT c.id_curso
+            `SELECT c.id_curso,
+                    c.id_semestre,
+                    c.mat_cur,
+                    c.horario_sinfo,
+                    c.nombre_curso,
+                    c.semanas,
+                    c.horas_teoria,
+                    c.horas_taller,
+                    c.horas_virtual,
+                    c.horas_evaluacion,
+                    c.total_horas,
+                    c.estado,
+                    c.catalogo,
+                    c.is_carrera,
+                    s.semestre AS semestre_actual
                FROM cursos c
                INNER JOIN semestres s ON s.id_semestre = c.id_semestre
               WHERE s.id_carrera = ? AND c.mat_cur = ?
+              ORDER BY c.id_curso
               LIMIT 1`,
             [idCarrera, matCur]
+        );
+        return filas[0] || null;
+    },
+
+    /**
+     * Busca un curso por (id_semestre, mat_cur). Se usa antes de mover un curso
+     * de semestre para respetar la restricción uk_semestre_matcur.
+     */
+    async obtenerCursoPorSemestreYMatricula(idSemestre, matCur, conexion) {
+        const [filas] = await obtenerEjecutor(conexion).query(
+            'SELECT id_curso FROM cursos WHERE id_semestre = ? AND mat_cur = ? LIMIT 1',
+            [idSemestre, matCur]
         );
         return filas[0] || null;
     },
@@ -134,6 +164,43 @@ const Malla = {
         const [resultado] = await obtenerEjecutor(conexion).query(
             'UPDATE cursos SET catalogo = ?, is_carrera = ? WHERE id_curso = ?',
             [catalogo, isCarrera, idCurso]
+        );
+        return resultado.affectedRows;
+    },
+
+    /**
+     * Actualiza únicamente los campos indicados de un curso ya registrado.
+     * El controlador solo envía los campos que realmente cambiaron, así que
+     * este método nunca reescribe datos que ya estaban iguales.
+     * Los nombres de columna están limitados a una lista blanca para evitar
+     * inyección SQL.
+     */
+    async actualizarCurso(idCurso, cambios, conexion) {
+        const columnasPermitidas = new Set([
+            'id_semestre',
+            'horario_sinfo',
+            'nombre_curso',
+            'semanas',
+            'horas_teoria',
+            'horas_taller',
+            'horas_virtual',
+            'horas_evaluacion',
+            'total_horas',
+            'catalogo',
+            'is_carrera'
+        ]);
+
+        const entradas = Object.entries(cambios)
+            .filter(([columna]) => columnasPermitidas.has(columna));
+
+        if (entradas.length === 0) return 0;
+
+        const asignaciones = entradas.map(([columna]) => `${columna} = ?`).join(', ');
+        const valores = entradas.map(([, valor]) => valor);
+
+        const [resultado] = await obtenerEjecutor(conexion).query(
+            `UPDATE cursos SET ${asignaciones} WHERE id_curso = ?`,
+            [...valores, idCurso]
         );
         return resultado.affectedRows;
     },
