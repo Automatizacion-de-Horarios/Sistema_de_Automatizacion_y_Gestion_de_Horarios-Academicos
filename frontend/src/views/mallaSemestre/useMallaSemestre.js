@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { API_BASE_URL } from '../../config/api';
-import { authFetch } from '../../lib/authFetch';
 import { matchSemestre, limpiarAsignaciones } from './mallaSemestre.helpers';
+import { mallaSemestreService } from './mallaSemestre.service';
 
 /**
  * Custom Hook: useMallaSemestre (Equipo 4)
@@ -157,11 +156,6 @@ export function useMallaSemestre({
         setErrorModalCurso(null);
 
         try {
-            const url = modoModalCurso === 'crear'
-                ? `${API_BASE_URL}/api/malla-semestre/cursos`
-                : `${API_BASE_URL}/api/malla-semestre/cursos/${formCurso.id_curso}`;
-            const method = modoModalCurso === 'crear' ? 'POST' : 'PUT';
-
             const esSeminario = /seminario/i.test(formCurso.nombre_curso || '');
             const formAEnviar = {
                 ...formCurso,
@@ -171,15 +165,10 @@ export function useMallaSemestre({
                 id_semestre: semestreModal?.id_semestre
             };
 
-            const res = await authFetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formAEnviar)
-            });
-
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.mensaje || 'Error al guardar los datos del curso.');
+            if (modoModalCurso === 'crear') {
+                await mallaSemestreService.crearCurso(formAEnviar);
+            } else {
+                await mallaSemestreService.actualizarCurso(formCurso.id_curso, formAEnviar);
             }
 
             if (typeof triggerToast === 'function') {
@@ -216,16 +205,7 @@ export function useMallaSemestre({
         });
 
         try {
-            const res = await authFetch(`${API_BASE_URL}/api/malla-semestre/cursos/${idCurso}/estado`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ estado: nuevoEstado })
-            });
-
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.mensaje || 'Error al actualizar estado del curso.');
-            }
+            await mallaSemestreService.cambiarEstadoCurso(idCurso, nuevoEstado);
 
             if (typeof triggerToast === 'function') {
                 triggerToast(`Curso ${nuevoEstado === 'A' ? 'activado' : 'inactivado'} correctamente`);
@@ -246,12 +226,7 @@ export function useMallaSemestre({
         setError(null);
 
         try {
-            const res = await authFetch(`${API_BASE_URL}/api/malla-semestre/${encodeURIComponent(idCarrera)}/malla`);
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.mensaje || 'Error al obtener la malla curricular de la carrera.');
-            }
+            const data = await mallaSemestreService.obtenerMalla(idCarrera);
 
             setMallaData(data);
             setHayCambiosSinGuardar(false);
@@ -550,16 +525,7 @@ export function useMallaSemestre({
         });
 
         try {
-            const res = await authFetch(`${API_BASE_URL}/api/malla-semestre/semestres/${idSemestre}/estado`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ estado: nuevoEstado })
-            });
-
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.mensaje || 'Error al actualizar estado del semestre.');
-            }
+            await mallaSemestreService.cambiarEstadoSemestre(idSemestre, nuevoEstado);
 
             if (typeof triggerToast === 'function') {
                 triggerToast(`Semestre ${semestre.semestre} ${nuevoEstado === 'A' ? 'habilitado' : 'inhabilitado'} correctamente`);
@@ -590,16 +556,7 @@ export function useMallaSemestre({
         });
 
         try {
-            const res = await authFetch(`${API_BASE_URL}/api/malla-semestre/cursos/${idCurso}/tipo`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_carrera: nuevoValor })
-            });
-
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.mensaje || 'Error al actualizar tipo de curso.');
-            }
+            await mallaSemestreService.cambiarTipoCurso(idCurso, nuevoValor);
 
             if (typeof triggerToast === 'function') {
                 triggerToast(`Curso marcado como: ${nuevoValor === 1 ? 'Carrera' : 'Complementario'}`);
@@ -696,19 +653,10 @@ export function useMallaSemestre({
                 }
             }
 
-            const res = await authFetch(`${API_BASE_URL}/api/malla-semestre/programacion`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id_carrera: mallaData?.carrera?.id_carrera || idCarrera,
-                    asignaciones
-                })
-            });
-
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.mensaje || 'Error al guardar la programación.');
-            }
+            await mallaSemestreService.guardarProgramacion(
+                mallaData?.carrera?.id_carrera || idCarrera,
+                asignaciones
+            );
 
             if (typeof triggerToast === 'function') {
                 triggerToast('¡Programación académica guardada exitosamente en la base de datos!');
