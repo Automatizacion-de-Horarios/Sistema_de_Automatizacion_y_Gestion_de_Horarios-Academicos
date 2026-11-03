@@ -2,25 +2,6 @@ const xlsx = require('xlsx');
 const crypto = require('crypto');
 const Malla = require('../models/mallasImpExp.model');
 
-/**
- * Controlador de Mallas y Cursos
- * Recibe el archivo Excel directamente del usuario,
- * inserta la columna CATALOGO, ignora CLASIFICACION BLACKBOARD,
- * calcula IS_CARRERA según el prefijo del MAT CUR (1 si coincide con una
- * sigla registrada en la tabla carreras o si es NCCU; 0 para cursos
- * complementarios),
- * valida que todas las carreras existan con SELECT previo (si falta alguna, anula el proceso),
- * y verifica que la pareja (id_carrera, mat_cur) no se repita.
- *
- * Este controlador solo se encarga de leer el Excel y aplicar las reglas de negocio.
- * Todas las consultas e inserciones a la base de datos viven en
- * ../models/mallasImpExp.model.js.
- *
- * REGLA DE DUPLICADOS:
- * - Si un MAT CUR ya fue registrado para la MISMA carrera, se ignora toda la fila.
- * - Si el MAT CUR se repite pero pertenece a OTRA carrera, sí se registra.
- *   Ejemplo: SCIU-185 se comparte entre PIAD, NAED, PCBD, etc., y debe existir en cada una.
- */
 // Trabajos de importación en memoria para reportar el avance real al frontend.
 const trabajosImportacion = new Map();
 const TIEMPO_VIDA_TRABAJO_MS = 15 * 60 * 1000; // 15 minutos
@@ -61,6 +42,7 @@ const crearTrabajo = (nombreArchivo) => {
             filasProcesadas: 0,
             cursosInsertados: 0,
             cursosActualizados: 0,
+            cursosSinCambios: 0,
             filasIgnoradas: 0,
             semestresCreados: 0
         },
@@ -96,20 +78,21 @@ const normalizarCatalogo = (valor) => {
     return texto ? texto.slice(0, 20) : null;
 };
 
+// Comparaciones usadas para detectar qué campos cambiaron respecto de la BD.
+const mismoValorTexto = (valorBD, valorExcel) => {
+    const textoBD = valorBD === null || valorBD === undefined ? '' : String(valorBD).trim();
+    const textoExcel = valorExcel === null || valorExcel === undefined ? '' : String(valorExcel).trim();
+    return textoBD === textoExcel;
+};
+
+const mismoValorNumerico = (valorBD, valorExcel) => Number(valorBD ?? 0) === Number(valorExcel ?? 0);
+
 // Obtiene el prefijo del MAT CUR (ej. "PIAD-525" -> "PIAD").
 const obtenerPrefijoMatCur = (matCur) => {
     const texto = String(matCur || '').trim().toUpperCase();
     return texto.split('-')[0].trim();
 };
 
-/**
- * IS_CARRERA = 1 cuando el prefijo del MAT CUR coincide con una sigla
- * registrada en la tabla carreras (curso propio de la carrera).
- * También es 1 para NCCU: son cursos transversales que ciertas carreras
- * (por ejemplo Marketing) necesitan y se consideran parte de la carrera,
- * no cursos complementarios.
- * IS_CARRERA = 0 para los demás cursos generales/compartidos (SCIU, CGEU, SPSU, etc.).
- */
 const PREFIJOS_CONSIDERADOS_CARRERA = new Set(['NCCU']);
 
 const calcularIsCarrera = (matCur, codigosCarreras) => {
@@ -118,18 +101,12 @@ const calcularIsCarrera = (matCur, codigosCarreras) => {
     return PREFIJOS_CONSIDERADOS_CARRERA.has(prefijo) ? 1 : 0;
 };
 
-/**
- * Procesa el buffer del Excel y realiza toda la importación en una transacción
- * administrada por el modelo (src/models/mallasImpExp.model.js).
- * Devuelve el mismo reporte que consume el frontend.
- * El callback `alProgresar` permite reportar el avance (fila, porcentaje y paso actual).
- */
+
 const procesarArchivoExcel = async (buffer, opciones = {}) => {
     const { nombreArchivo = '', alProgresar = () => {} } = opciones;
+    
 
-    // ==============================================================
     // LECTURA DEL ARCHIVO EN MEMORIA
-    // ==============================================================
     alProgresar({
         estado: 'procesando',
         porcentaje: 2,
@@ -151,15 +128,11 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
         throw new ErrorImportacion('El archivo Excel no contiene filas de datos suficientes.');
     }
 
-    // Toda la escritura en base de datos ocurre dentro de esta transacción:
+
     // si una fila falla, se revierte todo lo insertado.
     const reporte = await Malla.enTransaccion(async (conexion) => {
-        // ==============================================================
-        // FASE 1: VALIDACIÓN PREVIA DE CÓDIGOS DE CARRERA
-        // Escanea todos los códigos de carrera que vienen en el archivo.
-        // Si detecta un código que NO existe en la tabla carreras, anula
-        // el proceso inmediatamente para que el usuario registre su nombre oficial.
-        // ==============================================================
+
+        // VALIDACIÓN PREVIA DE CÓDIGOS DE CARRERA
         alProgresar({
             estado: 'procesando',
             porcentaje: 5,
@@ -210,19 +183,17 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
             );
         }
 
-        // Siglas de TODAS las carreras registradas: se usan para calcular IS_CARRERA.
         const codigosCarrerasBD = new Set(await Malla.obtenerCodigosCarreras(conexion));
 
-        // ==============================================================
+
         // FASE 2: PROCESAMIENTO E INSERCIÓN LIMPIA
-        // La clave de control es (id_carrera + mat_cur), NO solo mat_cur.
-        // ==============================================================
         const clavesProcesadasEnArchivo = new Set(); // `${idCarrera}|${matCur}`
 
         let totalFilasLeidas = 0;
         let semestresCreados = 0;
         let cursosInsertados = 0;
         let cursosActualizados = 0;
+        let cursosSinCambios = 0;
         let filasIgnoradasPorRepetido = 0;
 
         const totalFilasArchivo = Math.max(filas.length - 2, 1);
@@ -240,15 +211,11 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
 
             totalFilasLeidas++;
 
-            // CATALOGO (fila[1]) e IS_CARRERA calculado desde el prefijo del MAT CUR.
             const catalogo = normalizarCatalogo(fila[1]);
             const isCarrera = calcularIsCarrera(matCur, codigosCarrerasBD);
 
-            // 2.1. Obtener el id_carrera ya validado
             const idCarrera = mapaCarrerasValidas.get(codigoCarrera);
 
-            // 2.2. REGLA: no repetir el mismo MAT CUR dentro de la MISMA carrera.
-            // Un mismo MAT CUR sí puede registrarse en carreras diferentes.
             const claveCurso = `${idCarrera}|${matCur}`;
 
             if (clavesProcesadasEnArchivo.has(claveCurso)) {
@@ -262,6 +229,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
                         filasProcesadas: i - 1,
                         cursosInsertados,
                         cursosActualizados,
+                        cursosSinCambios,
                         filasIgnoradas: filasIgnoradasPorRepetido,
                         semestresCreados
                     }
@@ -269,30 +237,38 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
                 continue;
             }
 
-            // 2.3. Verificar en la BD si ya existe para ESA MISMA carrera.
-            const cursoExistente = await Malla.obtenerCursoPorCarreraYMatricula(idCarrera, matCur, conexion);
+            // Extraer los datos del curso ANTES de decidir si se inserta o se actualiza. Así ambas rutas usan exactamente los mismos valores.
 
-            if (cursoExistente) {
-                // El curso no se duplica, pero sí se completan/refrescan CATALOGO e IS_CARRERA.
-                const actualizado = await Malla.actualizarDatosClasificacionCurso(
-                    cursoExistente.id_curso,
-                    { catalogo, isCarrera },
-                    conexion
-                );
+            const horarioExcel = fila[3] ? String(fila[3]).trim().toUpperCase() : '';
+            const horarioSinfo = normalizarHorario(fila[3]);
+            const nombreCursoExcel = fila[6] ? String(fila[6]).trim().slice(0, 180) : '';
+            const nombreCurso = nombreCursoExcel || matCur;
+            const semanas = aEntero(fila[7], 16);
+            const horasTeoria = aEntero(fila[8], 0);
+            const horasTaller = aEntero(fila[9], 0);
+            const horasVirtual = aEntero(fila[10], 0);
+            const horasEvaluacion = aEntero(fila[11], 0);
 
-                if (actualizado) cursosActualizados++;
+            const sumaCalculada = horasTeoria + horasTaller + horasVirtual + horasEvaluacion;
+            const totalHorasExcel = aEntero(fila[12], 0);
+            const totalHoras = totalHorasExcel > 0 && totalHorasExcel === sumaCalculada
+                ? totalHorasExcel
+                : sumaCalculada;
 
-                clavesProcesadasEnArchivo.add(claveCurso);
+
+            if (totalHoras <= 0) {
                 filasIgnoradasPorRepetido++;
+                clavesProcesadasEnArchivo.add(claveCurso);
                 alProgresar({
                     porcentaje: Math.min(99, Math.round(20 + (i / totalFilasArchivo) * 75)),
                     paso: 'Procesando cursos',
-                    mensaje: `Fila ${numeroFilaExcel}: ${matCur} ya existe en la base de datos para ${codigoCarrera}, se omite.`,
+                    mensaje: `Fila ${numeroFilaExcel}: ${matCur} no tiene horas válidas, se omite.`,
                     datos: {
                         totalFilas: totalFilasArchivo,
                         filasProcesadas: i - 1,
                         cursosInsertados,
                         cursosActualizados,
+                        cursosSinCambios,
                         filasIgnoradas: filasIgnoradasPorRepetido,
                         semestresCreados
                     }
@@ -300,7 +276,103 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
                 continue;
             }
 
-            // 2.4. Buscar el semestre (ciclo) de esa carrera; si no existe, crearlo
+            const cursoExistente = await Malla.obtenerCursoPorCarreraYMatricula(idCarrera, matCur, conexion);
+
+            if (cursoExistente) {
+                // El curso no se duplica. Se comparan TODOS sus campos contra el Excel y solo se actualizan los que realmente cambiaron.
+                const semestreRomanoExcel = fila[5] ? String(fila[5]).trim().toUpperCase() : null;
+
+                let idSemestreDestino = cursoExistente.id_semestre;
+
+                if (semestreRomanoExcel && !mismoValorTexto(cursoExistente.semestre_actual, semestreRomanoExcel)) {
+                    const semestreDestino = await Malla.obtenerSemestre(idCarrera, semestreRomanoExcel, conexion);
+
+                    if (semestreDestino) {
+                        const conflicto = await Malla.obtenerCursoPorSemestreYMatricula(
+                            semestreDestino.id_semestre,
+                            matCur,
+                            conexion
+                        );
+
+                        if (!conflicto || conflicto.id_curso === cursoExistente.id_curso) {
+                            idSemestreDestino = semestreDestino.id_semestre;
+                        }
+                    } else {
+                        idSemestreDestino = await Malla.crearSemestre(
+                            { idCarrera, semestre: semestreRomanoExcel, horasMeta: 510, estado: 'A' },
+                            conexion
+                        );
+                        semestresCreados++;
+                    }
+                }
+
+                const cambios = {};
+
+                if (!mismoValorNumerico(cursoExistente.id_semestre, idSemestreDestino)) {
+                    cambios.id_semestre = idSemestreDestino;
+                }
+                if (horarioExcel && !mismoValorTexto(cursoExistente.horario_sinfo, horarioSinfo)) {
+                    cambios.horario_sinfo = horarioSinfo;
+                }
+                if (nombreCursoExcel && !mismoValorTexto(cursoExistente.nombre_curso, nombreCurso)) {
+                    cambios.nombre_curso = nombreCurso;
+                }
+                if (fila[7] !== undefined && fila[7] !== null && String(fila[7]).trim() !== '' &&
+                    !mismoValorNumerico(cursoExistente.semanas, semanas)) {
+                    cambios.semanas = semanas;
+                }
+                if (!mismoValorNumerico(cursoExistente.horas_teoria, horasTeoria)) {
+                    cambios.horas_teoria = horasTeoria;
+                }
+                if (!mismoValorNumerico(cursoExistente.horas_taller, horasTaller)) {
+                    cambios.horas_taller = horasTaller;
+                }
+                if (!mismoValorNumerico(cursoExistente.horas_virtual, horasVirtual)) {
+                    cambios.horas_virtual = horasVirtual;
+                }
+                if (!mismoValorNumerico(cursoExistente.horas_evaluacion, horasEvaluacion)) {
+                    cambios.horas_evaluacion = horasEvaluacion;
+                }
+                if (!mismoValorNumerico(cursoExistente.total_horas, totalHoras)) {
+                    cambios.total_horas = totalHoras;
+                }
+                if (!mismoValorTexto(cursoExistente.catalogo, catalogo)) {
+                    cambios.catalogo = catalogo;
+                }
+                if (!mismoValorNumerico(cursoExistente.is_carrera, isCarrera)) {
+                    cambios.is_carrera = isCarrera;
+                }
+
+                const camposActualizados = Object.keys(cambios);
+
+                if (camposActualizados.length > 0) {
+                    await Malla.actualizarCurso(cursoExistente.id_curso, cambios, conexion);
+                    cursosActualizados++;
+                } else {
+                    cursosSinCambios++;
+                }
+
+                clavesProcesadasEnArchivo.add(claveCurso);
+                alProgresar({
+                    porcentaje: Math.min(99, Math.round(20 + (i / totalFilasArchivo) * 75)),
+                    paso: 'Procesando cursos',
+                    mensaje: camposActualizados.length > 0
+                        ? `Fila ${numeroFilaExcel}: ${matCur} actualizado (${camposActualizados.join(', ')}).`
+                        : `Fila ${numeroFilaExcel}: ${matCur} sin cambios, se mantiene igual.`,
+                    datos: {
+                        totalFilas: totalFilasArchivo,
+                        filasProcesadas: i - 1,
+                        cursosInsertados,
+                        cursosActualizados,
+                        cursosSinCambios,
+                        filasIgnoradas: filasIgnoradasPorRepetido,
+                        semestresCreados
+                    }
+                });
+                continue;
+            }
+
+            // busca el semestre de la carrera, si no existe la crea
             const semestreRomano = fila[5] ? String(fila[5]).trim().toUpperCase() : 'I';
 
             let idSemestre;
@@ -317,44 +389,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
                 semestresCreados++;
             }
 
-            // 2.5. EXTRAER DATOS DEL CURSO:
-            // fila[1] -> CATALOGO (se guarda en la columna catalogo)
-            // fila[4] -> CLASIFICACION BLACKBOARD (IGNORADA)
-            const horarioSinfo = normalizarHorario(fila[3]);
-            const nombreCurso = fila[6] ? String(fila[6]).trim().slice(0, 180) : matCur;
-            const semanas = aEntero(fila[7], 16);
-            const horasTeoria = aEntero(fila[8], 0);
-            const horasTaller = aEntero(fila[9], 0);
-            const horasVirtual = aEntero(fila[10], 0);
-            const horasEvaluacion = aEntero(fila[11], 0);
-
-            // Asegurar cuadre de total_horas (CHECK CONSTRAINT de la tabla cursos)
-            const sumaCalculada = horasTeoria + horasTaller + horasVirtual + horasEvaluacion;
-            const totalHorasExcel = aEntero(fila[12], 0);
-            const totalHoras = totalHorasExcel > 0 && totalHorasExcel === sumaCalculada
-                ? totalHorasExcel
-                : sumaCalculada;
-
-            if (totalHoras <= 0) {
-                filasIgnoradasPorRepetido++;
-                clavesProcesadasEnArchivo.add(claveCurso);
-                alProgresar({
-                    porcentaje: Math.min(99, Math.round(20 + (i / totalFilasArchivo) * 75)),
-                    paso: 'Procesando cursos',
-                    mensaje: `Fila ${numeroFilaExcel}: ${matCur} no tiene horas válidas, se omite.`,
-                    datos: {
-                        totalFilas: totalFilasArchivo,
-                        filasProcesadas: i - 1,
-                        cursosInsertados,
-                        cursosActualizados,
-                        filasIgnoradas: filasIgnoradasPorRepetido,
-                        semestresCreados
-                    }
-                });
-                continue;
-            }
-
-            // 2.6. Inserción limpia del curso
+            // Insert lipio en cursos
             await Malla.crearCurso(
                 {
                     idSemestre,
@@ -386,6 +421,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
                     filasProcesadas: i - 1,
                     cursosInsertados,
                     cursosActualizados,
+                    cursosSinCambios,
                     filasIgnoradas: filasIgnoradasPorRepetido,
                     semestresCreados
                 }
@@ -398,6 +434,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
             semestresCreados,
             cursosInsertados,
             cursosActualizados,
+            cursosSinCambios,
             filasIgnoradasPorRepetido
         };
     });
@@ -407,23 +444,18 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
         mensaje: 'Archivo analizado y cursos importados exitosamente sin duplicados por carrera.',
         nombreArchivo,
         columnasIgnoradas: ['CLASIFICACION BLACKBOARD'],
-        reglaDuplicados: 'Se omite una fila solo cuando el MAT CUR ya existe para la misma carrera. El mismo curso sí puede registrarse en carreras diferentes. Al reimportar se actualizan CATALOGO e IS_CARRERA del curso existente.',
+        reglaDuplicados: 'Se omite una fila solo cuando el MAT CUR ya existe para la misma carrera. El mismo curso sí puede registrarse en carreras diferentes. Al reimportar se actualizan únicamente los datos que cambiaron (nombre, semanas, horas, horario, semestre, catálogo e IS_CARRERA) sin duplicar el curso.',
         reporte
     };
 };
 
 const mallasImpExpController = {
 
-    /**
-     * Procesa e importa el archivo Excel enviado por el usuario.
-     *
-     * Modo normal  (sin ?progreso=1): responde al finalizar (comportamiento original).
-     * Modo progreso (con ?progreso=1): crea un trabajo en memoria, responde con jobId
-     * y el frontend consulta el avance con GET /importar-excel/progreso/:jobId.
-     */
+
+
     importarExcel: async (req, res) => {
         try {
-            // 1. Validar que el usuario haya enviado un archivo
+            // Valida que el usuario haya enviado un archivo
             if (!req.file || !req.file.buffer) {
                 return res.status(400).json({
                     status: 'error',
@@ -431,7 +463,7 @@ const mallasImpExpController = {
                 });
             }
 
-            // 2. Modo con progreso real (polling)
+            // 2. Modo con progreso real
             if (req.query.progreso === '1') {
                 const trabajo = crearTrabajo(req.file.originalname);
 
@@ -442,7 +474,7 @@ const mallasImpExpController = {
                     mensaje: 'El archivo se está procesando. Consultando el avance...'
                 });
 
-                // Procesar en segundo plano sin bloquear la petición.
+                // Procesa en segundo plano sin bloquear la petición.
                 setImmediate(async () => {
                     try {
                         const resultado = await procesarArchivoExcel(req.file.buffer, {
@@ -482,7 +514,6 @@ const mallasImpExpController = {
                 return;
             }
 
-            // 3. Modo normal (sincrónico, compatible con llamadas anteriores)
             const resultado = await procesarArchivoExcel(req.file.buffer, {
                 nombreArchivo: req.file.originalname
             });
@@ -509,9 +540,9 @@ const mallasImpExpController = {
         }
     },
 
-    /**
-     * Devuelve el avance de un trabajo de importación.
-     */
+
+    // Devuelve el avance de un trabajo de importación.
+
     obtenerProgreso: async (req, res) => {
         limpiarTrabajosAntiguos();
 
@@ -541,9 +572,9 @@ const mallasImpExpController = {
         });
     },
 
-    /**
-     * Retorna el conteo actual de registros en la base de datos
-     */
+    
+    // Retorna el conteo actual de registros en la base de datos
+   
     obtenerResumen: async (req, res) => {
         try {
             const [totalCarreras, totalSemestres, totalCursos] = await Promise.all([

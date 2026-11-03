@@ -1,19 +1,7 @@
 const db = require('../config/db');
 
-/**
- * Modelo de Exportación de Estructura Curricular (Cursos y Mallas)
- * Devuelve los cursos registrados junto con su carrera y semestre para poder
- * reconstruir el Excel de estructura curricular en el mismo formato que se
- * usa para importar (CATALOGO, MAT CUR, HORARIO SINFO, SEMANAS, HORAS, etc.).
- *
- * Solo tiene consultas de lectura: la exportación nunca modifica la base de datos.
- */
 const EstructuraCurricular = {
-    /**
-     * Obtiene todos los cursos con los datos de su semestre y su carrera.
-     * El orden base es por código de carrera (para agrupar) y por id_curso
-     * (que conserva el orden en que se importó cada curso dentro del semestre).
-     */
+
     async obtenerCursosParaExportar() {
         const [filas] = await db.query(
             `SELECT ca.codigo_carrera,

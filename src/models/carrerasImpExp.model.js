@@ -1,22 +1,12 @@
 const db = require('../config/db');
 const MallaSemestre = require('./mallaSemestre.model');
 
-/**
- * Modelo de Carreras (Equipo 4)
- * Centraliza las consultas e inserciones a la base de datos que usa
- * el registro y listado de carreras y sus semestres base.
- *
- * La gestión avanzada de Malla Curricular, Semestres y Cursos (II al VI)
- * se encuentra modularizada en mallaSemestre.model.js.
- */
-
 const obtenerEjecutor = (conexion) => conexion || db;
 
 const Carrera = {
-    /**
-     * Ejecuta un bloque de trabajo dentro de una transacción.
-     * Si el bloque lanza un error, se revierte todo y se libera la conexión.
-     */
+    
+    // Ejecuta un bloque de trabajo dentro de una transacción.
+
     async enTransaccion(trabajo) {
         const conexion = await db.getConnection();
 
@@ -37,9 +27,9 @@ const Carrera = {
         }
     },
 
-    /**
-     * Lista todas las carreras activas ordenadas por código.
-     */
+    
+    // Lista todas las carreras activas ordenadas por código.
+
     async obtenerActivas(conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
             `SELECT 
@@ -78,9 +68,9 @@ const Carrera = {
         return Array.from(mapa.values());
     },
 
-    /**
-     * Busca una carrera por su código (sigla).
-     */
+
+    // Busca una carrera por su código (siglae ejm PIAD NAID).
+  
     async obtenerPorCodigo(codigo, conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
             'SELECT id_carrera FROM carreras WHERE codigo_carrera = ?',
@@ -89,9 +79,8 @@ const Carrera = {
         return filas[0] || null;
     },
 
-    /**
-     * Registra una nueva carrera y devuelve su id.
-     */
+
+    // Registra una nueva carrera y devuelve su id.
     async crear({ codigo, nombre, estado = 'A' }, conexion) {
         const [resultado] = await obtenerEjecutor(conexion).query(
             'INSERT INTO carreras (codigo_carrera, nombre_carrera, estado) VALUES (?, ?, ?)',
@@ -100,9 +89,7 @@ const Carrera = {
         return resultado.insertId;
     },
 
-    /**
-     * Obtiene los semestres (ciclos) ya registrados de una carrera.
-     */
+
     async obtenerSemestres(idCarrera, conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
             'SELECT semestre FROM semestres WHERE id_carrera = ?',
@@ -111,9 +98,9 @@ const Carrera = {
         return filas;
     },
 
-    /**
-     * Registra un nuevo semestre para una carrera y devuelve su id.
-     */
+
+    // Registra un nuevo semestre para una carrera y devuelve su id.
+
     async crearSemestre({ idCarrera, semestre, horasMeta = 510, estado = 'A' }, conexion) {
         const [resultado] = await obtenerEjecutor(conexion).query(
             'INSERT INTO semestres (id_carrera, semestre, horas_semestre_meta, estado) VALUES (?, ?, ?, ?)',
@@ -122,9 +109,8 @@ const Carrera = {
         return resultado.insertId;
     },
 
-    /**
-     * Busca una carrera por su id numérico.
-     */
+    // Busca una carrera por su id numérico.
+    
     async obtenerPorId(idCarrera, conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
             'SELECT id_carrera, codigo_carrera, nombre_carrera, estado FROM carreras WHERE id_carrera = ?',
