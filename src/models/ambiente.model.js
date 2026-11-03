@@ -70,40 +70,20 @@ const Ambiente = {
     }
   },
 
-  async actualizarCursoPermitido(idAmbiente, codigoPeriodo, idCurso, permitido) {
-    let resultado;
+  async actualizarCursoPermitido(idAmbiente, idPeriodo, idCurso, permitido) {
     if (permitido) {
-      [resultado] = await db.query(
+      await db.query(
         `INSERT INTO ambiente_cursos_permitidos (id_periodo, id_ambiente, id_curso)
-         SELECT id_periodo, ?, ?
-         FROM periodos
-         WHERE codigo_periodo = ?
-         ON DUPLICATE KEY UPDATE id_curso = VALUES(id_curso)`,
-        [idAmbiente, idCurso, codigoPeriodo]
+         VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE id_curso = VALUES(id_curso)`,
+        [idPeriodo, idAmbiente, idCurso]
       );
-    } else {
-      [resultado] = await db.query(
-        `DELETE FROM ambiente_cursos_permitidos
-         WHERE id_periodo = (
-           SELECT id_periodo FROM periodos WHERE codigo_periodo = ?
-         ) AND id_ambiente = ? AND id_curso = ?`,
-        [codigoPeriodo, idAmbiente, idCurso]
-      );
+      return;
     }
 
-    if (resultado.affectedRows > 0) return true;
-
-    const [filas] = await db.query(
-      `SELECT EXISTS (
-         SELECT 1
-         FROM periodos p
-         INNER JOIN ambientes a ON a.id = ?
-         INNER JOIN cursos c ON c.id_curso = ?
-         WHERE p.codigo_periodo = ?
-       ) AS referencias_validas`,
-      [idAmbiente, idCurso, codigoPeriodo]
+    await db.query(
+      'DELETE FROM ambiente_cursos_permitidos WHERE id_periodo = ? AND id_ambiente = ? AND id_curso = ?',
+      [idPeriodo, idAmbiente, idCurso]
     );
-    return Boolean(filas[0]?.referencias_validas);
   },
 
   async actualizarCursosPermitidosEnLote(idAmbiente, idPeriodo, cambios) {

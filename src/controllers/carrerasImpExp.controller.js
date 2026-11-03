@@ -1,15 +1,6 @@
 const Carrera = require('../models/carrerasImpExp.model');
 const mallaSemestreController = require('./mallaSemestre.controller');
 
-/**
- * Controlador de Carreras (Equipo 4)
- * Permite registrar nuevas carreras con su código y nombre institucional,
- * asegurando la creación de sus ciclos I al VI.
- *
- * La gestión de la Malla Curricular, Semestres y Cursos (II al VI)
- * se encuentra modularizada en mallaSemestre.controller.js.
- */
-
 class ErrorCarreraDuplicada extends Error {
     constructor(codigo) {
         super(`El código de carrera '${codigo}' ya se encuentra registrado en el sistema.`);
@@ -21,9 +12,9 @@ class ErrorCarreraDuplicada extends Error {
 
 const carrerasImpExpController = {
 
-    /**
-     * Obtener listado de todas las carreras activas
-     */
+
+    //Obtener listado de todas las carreras activas
+
     obtenerCarreras: async (req, res) => {
         try {
             const carreras = await Carrera.obtenerActivas();
@@ -40,9 +31,9 @@ const carrerasImpExpController = {
         }
     },
 
-    /**
-     * Registrar una nueva carrera con su código y nombre oficial
-     */
+    
+    //Registra una nueva carrera con su código y nombre oficial
+    
     crearCarrera: async (req, res) => {
         try {
             const { codigo_carrera, nombre_carrera } = req.body;
@@ -65,7 +56,6 @@ const carrerasImpExpController = {
                     throw new ErrorCarreraDuplicada(codigoLimpio);
                 }
 
-                // 2. Insertar la nueva carrera
                 const idCarrera = await Carrera.crear(
                     { codigo: codigoLimpio, nombre: nombreLimpio, estado: 'A' },
                     conexion
