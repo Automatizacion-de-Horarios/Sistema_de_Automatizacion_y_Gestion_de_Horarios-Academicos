@@ -13,11 +13,11 @@ class ErrorCarreraDuplicada extends Error {
 const carrerasImpExpController = {
 
 
-    //Obtener listado de todas las carreras activas
+    //Obtener listado de todas las carreras registradas (activas e inactivas)
 
     obtenerCarreras: async (req, res) => {
         try {
-            const carreras = await Carrera.obtenerActivas();
+            const carreras = await Carrera.obtenerTodas();
             return res.json({
                 status: 'ok',
                 carreras

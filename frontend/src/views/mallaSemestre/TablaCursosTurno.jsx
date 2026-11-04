@@ -134,7 +134,7 @@ export default function TablaCursosTurno({
                             <div className="malla-docente-select-group">
                                 <label htmlFor={`doc-tal-${semestre.semestre}`}>
                                     docente para TAL:
-                                    {tieneTecTal && <span style={{ fontSize: '10px', color: '#0284c7', marginLeft: '4px' }}>(Sincronizado TEC-TAL)</span>}
+                                    {tieneTecTal && <span style={{ fontSize: '10px', color: '#0284c7', marginLeft: '4px' }}></span>}
                                 </label>
                                 <select
                                     id={`doc-tal-${semestre.semestre}`}

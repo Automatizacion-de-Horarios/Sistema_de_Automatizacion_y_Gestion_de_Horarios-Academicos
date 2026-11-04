@@ -113,35 +113,6 @@ const mallaSemestreController = {
 
             const semestres = Array.from(mapaSemestres.values());
 
-            // Obtener docentes y su disponibilidad agrupados por turno
-            const filasDocentes = await MallaSemestre.obtenerDocentesPorTurno();
-            
-            const mapaTurnos = {
-                MANANA: new Map(),
-                TARDE: new Map(),
-                NOCHE: new Map()
-            };
-
-            for (const doc of filasDocentes) {
-                const turno = doc.turno || 'MANANA';
-                if (!mapaTurnos[turno]) continue;
-
-                if (!mapaTurnos[turno].has(doc.id_docente)) {
-                    mapaTurnos[turno].set(doc.id_docente, {
-                        id_docente: doc.id_docente,
-                        nombre_completo: `${doc.nombres} ${doc.apellidos}`.trim(),
-                        especialidad: doc.especialidad,
-                        horarios: []
-                    });
-                }
-
-                mapaTurnos[turno].get(doc.id_docente).horarios.push({
-                    dia: doc.dia_semana,
-                    inicio: doc.hora_inicio,
-                    fin: doc.hora_fin
-                });
-            }
-
             // Obtener lista completa de docentes activos (nombre y especialidad)
             const filasListaDocentes = await MallaSemestre.obtenerListaDocentes();
             const docentesSimplificados = filasListaDocentes.map((d) => ({

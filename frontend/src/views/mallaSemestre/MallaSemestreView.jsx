@@ -2,11 +2,11 @@ import React from 'react';
 import './MallaSemestreView.css';
 
 // Subcomponentes y lógica modular (Equipo 4)
-import BarraTurnosCiclos from './mallaSemestre/BarraTurnosCiclos';
-import TablaCursosTurno from './mallaSemestre/TablaCursosTurno';
-import ModalCurso from './mallaSemestre/ModalCurso';
-import ModalConfirmarSalir from './mallaSemestre/ModalConfirmarSalir';
-import { useMallaSemestre } from './mallaSemestre/useMallaSemestre';
+import BarraTurnosCiclos from './BarraTurnosCiclos';
+import TablaCursosTurno from './TablaCursosTurno';
+import ModalCurso from './ModalCurso';
+import ModalConfirmarSalir from './ModalConfirmarSalir';
+import { useMallaSemestre } from './useMallaSemestre';
 
 /**
  * Vista de Malla Curricular y Cursos por Semestre (Equipo 4)
@@ -204,3 +204,4 @@ export default function MallaSemestreView(props) {
         </section>
     );
 }
+

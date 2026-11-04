@@ -190,6 +190,33 @@ const Malla = {
     
     //Conteos usados por el resumen de la pantalla de mallas.
 
+    /**
+     * Dado un array de prefijos (ej. ['NCCU','MATH']), devuelve para cada uno
+     * si ya existe algún curso en BD con is_carrera = 1 que empiece por ese prefijo.
+     * Resultado: Map<prefijo, Boolean>
+     */
+    async consultarPrefijosEnBD(prefijos, conexion) {
+        if (!prefijos || prefijos.length === 0) return new Map();
+
+        const condiciones = prefijos.map(() => `mat_cur LIKE ?`).join(' OR ');
+        const valores = prefijos.map((p) => `${p}-%`);
+
+        const [filas] = await obtenerEjecutor(conexion).query(
+            `SELECT SUBSTRING_INDEX(mat_cur, '-', 1) AS prefijo,
+                    MAX(is_carrera) AS es_carrera
+               FROM cursos
+              WHERE ${condiciones}
+              GROUP BY prefijo`,
+            valores
+        );
+
+        const resultado = new Map();
+        for (const fila of filas) {
+            resultado.set(String(fila.prefijo).trim().toUpperCase(), Number(fila.es_carrera) === 1);
+        }
+        return resultado;
+    },
+
     async contarCarreras(conexion) {
         const [filas] = await obtenerEjecutor(conexion).query('SELECT COUNT(*) as count FROM carreras');
         return filas[0].count;

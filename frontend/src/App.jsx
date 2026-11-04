@@ -1262,11 +1262,11 @@ function FeriadosModulo({ triggerToast }) {
     };
 
     return (
-        <>
+        <div className="feriados-page">
             <header className="feriados-header">
                 <div className="feriados-header-info">
                     <h1>Gestión de Feriados</h1>
-                    <p className="subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
+                    <p className="feriados-subtitle">Registro, activación e inhabilitación de días feriados del calendario académico</p>
                 </div>
                 <div className="feriados-actions">
                     <label className="feriado-filtro">
@@ -1300,14 +1300,14 @@ function FeriadosModulo({ triggerToast }) {
 
                     <button
                         type="button"
-                        className="eq4-btn eq4-btn-secondary"
+                        className="feriados-btn feriados-btn-secondary"
                         onClick={replicarFeriadosSiguienteAnio}
                         disabled={replicando}
                     >
                         <i className={`fas ${replicando ? 'fa-spinner fa-spin' : 'fa-clone'}`}></i>
                         {replicando ? 'Replicando...' : `Replicar a ${Number(filtroAnio) + 1}`}
                     </button>
-                    <button type="button" className="eq4-btn eq4-btn-primary" onClick={abrirModal}>
+                    <button type="button" className="feriados-btn feriados-btn-primary" onClick={abrirModal}>
                         <i className="fas fa-plus"></i>
                         Nuevo Feriado
                     </button>
@@ -1395,7 +1395,7 @@ function FeriadosModulo({ triggerToast }) {
             </div>
 
             {feriadosOrdenados.length === 0 && (
-                <div className="workspace-card">
+                <div className="feriados-empty">
                     <h2>No hay feriados registrados para este mes</h2>
                     <p>Intenta seleccionando otro mes o agrega un nuevo feriado.</p>
                 </div>
@@ -1452,17 +1452,17 @@ function FeriadosModulo({ triggerToast }) {
                         </div>
                     </div>
                     <div className="feriado-modal-footer">
-                        <button className="btn btn-secondary" onClick={cerrarModal}>
+                        <button className="feriados-form-btn feriados-form-btn-secondary" onClick={cerrarModal}>
                             Cancelar
                         </button>
-                        <button className="btn btn-primary" onClick={agregarFeriado}>
+                        <button className="feriados-form-btn feriados-form-btn-primary" onClick={agregarFeriado}>
                             <i className="fas fa-save"></i>
                             {feriadoEditando ? 'Guardar Cambios' : 'Guardar Feriado'}
                         </button>
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 }
 

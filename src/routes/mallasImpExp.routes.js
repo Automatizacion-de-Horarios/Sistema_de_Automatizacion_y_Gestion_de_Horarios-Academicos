@@ -21,6 +21,9 @@ const mallasImpExpController = require('../controllers/mallasImpExp.controller')
 // Ruta POST para recibir el archivo arrastrado/seleccionado por el usuario.
 router.post('/importar-excel', recibirArchivo, mallasImpExpController.importarExcel);
 
+// Ruta POST para analizar los prefijos del Excel sin importar (previa al panel de clasificación)
+router.post('/analizar-prefijos', recibirArchivo, mallasImpExpController.analizarPrefijos);
+
 // Ruta GET para consultar el avance de una importación (polling desde el frontend)
 router.get('/importar-excel/progreso/:jobId', mallasImpExpController.obtenerProgreso);
 
