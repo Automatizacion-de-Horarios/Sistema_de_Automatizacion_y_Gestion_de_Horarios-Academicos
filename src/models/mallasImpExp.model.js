@@ -147,11 +147,7 @@ const Malla = {
         return resultado.insertId;
     },
 
-    /**
-     * Actualiza CATALOGO e IS_CARRERA de un curso ya registrado.
-     * Sirve para que al reimportar el Excel se completen/refresquen estos datos
-     * sin duplicar el curso ni alterar su semestre.
-     */
+   
     async actualizarDatosClasificacionCurso(idCurso, { catalogo, isCarrera }, conexion) {
         const [resultado] = await obtenerEjecutor(conexion).query(
             'UPDATE cursos SET catalogo = ?, is_carrera = ? WHERE id_curso = ?',

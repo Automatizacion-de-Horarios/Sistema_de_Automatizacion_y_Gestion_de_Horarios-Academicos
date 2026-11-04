@@ -29,12 +29,7 @@ const SEMESTRES_CHIPS = [
     { num: 6, romano: 'VI', label: 'Sem. 6' },
 ];
 
-/**
- * Vista de Carreras y Mallas Curriculares (Grupo 4)
- * Lista las carreras registradas en la base de datos (GET /api/carreras),
- * permite registrar una nueva (POST /api/carreras) y abre la importación
- * de mallas desde Excel, que vive en CursosView.
- */
+
 
 export default function CarrerasView({ activeView, setActiveView, triggerToast, carreras, cargandoCarreras, onRefrescarCarreras, onCambiosPendientesChange }) {
     const cursosRef = useRef(null);
@@ -56,22 +51,12 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                     ? 'sin_datos'
                     : 'activa';
 
-            const listaSem = Array.isArray(carrera.semestres) && carrera.semestres.length > 0
-                ? carrera.semestres
-                : [
-                    { id_semestre: 1, semestre: 'I', estado: 'A' },
-                    { id_semestre: 2, semestre: 'II', estado: 'A' },
-                    { id_semestre: 3, semestre: 'III', estado: 'A' },
-                    { id_semestre: 4, semestre: 'IV', estado: 'A' },
-                    { id_semestre: 5, semestre: 'V', estado: 'A' },
-                    { id_semestre: 6, semestre: 'VI', estado: 'A' }
-                ];
+            const listaSem = Array.isArray(carrera.semestres) ? carrera.semestres : [];
 
             return {
                 id,
                 codigo: carrera.codigo_carrera || '',
                 nombre: carrera.nombre_carrera || carrera.nombre || '',
-                semestres: carrera.semestres ?? 6,
                 semestres: listaSem,
                 totalSemestres: listaSem.length,
                 estado: estadosLocales[id] ?? estadoBase
@@ -289,6 +274,8 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                                 const isLocked = carrera.estado !== 'activa';
 
                                 return (
+
+                                    //Seccion donde se mostraran las carreras
                                     <div
                                         key={carrera.id}
                                         className={`carrera-card ${isLocked ? 'disabled' : ''}`}
@@ -382,7 +369,7 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
             )}
 
             {/* ================================================================= */}
-            {/*      MODAL PARA REGISTRAR NUEVA CARRERA OFICIAL - EQUIPO 3        */}
+            {/*      MODAL PARA REGISTRAR NUEVA CARRERA OFICIAL - EQUIPO 4        */}
             {/* ================================================================= */}
             {modalNuevaCarreraAbierto && (
                 <div className="eq4-modal-overlay" onClick={() => setModalNuevaCarreraAbierto(false)}>

@@ -252,7 +252,7 @@ const CursosView = forwardRef(function CursosView({ onRegistrarCarrera, onProces
     return (
         <>
             {/* ================================================================= */}
-            {/*        MODAL DE IMPORTACIÓN DRAG & DROP (EXCEL) - EQUIPO 3        */}
+            {/*        MODAL DE IMPORTACIÓN DRAG & DROP (EXCEL) - EQUIPO 4      */}
             {/* ================================================================= */}
             {modalAbierto && (
                 <div className="eq4-modal-overlay" onClick={cerrarModal}>
@@ -493,9 +493,10 @@ const CursosView = forwardRef(function CursosView({ onRegistrarCarrera, onProces
             )}
 
             {/* ================================================================= */}
-            {/*   PANEL FLOTANTE DE PROGRESO DE IMPORTACIÓN - EQUIPO 3             */}
+            {/*   PANEL FLOTANTE DE PROGRESO DE IMPORTACIÓN - EQUIPO 4            */}
             {/*   Se mantiene abajo a la derecha aunque se cierre el modal.       */}
             {/* ================================================================= */}
+            
             {panelProgresoVisible && !modalAbierto && (
                 <div style={{
                     position: 'fixed',
