@@ -3,8 +3,7 @@ import { API_BASE_URL } from '../config/api';
 import { authFetch } from '../lib/authFetch';
 import CursosView from './CursosView';
 import fondoCarreras from '../assets/fondoCarreras.png';
-import MallaSemestreView from './MallaSemestreView';
-import './MallaSemestreView.css';
+import MallaSemestreView from './mallaSemestre';
 
 const MAPA_ROMANO_A_NUM = {
     'I': 1, '1': 1,
