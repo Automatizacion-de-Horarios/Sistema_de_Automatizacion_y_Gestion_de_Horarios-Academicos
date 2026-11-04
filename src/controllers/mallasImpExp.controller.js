@@ -93,17 +93,21 @@ const obtenerPrefijoMatCur = (matCur) => {
     return texto.split('-')[0].trim();
 };
 
-const PREFIJOS_CONSIDERADOS_CARRERA = new Set(['NCCU']);
-
-const calcularIsCarrera = (matCur, codigosCarreras) => {
+// Calcula is_carrera usando los códigos de carreras de BD más el mapa de clasificaciones manuales
+// que el usuario confirmó desde el panel de prefijos.
+// clasificacionesManuales: Map<prefijo, 1|0> (opcional)
+const calcularIsCarrera = (matCur, codigosCarreras, clasificacionesManuales = null) => {
     const prefijo = obtenerPrefijoMatCur(matCur);
     if (codigosCarreras.has(prefijo)) return 1;
-    return PREFIJOS_CONSIDERADOS_CARRERA.has(prefijo) ? 1 : 0;
+    if (clasificacionesManuales && clasificacionesManuales.has(prefijo)) {
+        return clasificacionesManuales.get(prefijo);
+    }
+    return 0;
 };
 
 
 const procesarArchivoExcel = async (buffer, opciones = {}) => {
-    const { nombreArchivo = '', alProgresar = () => {} } = opciones;
+    const { nombreArchivo = '', alProgresar = () => {}, clasificacionesManuales = null } = opciones;
     
 
     // LECTURA DEL ARCHIVO EN MEMORIA
@@ -212,7 +216,7 @@ const procesarArchivoExcel = async (buffer, opciones = {}) => {
             totalFilasLeidas++;
 
             const catalogo = normalizarCatalogo(fila[1]);
-            const isCarrera = calcularIsCarrera(matCur, codigosCarrerasBD);
+            const isCarrera = calcularIsCarrera(matCur, codigosCarrerasBD, clasificacionesManuales);
 
             const idCarrera = mapaCarrerasValidas.get(codigoCarrera);
 
@@ -463,23 +467,36 @@ const mallasImpExpController = {
                 });
             }
 
-            // 2. Modo con progreso real
+            // Reconstruir el mapa de clasificaciones manuales desde el body (si viene)
+            // El frontend envía: clasificaciones={"NCCU":1,"MATH":0,...} como campo form
+            let clasificacionesManuales = null;
+            if (req.body && req.body.clasificaciones) {
+                try {
+                    const obj = typeof req.body.clasificaciones === 'string'
+                        ? JSON.parse(req.body.clasificaciones)
+                        : req.body.clasificaciones;
+                    clasificacionesManuales = new Map(Object.entries(obj).map(([k, v]) => [k, Number(v)]));
+                } catch (_) {
+                    // Si falla el parse, simplemente ignoramos las clasificaciones
+                }
+            }
+
+            // Modo con progreso real
             if (req.query.progreso === '1') {
                 const trabajo = crearTrabajo(req.file.originalname);
 
-                // Responder de inmediato para que el frontend pueda consultar el avance.
                 res.status(202).json({
                     status: 'ok',
                     jobId: trabajo.id,
                     mensaje: 'El archivo se está procesando. Consultando el avance...'
                 });
 
-                // Procesa en segundo plano sin bloquear la petición.
                 setImmediate(async () => {
                     try {
                         const resultado = await procesarArchivoExcel(req.file.buffer, {
                             nombreArchivo: req.file.originalname,
-                            alProgresar: (progreso) => actualizarTrabajo(trabajo, progreso)
+                            alProgresar: (progreso) => actualizarTrabajo(trabajo, progreso),
+                            clasificacionesManuales
                         });
 
                         actualizarTrabajo(trabajo, {
@@ -515,7 +532,8 @@ const mallasImpExpController = {
             }
 
             const resultado = await procesarArchivoExcel(req.file.buffer, {
-                nombreArchivo: req.file.originalname
+                nombreArchivo: req.file.originalname,
+                clasificacionesManuales
             });
 
             return res.json(resultado);
@@ -535,6 +553,75 @@ const mallasImpExpController = {
             return res.status(500).json({
                 status: 'error',
                 mensaje: 'Ocurrió un error al procesar el archivo en la base de datos.',
+                detalle: error.message
+            });
+        }
+    },
+
+
+    /**
+     * Analiza los prefijos encontrados en el Excel sin importar nada.
+     * Recibe el archivo Excel y devuelve la lista de prefijos únicos con:
+     *  - esCarreraForzado: true si el prefijo coincide con un código de carrera en BD
+     *  - yaEsCarreraEnBD: true si existe algún curso con ese prefijo e is_carrera=1 en BD
+     * El frontend usa esto para mostrar el panel de clasificación.
+     */
+    analizarPrefijos: async (req, res) => {
+        try {
+            if (!req.file || !req.file.buffer) {
+                return res.status(400).json({
+                    status: 'error',
+                    mensaje: 'No se recibió ningún archivo.'
+                });
+            }
+
+            const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+            const primeraHoja = workbook.SheetNames[0];
+            if (!primeraHoja) {
+                return res.status(400).json({ status: 'error', mensaje: 'El archivo Excel no contiene hojas.' });
+            }
+
+            const sheet = workbook.Sheets[primeraHoja];
+            const filas = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+
+            if (!filas || filas.length < 3) {
+                return res.status(400).json({ status: 'error', mensaje: 'El archivo no tiene datos suficientes.' });
+            }
+
+            // Recopilar prefijos únicos del MAT CUR (columna 2, índice 2)
+            const prefijosSet = new Set();
+            for (let i = 2; i < filas.length; i++) {
+                const fila = filas[i];
+                if (fila && fila[2]) {
+                    const matCur = String(fila[2]).trim().toUpperCase();
+                    if (matCur.includes('-')) {
+                        prefijosSet.add(obtenerPrefijoMatCur(matCur));
+                    }
+                }
+            }
+
+            const prefijos = [...prefijosSet];
+
+            // Consultar los códigos de carrera en BD
+            const codigosCarrerasBD = new Set(await Malla.obtenerCodigosCarreras());
+
+            // Prefijos que NO son de carrera forzada → consultar si están en BD como is_carrera=1
+            const prefijosAConsultar = prefijos.filter((p) => !codigosCarrerasBD.has(p));
+            const estadoBD = await Malla.consultarPrefijosEnBD(prefijosAConsultar);
+
+            const resultado = prefijos.map((prefijo) => ({
+                prefijo,
+                esCarreraForzado: codigosCarrerasBD.has(prefijo),
+                yaEsCarreraEnBD: codigosCarrerasBD.has(prefijo) || (estadoBD.get(prefijo) === true)
+            }));
+
+            return res.json({ status: 'ok', prefijos: resultado });
+
+        } catch (error) {
+            console.error('Error al analizar prefijos:', error);
+            return res.status(500).json({
+                status: 'error',
+                mensaje: 'Error al analizar los prefijos del archivo.',
                 detalle: error.message
             });
         }

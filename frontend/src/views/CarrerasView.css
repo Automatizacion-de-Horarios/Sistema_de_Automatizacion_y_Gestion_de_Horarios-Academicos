@@ -1,0 +1,121 @@
+.carreras-view-section {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    flex: 1 1 auto;
+    max-width: none;
+    margin: 0;
+}
+
+.carreras-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.carreras-header-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.carreras-header-subtitle {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.carreras-header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.icon-senati-blue {
+    color: var(--senati-blue);
+}
+
+.icon-success {
+    color: var(--success);
+}
+
+.icon-excel-light {
+    color: #A7F3D0;
+}
+
+.carrera-card-clickable {
+    cursor: pointer;
+}
+
+.carrera-card-locked {
+    cursor: not-allowed;
+}
+
+.icon-lock-open {
+    color: var(--success);
+}
+
+.icon-lock-closed {
+    color: var(--danger);
+}
+
+.icon-graduation {
+    color: var(--senati-blue);
+    margin-right: 8px;
+}
+
+.modal-nueva-carrera {
+    width: 480px;
+}
+
+.modal-nueva-carrera-title-icon {
+    color: var(--senati-blue);
+    margin-right: 8px;
+}
+
+.modal-message {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.modal-message-success {
+    background: #ECFDF5;
+    border: 1px solid #A7F3D0;
+    color: #065F46;
+}
+
+.modal-message-error {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+}
+
+.modal-field {
+    margin-bottom: 14px;
+}
+
+.modal-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 6px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.modal-info-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 0;
+}

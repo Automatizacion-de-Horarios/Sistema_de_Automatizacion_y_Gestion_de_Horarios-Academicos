@@ -28,9 +28,9 @@ const Carrera = {
     },
 
     
-    // Lista todas las carreras activas ordenadas por código.
+    // Lista todas las carreras registradas (activas e inactivas) ordenadas por nombre.
 
-    async obtenerActivas(conexion) {
+    async obtenerTodas(conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
             `SELECT 
                 c.id_carrera, 
@@ -42,7 +42,6 @@ const Carrera = {
                 s.estado AS estado_semestre
              FROM carreras c
              LEFT JOIN semestres s ON s.id_carrera = c.id_carrera
-             WHERE c.estado = 'A'
              ORDER BY c.nombre_carrera ASC, FIELD(s.semestre, 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X')`
         );
 
