@@ -1,8 +1,4 @@
-/* ===============================================================
-   VISTA: MALLA CURRICULAR Y CURSOS POR SEMESTRE (ESTILO LIMPIO SENATI)
-   Inspirado en la interfaz limpia e intuitiva del usuario con
-   desplegables de cantidad de turnos y selección de docentes para TEC y TAL.
-   =============================================================== */
+
 
 .malla-container-clean {
     animation: fadeIn 0.2s ease-in-out;
