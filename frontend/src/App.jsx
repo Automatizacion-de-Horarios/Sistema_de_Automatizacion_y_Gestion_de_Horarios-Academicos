@@ -271,14 +271,14 @@ function Dashboard() {
                 <section id="aulas-view" className={`view ${activeView === 'aulas-view' ? 'active' : ''}`}>
                     <AmbientesModulo periodoGlobal={periodoGlobal} />
                 </section>
-<section
-    id="feriados-view"
-    className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}
->
-    <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', padding: '24px' }}>
-        <FeriadosModulo triggerToast={triggerToast} />
-    </div>
-</section>
+                <section
+                    id="feriados-view"
+                    className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}
+                    >
+                    <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', padding: '24px' }}>
+                        <FeriadosModulo triggerToast={triggerToast} />
+                    </div>
+                </section>
                 {/* ===================== FIN SECCIÓN EQUIPO 2 ==================== */}
 
                 {/* =============================================================== */}
@@ -1015,6 +1015,7 @@ function FeriadosModulo({ triggerToast }) {
     const anioActual = String(new Date().getFullYear());
     const [filtroAnio, setFiltroAnio] = useState(anioActual);
     const [filtroMes, setFiltroMes] = useState('todos');
+    const [filtroEstado, setFiltroEstado] = useState('activo');
 
     // Cargar feriados desde la Base de Datos
     useEffect(() => {
@@ -1087,7 +1088,11 @@ function FeriadosModulo({ triggerToast }) {
     return coincideAnio && coincideMes;
 });
 
-    const feriadosOrdenados = [...feriadosFiltrados].sort((a, b) => {
+    const totalActivosFiltrados = feriadosFiltrados.filter(feriado => feriado.estado === 'activo').length;
+    const totalInhabilitadosFiltrados = feriadosFiltrados.filter(feriado => feriado.estado === 'inhabilitado').length;
+    const feriadosOrdenados = feriadosFiltrados
+        .filter(feriado => feriado.estado === filtroEstado)
+        .sort((a, b) => {
         const fechaA = a.fecha ? a.fecha.split('T')[0].slice(5) : ''; 
         const fechaB = b.fecha ? b.fecha.split('T')[0].slice(5) : ''; 
         return fechaA.localeCompare(fechaB);
@@ -1344,6 +1349,29 @@ function FeriadosModulo({ triggerToast }) {
                 </div>
             </div>
 
+            <div className="feriados-estado-filtro" role="group" aria-label="Filtrar feriados por estado">
+                <button
+                    type="button"
+                    className={`feriados-estado-opcion ${filtroEstado === 'activo' ? 'seleccionado' : ''}`}
+                    aria-pressed={filtroEstado === 'activo'}
+                    onClick={() => setFiltroEstado('activo')}
+                >
+                    <i className="fas fa-check-circle" aria-hidden="true"></i>
+                    Activos
+                    <span>{totalActivosFiltrados}</span>
+                </button>
+                <button
+                    type="button"
+                    className={`feriados-estado-opcion ${filtroEstado === 'inhabilitado' ? 'seleccionado' : ''}`}
+                    aria-pressed={filtroEstado === 'inhabilitado'}
+                    onClick={() => setFiltroEstado('inhabilitado')}
+                >
+                    <i className="fas fa-ban" aria-hidden="true"></i>
+                    Inhabilitados
+                    <span>{totalInhabilitadosFiltrados}</span>
+                </button>
+            </div>
+
             <div className="feriados-lista">
                 {feriadosOrdenados.map(feriado => {
                     const { dia, mes } = obtenerDiaMes(feriado.fecha);
@@ -1396,8 +1424,8 @@ function FeriadosModulo({ triggerToast }) {
 
             {feriadosOrdenados.length === 0 && (
                 <div className="feriados-empty">
-                    <h2>No hay feriados registrados para este mes</h2>
-                    <p>Intenta seleccionando otro mes o agrega un nuevo feriado.</p>
+                    <h2>No hay feriados {filtroEstado === 'activo' ? 'activos' : 'inhabilitados'} para este periodo</h2>
+                    <p>Prueba con otro año o mes, cambia el estado seleccionado o agrega un nuevo feriado.</p>
                 </div>
             )}
 
