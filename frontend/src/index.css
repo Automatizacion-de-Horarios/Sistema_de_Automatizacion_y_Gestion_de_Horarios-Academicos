@@ -1270,6 +1270,49 @@ body {
     color: var(--text-muted);
 }
 
+/* --- Filtro por estado --- */
+.feriados-page .feriados-estado-filtro {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.feriados-page .feriados-estado-opcion {
+    min-height: 38px;
+    padding: 8px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.feriados-page .feriados-estado-opcion:hover {
+    background: var(--border-light);
+}
+
+.feriados-page .feriados-estado-opcion.seleccionado {
+    border-color: var(--senati-blue);
+    background: var(--active-bg);
+    color: var(--senati-blue);
+}
+
+.feriados-page .feriados-estado-opcion span {
+    min-width: 22px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.08);
+    text-align: center;
+    font-size: 11px;
+}
+
 /* --- Lista de Feriados --- */
 .feriados-page .feriados-lista {
     display: flex;
@@ -1627,6 +1670,15 @@ body {
 }
 
 @media (max-width: 600px) {
+    .feriados-page .feriados-estado-filtro {
+        width: 100%;
+    }
+
+    .feriados-page .feriados-estado-opcion {
+        flex: 1;
+        justify-content: center;
+    }
+
     .feriados-page .feriado-filtro {
         flex: 1 1 100%;
         justify-content: space-between;
