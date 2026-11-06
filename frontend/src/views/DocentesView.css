@@ -1,0 +1,104 @@
+.doc-panel {
+    --doc-azul: #1038af;
+    --doc-borde: #e2e8f3;
+    --doc-texto: #24324a;
+    --doc-suave: #6d7d96;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 12px 0;
+    color: var(--doc-texto);
+}
+.doc-panel h1 { margin: 0 0 7px; font-size: 25px; letter-spacing: -.65px; font-weight: 750; }
+.doc-subtitulo { margin: 0 0 24px; color: var(--doc-suave); font-size: 13px; }
+.doc-tarjeta { padding: 25px; background: #fff; border: 1px solid var(--doc-borde); border-radius: 16px; box-shadow: 0 4px 18px #19346705; }
+.doc-barra { display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 14px; margin-bottom: 22px; }
+.doc-filtros { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 18px; }
+.doc-panel .doc-filtro { min-height: 34px; padding: 7px 14px; border-radius: 999px; color: var(--doc-suave); font-size: 11px; font-weight: 650; line-height: 1.2; white-space: nowrap; }
+.doc-panel .doc-filtro:hover:not(:disabled) { color: var(--doc-azul); background: #f4f7ff; border-color: #b8c9ed; }
+.doc-panel .doc-filtro-activo, .doc-panel .doc-filtro-activo:hover:not(:disabled) { background: var(--doc-azul); border-color: var(--doc-azul); color: #fff; box-shadow: 0 2px 7px #1038af24; }
+.doc-panel input:not([type=checkbox]), .doc-panel select { width: 100%; min-width: 0; min-height: 42px; padding: 10px 13px; border: 1px solid var(--doc-borde); border-radius: 9px; background: #fff; color: var(--doc-texto); font: inherit; font-size: 13px; transition: border-color .15s, box-shadow .15s; }
+.doc-panel input::placeholder { color: #8491a8; }
+.doc-panel input:hover, .doc-panel select:hover { border-color: #c3cfe5; }
+.doc-panel button { min-height: 33px; padding: 7px 12px; border: 1px solid var(--doc-borde); border-radius: 8px; background: #fff; color: #274981; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s; }
+.doc-panel button:hover:not(:disabled) { background: #f0f5ff; border-color: #b8c9ed; }
+.doc-panel button:disabled { opacity: .5; cursor: not-allowed; }
+.doc-panel :focus-visible { outline: 3px solid #bdd1ff; outline-offset: 2px; }
+.doc-panel .doc-azul { background: var(--doc-azul); border-color: var(--doc-azul); color: #fff; font-weight: 650; box-shadow: 0 2px 4px #1038af14; }
+.doc-panel .doc-azul:hover:not(:disabled) { background: #092b91; border-color: #092b91; box-shadow: 0 3px 10px #1038af24; }
+.doc-tabla-contenedor { overflow-x: auto; }
+.doc-tabla { width: 100%; min-width: 760px; border-collapse: collapse; text-align: left; }
+.doc-tabla th { padding: 14px 12px; color: var(--doc-suave); border-bottom: 1px solid var(--doc-borde); text-transform: uppercase; font-size: 10px; font-weight: 650; letter-spacing: .25px; }
+.doc-tabla td { padding: 18px 12px; border-bottom: 1px solid #eef2f8; font-size: 12px; vertical-align: middle; overflow-wrap: anywhere; }
+.doc-tabla td:first-child { min-width: 220px; }
+.doc-tabla tbody tr:hover { background: #fbfcff; }
+.doc-tabla strong { font-weight: 650; }
+.doc-panel .doc-contrato-select { width: auto; min-width: 142px; min-height: 31px; padding: 4px 28px 4px 9px; border: 1px solid #c9d8f5; border-radius: 7px; background-color: #f2f6ff; color: #234a8f; font-size: 11px; font-weight: 650; cursor: pointer; }
+.doc-panel .doc-contrato-select.doc-parcial { border-color: #f0d9a8; background-color: #fff9ec; color: #8a5a00; }
+.doc-panel .doc-contrato-select[aria-busy="true"] { opacity: .65; cursor: progress; }
+.doc-panel .doc-estado { padding: 5px 12px; min-height: 29px; border-radius: 99px; white-space: nowrap; }
+.doc-panel .doc-estado[aria-busy="true"] { opacity: .65; cursor: progress; }
+.doc-panel .doc-A { color: #008367; background: #effcf7; border-color: #b3efda; }
+.doc-panel .doc-I { color: #ad4454; background: #fff1f3; border-color: #f8ccd4; }
+.doc-pie { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 20px; font-size: 12px; color: var(--doc-suave); }
+.doc-fondo { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 24px; background: #14243a80; backdrop-filter: blur(3px); }
+.doc-modal { display: flex; flex-direction: column; width: min(590px, 100%); min-width: 0; max-height: 91vh; overflow: hidden; border: 1px solid #ffffffb3; border-radius: 17px; background: #fff; box-shadow: 0 24px 80px #10224438; }
+.doc-modal-amplio { width: min(1060px, 100%); }
+.doc-modal > header { display: flex; flex-shrink: 0; justify-content: space-between; align-items: flex-start; gap: 18px; padding: 22px 24px; border-bottom: 1px solid var(--doc-borde); background: #fff; }
+.doc-modal > header > div { min-width: 0; }
+.doc-modal h2 { margin: 0; font-size: 18px; letter-spacing: -.3px; font-weight: 700; }
+.doc-modal-subtitulo { margin: 7px 0 0; color: var(--doc-suave); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.doc-panel .doc-cerrar { flex-shrink: 0; display: grid; place-items: center; width: 32px; height: 32px; min-height: 32px; padding: 0; color: #7a8ba5; font-size: 20px; line-height: 1; }
+.doc-panel .doc-confirmacion-fondo { z-index: 2010; }
+.doc-confirmacion { display: flex; flex-direction: column; width: min(460px, 100%); overflow: hidden; border: 1px solid #ffffffb3; border-radius: 17px; background: #fff; box-shadow: 0 24px 80px #10224438; }
+.doc-confirmacion > header { display: flex; align-items: flex-start; gap: 13px; padding: 22px 24px; border-bottom: 1px solid var(--doc-borde); }
+.doc-confirmacion > header > div { flex: 1; min-width: 0; }
+.doc-confirmacion h2 { margin: 3px 0 0; font-size: 17px; font-weight: 700; }
+.doc-confirmacion-icono { display: grid; flex: 0 0 34px; place-items: center; width: 34px; height: 34px; border: 1px solid #f3d49a; border-radius: 50%; background: #fff8e8; color: #a96800; font-size: 19px; font-weight: 750; }
+.doc-confirmacion-cuerpo { padding: 20px 24px 24px; color: var(--doc-suave); font-size: 13px; line-height: 1.65; }
+.doc-confirmacion-cuerpo p { margin: 0; }
+.doc-panel .doc-descartar { border-color: #b83d4b; background: #b83d4b; color: #fff; font-weight: 650; }
+.doc-panel .doc-descartar:hover:not(:disabled) { border-color: #982f3b; background: #982f3b; }
+.doc-modal > form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.doc-cuerpo { min-height: 0; padding: 22px 24px; overflow-y: auto; overflow-x: hidden; }
+.doc-cuerpo p { margin: 0 0 12px; font-size: 12px; line-height: 1.65; }
+.doc-modal-pie { display: flex; flex-shrink: 0; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--doc-borde); background: #f8faff; }
+.doc-modal-pie button { min-height: 37px; padding: 8px 15px; }
+.doc-panel fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+.doc-formulario { display: grid; gap: 17px; }
+.doc-formulario label { display: grid; gap: 7px; font-size: 12px; font-weight: 600; color: #53637e; }
+.doc-resumen-horario { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 17px; font-size: 12px; color: var(--doc-suave); }
+.doc-resumen-horario strong { padding: 6px 12px; border: 1px solid #b8eddb; border-radius: 99px; background: #effbf6; color: #008367; font-size: 13px; }
+.doc-resumen-horario button { margin-left: auto; }
+.doc-grid-contenedor { position: relative; max-height: 55vh; overflow: auto; border: 1px solid var(--doc-borde); border-radius: 10px; }
+.doc-grid { width: 100%; min-width: 750px; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 11px; }
+.doc-grid th, .doc-grid td { padding: 0; border-right: 1px solid #edf1f8; border-bottom: 1px solid #edf1f8; text-align: center; }
+.doc-grid th:first-child { width: 110px; }
+.doc-grid thead th { position: sticky; top: 0; z-index: 2; height: 40px; background: #f0f4fa; }
+.doc-grid tbody th { color: #5a6a85; background: #f8faff; font-weight: 500; }
+.doc-panel .doc-grid button { width: 100%; height: 32px; min-height: 32px; padding: 3px; border: 0; border-radius: 0; color: #bdc8d9; font-size: 10px; user-select: none; }
+.doc-panel .doc-grid thead button { height: 40px; background: #f0f4fa; color: #465a7b; font-weight: 600; }
+.doc-panel .doc-grid .doc-disponible { background: #def8e9; color: #23845e; }
+.doc-panel .doc-grid .doc-disponible:hover:not(:disabled) { background: #c5f0d9; }
+.doc-disponibilidad-celda { display: grid; justify-items: start; gap: 6px; }
+.doc-restriccion-badge { display: inline-flex; align-items: center; padding: 3px 8px; border: 1px solid; border-radius: 99px; font-size: 10px; font-weight: 650; letter-spacing: .15px; white-space: nowrap; }
+.doc-panel .doc-restringida { color: #8a5a00; background: #fff9ec; border-color: #f0d9a8; }
+.doc-panel .doc-libre { color: #315b9a; background: #f2f6ff; border-color: #c9d8f5; }
+.doc-panel .doc-pendiente { color: #ad4454; background: #fff1f3; border-color: #f8ccd4; }
+.doc-restriccion { display: flex; align-items: flex-start; gap: 11px; margin: 0 0 14px; padding: 12px 14px; border: 1px solid #c9d8f5; border-radius: 10px; background: #f8faff; cursor: pointer; }
+.doc-restriccion input[type=checkbox] { flex-shrink: 0; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--doc-azul); cursor: pointer; }
+.doc-restriccion span { display: grid; gap: 3px; min-width: 0; font-size: 12px; }
+.doc-restriccion strong { color: #274981; font-weight: 650; }
+.doc-restriccion small { color: var(--doc-suave); line-height: 1.5; }
+.doc-restriccion.doc-restriccion-obligatoria { border-color: #f0d9a8; background: #fffbf2; }
+.doc-restriccion.doc-restriccion-obligatoria input[type=checkbox] { accent-color: #b77900; cursor: not-allowed; }
+.doc-cuerpo p.doc-aviso-restriccion { margin: -4px 0 14px; color: #9a5b00; font-size: 11px; font-weight: 550; }
+@media (max-width: 900px) { .doc-barra { grid-template-columns: 1fr; } }
+@media (max-width: 650px) {
+    .doc-fondo { padding: 10px; }
+    .doc-modal { max-height: 95vh; border-radius: 13px; }
+    .doc-modal > header, .doc-cuerpo, .doc-modal-pie { padding: 17px; }
+    .doc-tarjeta { padding: 17px; border-radius: 12px; }
+    .doc-resumen-horario { align-items: flex-start; }
+    .doc-resumen-horario button { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .doc-panel button, .doc-panel input, .doc-panel select { transition: none; } }

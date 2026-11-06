@@ -6,15 +6,16 @@ import {
   addDays,
   formatTime,
   formatWeekRange,
+  fetchDraftSchedule,
+  fetchHolidays,
+  buildHolidaysMap,
   getBreakSlots,
-  getCourseByCode,
   getCourseColor,
-  getCourseInstructor,
+  getAcademicWeekNumber,
   getDefaultWeekStart,
-  getPeriods,
-  getScheduleSnapshot,
-  getScheduleSessionKey,
-  hasNoAssignedInstructor,
+  moveDraftSessions,
+  changeScheduleState,
+  getScheduleBounds,
   getWeekDays,
   getWeekSessions,
   isSessionActiveOnDate,
@@ -31,9 +32,7 @@ const REQUIRED_BREAK_MINUTES = 15;
 const SLOT_HEIGHT = 22;
 const GRID_START_HOUR = 7;
 const GRID_END_HOUR = 22;
-
-const RECORDS = getScheduleSnapshot();
-const INITIAL_PERIOD = getPeriods(RECORDS)[0] ?? null;
+const FIRST_MINUTE = GRID_START_HOUR * 60;
 
 // Extraer semestre del bloque SENATI: "56PIADS201" -> después de S/E viene el dígito de semestre
 const extractSemesterFromBloque = (bloque) => {
@@ -59,19 +58,29 @@ const buildCarreraMapping = (records, period) => {
     if (!r.bloque) return;
     const bloque = r.bloque;
     
-    // Mapear por patrones conocidos
-    let carrera = 'Sin Carrera';
-    if (bloque.includes('PIAD')) carrera = 'PIAD - Ingeniería de Software con IA';
-    else if (bloque.includes('PCBD')) carrera = 'PCBD - Ingeniería en Ciberseguridad';
-    else if (bloque.includes('PCID')) carrera = 'PCID - Computación e Informática';
-    else if (bloque.includes('NAED')) carrera = 'NAED - Administración de Empresas';
-    else if (bloque.includes('NAID')) carrera = 'NAID - Administración Industrial';
-    else if (bloque.includes('NMGD')) carrera = 'NMGD - Marketing y Gestión Comercial';
-    else if (bloque.includes('NCBD')) carrera = 'NCBD - Contabilidad';
-    else if (bloque.includes('NSID')) carrera = 'NSID - Seguridad Industrial y Prevención de Riesgos';
-    
-    const semNum = extractSemesterFromBloque(bloque);
-    if (semNum === null) return;
+    let carrera;
+    let semNum;
+    if (
+      r.carrera_codigo &&
+      r.semestre_num !== null &&
+      r.semestre_num !== undefined &&
+      Number.isFinite(Number(r.semestre_num))
+    ) {
+      carrera = `${r.carrera_codigo} - ${r.carrera_nombre || r.carrera_codigo}`;
+      semNum = Number(r.semestre_num);
+    } else {
+      carrera = 'Sin Carrera';
+      if (bloque.includes('PIAD')) carrera = 'PIAD - Ingeniería de Software con IA';
+      else if (bloque.includes('PCBD')) carrera = 'PCBD - Ingeniería en Ciberseguridad';
+      else if (bloque.includes('PCID')) carrera = 'PCID - Computación e Informática';
+      else if (bloque.includes('NAED')) carrera = 'NAED - Administración de Empresas';
+      else if (bloque.includes('NAID')) carrera = 'NAID - Administración Industrial';
+      else if (bloque.includes('NMGD')) carrera = 'NMGD - Marketing y Gestión Comercial';
+      else if (bloque.includes('NCBD')) carrera = 'NCBD - Contabilidad';
+      else if (bloque.includes('NSID')) carrera = 'NSID - Seguridad Industrial y Prevención de Riesgos';
+      semNum = extractSemesterFromBloque(bloque);
+    }
+    if (!Number.isFinite(semNum)) return;
     
     const semestreKey = `Semestre ${semNum}`;
     if (!map[carrera]) map[carrera] = {};
@@ -93,38 +102,45 @@ const buildCarreraMapping = (records, period) => {
   return result;
 };
 
-const CARRERA_MAP = buildCarreraMapping(RECORDS, INITIAL_PERIOD);
-const INITIAL_CARRERA = Object.keys(CARRERA_MAP).includes('PIAD - Ingeniería de Software con IA') 
-  ? 'PIAD - Ingeniería de Software con IA' 
-  : Object.keys(CARRERA_MAP)[0] || '';
-const INITIAL_SEMESTRE = INITIAL_CARRERA && CARRERA_MAP[INITIAL_CARRERA] 
-  ? Object.keys(CARRERA_MAP[INITIAL_CARRERA])[0] || '' 
-  : '';
-const INITIAL_BLOQUE = INITIAL_CARRERA && INITIAL_SEMESTRE && CARRERA_MAP[INITIAL_CARRERA][INITIAL_SEMESTRE]
-  ? CARRERA_MAP[INITIAL_CARRERA][INITIAL_SEMESTRE][0] || ''
-  : '';
-
-const INITIAL_WEEK = getDefaultWeekStart(RECORDS);
-
-// Slots de 15 minutos
-const TIME_SLOTS = [];
-for (let minutes = GRID_START_HOUR * 60; minutes < GRID_END_HOUR * 60; minutes += SLOT_MINUTES) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  const endMinutes = minutes + SLOT_MINUTES;
-  const endHour = Math.floor(endMinutes / 60);
-  const endMinute = endMinutes % 60;
-  TIME_SLOTS.push({
-    minutes,
-    label: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
-    endLabel: `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`,
-    isHour: m === 0,
-  });
+function createTimeSlots(startMinute, endMinute) {
+  const slots = [];
+  for (let minutes = startMinute; minutes < endMinute; minutes += SLOT_MINUTES) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    const endMinutes = minutes + SLOT_MINUTES;
+    const endHour = Math.floor(endMinutes / 60);
+    const endMinute = endMinutes % 60;
+    slots.push({
+      minutes,
+      label: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+      endLabel: `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`,
+      isHour: m === 0,
+    });
+  }
+  return slots;
 }
-const FIRST_MINUTE = GRID_START_HOUR * 60;
+
+function getGridTimeBounds(franja) {
+  const configuredStart = timeToMinutes(franja?.hora_inicio_mañana) ?? FIRST_MINUTE;
+  const configuredEnd = timeToMinutes(franja?.hora_cierre_noche) ?? GRID_END_HOUR * 60;
+  if (configuredEnd <= configuredStart) {
+    return { start: FIRST_MINUTE, end: GRID_END_HOUR * 60 };
+  }
+  return {
+    start: Math.floor(configuredStart / 60) * 60,
+    end: Math.ceil(configuredEnd / 60) * 60,
+    configuredStart,
+    configuredEnd,
+  };
+}
 
 function formatScheduleTime(minutes) {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}:00`;
+}
+
+function formatConflictToast(reasons = []) {
+  if (!reasons.length) return '';
+  return reasons.map((entry) => `• ${entry.mensaje}`).join('\n');
 }
 
 function normalizeInstructor(value) {
@@ -135,47 +151,110 @@ function normalizeInstructor(value) {
     .toUpperCase();
 }
 
-function getInstructorKeys(session) {
-  if (session.noAssignedInstructor) return [];
-  if (session.hasCatalogInstructor) {
-    return session.instructorName ? [normalizeInstructor(session.instructorName)] : [];
-  }
-  return [normalizeInstructor(session.instructorName || session.instructor)].filter(Boolean);
+function buildDropValidation(valid, reasons) {
+  return {
+    valid,
+    reasons,
+    reason: reasons.map((entry) => entry.mensaje).join(' · '),
+  };
 }
 
-function getRoomKey(session) {
-  const building = normalizeInstructor(session.edificio);
-  const room = normalizeInstructor(session.salon);
-  return building && room && building !== 'SV EV' ? `${building}|${room}` : '';
-}
-
-function getDropValidation(session, day, slotMinutes, dayInfo, records) {
+function getDropValidation(
+  session,
+  day,
+  slotMinutes,
+  dayInfo,
+  occupations,
+  restrictions,
+  periodStart,
+  periodEnd,
+  academicWeek,
+  configuredStart,
+  configuredEnd
+) {
   if (dayInfo?.isHoliday) {
-    return { valid: false, reason: 'No se pueden programar clases en un día feriado.' };
+    return buildDropValidation(false, [
+      { tipo: 'general', mensaje: 'No se pueden programar clases en un día feriado.' },
+    ]);
+  }
+  if (
+    (periodStart && dayInfo?.iso < periodStart) ||
+    (periodEnd && dayInfo?.iso > periodEnd)
+  ) {
+    return buildDropValidation(false, [
+      { tipo: 'general', mensaje: 'La fecha está fuera de los límites del periodo.' },
+    ]);
   }
 
   const startMinutes = timeToMinutes(session.hora_ini);
   const endMinutes = timeToMinutes(session.hora_fin);
   if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-    return { valid: false, reason: 'No se pudo determinar la duración de la clase.' };
+    return buildDropValidation(false, [
+      { tipo: 'general', mensaje: 'No se pudo determinar la duración de la clase.' },
+    ]);
   }
 
   const duration = endMinutes - startMinutes;
   const newEnd = slotMinutes + duration;
-  if (slotMinutes < FIRST_MINUTE || newEnd > GRID_END_HOUR * 60) {
-    return { valid: false, reason: 'La clase quedaría fuera del horario visible.' };
+  const reasons = [];
+
+  if (slotMinutes < configuredStart || newEnd > configuredEnd) {
+    reasons.push({
+      tipo: 'general',
+      mensaje: 'La clase quedaría fuera de la franja horaria configurada.',
+    });
   }
 
-  const instructorKeys = new Set(getInstructorKeys(session));
-  const roomKey = getRoomKey(session);
+  const sessionIds = new Set(
+    session.scheduleIds?.length
+      ? session.scheduleIds.map(Number)
+      : [Number(session.id_horario)].filter(Number.isFinite)
+  );
+  const instructorId = Number(session.id_docente) || null;
+  const roomId = Number(session.id_ambiente) || null;
+  const teacher = restrictions.docentes.find(
+    (entry) => Number(entry.id_docente) === instructorId
+  );
+  const teacherAvailability = restrictions.disponibilidadDocentes.filter(
+    (entry) => Number(entry.id_docente) === instructorId &&
+      normalizeInstructor(entry.dia_semana) === day
+  );
+  if (teacher?.usa_restriccion_horaria && !teacherAvailability.some((entry) =>
+    timeToMinutes(entry.hora_inicio) <= slotMinutes &&
+    timeToMinutes(entry.hora_fin) >= newEnd
+  )) {
+    reasons.push({
+      tipo: 'docente',
+      mensaje: `El docente no tiene disponibilidad el ${DAY_LABELS[day]} entre ${formatTime(formatScheduleTime(slotMinutes))} y ${formatTime(formatScheduleTime(newEnd))}.`,
+    });
+  }
 
-  for (const other of records) {
+  if (roomId && !restrictions.ambientes.some((entry) =>
+    Number(entry.id) === roomId &&
+    ['A', 'ACTIVO', 'DISPONIBLE', 'OPERATIVO']
+      .includes(String(entry.estado ?? '').trim().toUpperCase())
+  )) {
+    reasons.push({ tipo: 'salon', mensaje: 'El salón asignado no está operativo.' });
+  }
+  if (!roomId && !['VIR', 'EMP'].includes(session.actividad)) {
+    reasons.push({ tipo: 'salon', mensaje: 'La clase no tiene un salón asignado.' });
+  }
+
+  const contexto = (other) => ({
+    carrera: other.carrera_codigo || other.codigo_carrera || '',
+    semestre: other.semestre || '',
+    curso: other.mat_cur || other.codigo_curso || '',
+    nombre_curso: other.nombre_curso || '',
+    ambiente: other.ambiente || '',
+    docente: other.instructor || '',
+  });
+
+  for (const other of occupations) {
     if (
-      other.dia !== day ||
-      other.periodo !== session.periodo ||
-      getScheduleSessionKey(other) === session.key ||
-      (other.d_inicio && dayInfo?.iso < other.d_inicio) ||
-      (other.d_fin && dayInfo?.iso > other.d_fin)
+      normalizeInstructor(other.dia) !== day ||
+      sessionIds.has(Number(other.id_horario)) ||
+      Number(other.semana_inicio) > Number(session.semana_fin) ||
+      Number(other.semana_fin) < Number(session.semana_inicio)
     ) {
       continue;
     }
@@ -187,48 +266,89 @@ function getDropValidation(session, day, slotMinutes, dayInfo, records) {
     }
 
     const overlaps = newEnd > otherStart && slotMinutes < otherEnd;
-    const sectionNeedsBreak = other.bloque === session.bloque &&
+    const info = contexto(other);
+    const ubicacion = `${info.carrera || '—'} · ${info.semestre || '—'}`;
+    const detalleClase = `${info.nombre_curso || info.curso || 'curso'} ${formatTime(other.hora_ini)}–${formatTime(other.hora_fin)}`;
+
+    const sectionNeedsBreak = other.codigo_cohorte === session.codigo_cohorte &&
       slotMinutes < otherEnd + REQUIRED_BREAK_MINUTES &&
       newEnd + REQUIRED_BREAK_MINUTES > otherStart;
     if (sectionNeedsBreak) {
-      return {
-        valid: false,
-        reason: `La sección ${session.bloque} necesita al menos 15 minutos de receso entre clases.`,
-      };
+      reasons.push({
+        tipo: 'cohorte',
+        ...info,
+        mensaje: `La cohorte ${ubicacion} ya tiene clase (${detalleClase}); deja al menos 15 minutos entre clases.`,
+      });
     }
 
-    const otherInstructorKeys = new Set(getInstructorKeys({
-      ...other,
-      noAssignedInstructor: hasNoAssignedInstructor(other),
-    }));
-    const sharesInstructor = [...instructorKeys].some((key) => otherInstructorKeys.has(key));
+    const sharesInstructor = instructorId &&
+      Number(other.id_docente) === instructorId;
     const instructorNeedsBreak = sharesInstructor &&
       slotMinutes < otherEnd + REQUIRED_BREAK_MINUTES &&
       newEnd + REQUIRED_BREAK_MINUTES > otherStart;
     if (instructorNeedsBreak) {
-      return {
-        valid: false,
-        reason: `El docente ${session.instructorName} necesita al menos 15 minutos de receso entre clases.`,
-      };
+      reasons.push({
+        tipo: 'docente',
+        ...info,
+        mensaje: `El docente ${session.instructorName} necesita al menos 15 minutos de receso (${ubicacion}, ${detalleClase}).`,
+      });
     }
 
-    const otherRoom = getRoomKey(other);
-    if (overlaps && roomKey && roomKey === otherRoom) {
-      return {
-        valid: false,
-        reason: `El salón ${session.edificio} · ${session.salon} ya está ocupado en ese horario.`,
-      };
+    if (overlaps && roomId && Number(other.id_ambiente) === roomId) {
+      reasons.push({
+        tipo: 'salon',
+        ...info,
+        mensaje: `El salón ${session.ambiente || session.salon || ''} está ocupado por ${ubicacion} (${detalleClase}).`,
+      });
     }
   }
 
-  return { valid: true, reason: '' };
+  if (instructorId) {
+    const firstWeek = Number(session.semana_inicio) || academicWeek;
+    const lastWeek = Number(session.semana_fin) || academicWeek;
+    for (let week = firstWeek; week <= lastWeek; week += 1) {
+      const teacherDay = occupations
+        .filter((other) =>
+          Number(other.id_docente) === instructorId &&
+          normalizeInstructor(other.dia) === day &&
+          Number(other.semana_inicio) <= week &&
+          Number(other.semana_fin) >= week &&
+          !sessionIds.has(Number(other.id_horario))
+        )
+        .map((other) => ({
+          start: timeToMinutes(other.hora_ini),
+          end: timeToMinutes(other.hora_fin),
+        }));
+      teacherDay.push({ start: slotMinutes, end: newEnd });
+      teacherDay.sort((left, right) => left.start - right.start);
+
+      let continuousHours = (teacherDay[0].end - teacherDay[0].start) / 45;
+      for (let index = 1; index < teacherDay.length; index += 1) {
+        const previous = teacherDay[index - 1];
+        const current = teacherDay[index];
+        const gap = current.start - previous.end;
+        if (continuousHours >= 5 && gap < 45) {
+          reasons.push({
+            tipo: 'docente',
+            mensaje: 'El docente necesita 45 minutos de descanso después de 5 horas académicas continuas antes de continuar su jornada.',
+          });
+          break;
+        }
+        continuousHours = gap >= 45
+          ? (current.end - current.start) / 45
+          : continuousHours + (current.end - current.start) / 45;
+      }
+    }
+  }
+
+  return buildDropValidation(reasons.length === 0, reasons);
 }
 
-function getSessionGridPosition(session) {
-  const startMin = timeToMinutes(session.hora_ini) ?? FIRST_MINUTE;
+function getSessionGridPosition(session, firstMinute) {
+  const startMin = timeToMinutes(session.hora_ini) ?? firstMinute;
   const endMin = timeToMinutes(session.hora_fin) ?? startMin + SLOT_MINUTES;
-  const startSlot = Math.max(0, Math.floor((startMin - FIRST_MINUTE) / SLOT_MINUTES));
-  const endSlot = Math.max(startSlot + 1, Math.ceil((endMin - FIRST_MINUTE) / SLOT_MINUTES));
+  const startSlot = Math.max(0, Math.floor((startMin - firstMinute) / SLOT_MINUTES));
+  const endSlot = Math.max(startSlot + 1, Math.ceil((endMin - firstMinute) / SLOT_MINUTES));
   return {
     gridRow: `${startSlot + 2} / span ${endSlot - startSlot}`,
     startSlot,
@@ -237,9 +357,9 @@ function getSessionGridPosition(session) {
   };
 }
 
-function getBreakGridPosition(breakSlot) {
-  const startSlot = Math.max(0, Math.floor((breakSlot.startMin - FIRST_MINUTE) / SLOT_MINUTES));
-  const endSlot = Math.max(startSlot + 1, Math.ceil((breakSlot.endMin - FIRST_MINUTE) / SLOT_MINUTES));
+function getBreakGridPosition(breakSlot, firstMinute) {
+  const startSlot = Math.max(0, Math.floor((breakSlot.startMin - firstMinute) / SLOT_MINUTES));
+  const endSlot = Math.max(startSlot + 1, Math.ceil((breakSlot.endMin - firstMinute) / SLOT_MINUTES));
   return {
     gridRow: `${startSlot + 2} / span ${endSlot - startSlot}`,
     span: endSlot - startSlot,
@@ -254,6 +374,7 @@ function formatRanges(ranges = []) {
 function ClassCard({
   session,
   dayIndex,
+  firstMinute,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -262,15 +383,23 @@ function ClassCard({
   isValidDrop,
   isOver,
 }) {
-  const color = getCourseColor(session.mat_cur);
-  const course = getCourseByCode(session.mat_cur);
-  const courseName = course?.nombre || session.mat_cur;
+  const color = getCourseColor(session.mat_cur, session.nombre_curso);
+  const courseName = session.nombre_curso || session.mat_cur;
   const isVAEE = session.tipo_reunion === 'VAEE';
   const isRemote = session.tipo_reunion === 'REMT';
   const isEMP = session.actividad === 'EMP' || session.tipo_reunion === 'EMP';
-  const position = getSessionGridPosition(session);
+  const isTheory = session.actividad === 'TEC';
+  const isWorkshop = session.actividad === 'TAL';
+  const activityColor = isTheory
+    ? { background: '#DBEAFE', border: '#2563EB', text: '#1E3A8A', chip: '#2563EB' }
+    : isWorkshop
+      ? { background: '#CCFBF1', border: '#0F766E', text: '#134E4A', chip: '#0F766E' }
+      : color;
+  const position = getSessionGridPosition(session, firstMinute);
   const compact = position.duration < 45;
-  const location = isEMP ? '00-EX' : [session.edificio, session.salon].filter(Boolean).join(' · ');
+  const location = isEMP
+    ? '00-EX'
+    : session.ambiente || [session.edificio, session.salon].filter(Boolean).join(' · ');
   const instructorLabel = session.noAssignedInstructor
     ? ''
     : session.hasCatalogInstructor
@@ -289,9 +418,12 @@ function ClassCard({
     `Tipo: ${MEETING_LABELS[session.tipo_reunion] ?? session.tipo_reunion ?? 'No definido'}`,
     `Horario: ${formatTime(session.hora_ini)} – ${formatTime(session.hora_fin)}`,
     `Bloque: ${session.bloque}`,
+    session.cohorte ? `Cohorte: ${session.cohorte}` : null,
     location ? `Locación: ${location}` : null,
     isEMP ? 'Empresa / Formación Práctica' : instructorLabel ? `Docente: ${instructorLabel}` : null,
-    `Vigencia:\n${formatRanges(session.ranges)}`,
+    session.semana_inicio && session.semana_fin
+      ? `Semana lectiva: ${session.semana_inicio}–${session.semana_fin}`
+      : `Vigencia:\n${formatRanges(session.ranges)}`,
   ].filter(Boolean).join('\n');
 
   const laneStyle = session.laneCount > 1
@@ -300,7 +432,7 @@ function ClassCard({
 
   return (
     <div
-      draggable={!isEMP}
+      draggable={Boolean(session.scheduleIds?.length)}
       className={[
         'schedule-class',
         isVAEE ? 'is-vaee' : '',
@@ -314,9 +446,11 @@ function ClassCard({
       style={{
         gridRow: position.gridRow,
         gridColumn: dayIndex + 2,
-        background: isEMP ? 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)' : (isVAEE ? '#F8FAFC' : color.bg),
-        borderLeftColor: isEMP ? '#22C55E' : (isVAEE ? color.border : color.border),
-        color: isEMP ? '#166534' : color.text,
+        background: isEMP
+          ? 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)'
+          : isVAEE ? '#F8FAFC' : activityColor.background,
+        borderLeftColor: isEMP ? '#22C55E' : activityColor.border,
+        color: isEMP ? '#166534' : activityColor.text,
         ...laneStyle,
       }}
       title={tooltip}
@@ -329,7 +463,7 @@ function ClassCard({
         <span className="schedule-class__name" title={courseName}>{courseName}</span>
         <span
           className="schedule-class__activity"
-          style={{ background: isEMP ? '#22C55E' : color.chip, color: '#fff' }}
+          style={{ background: isEMP ? '#22C55E' : activityColor.chip, color: '#fff' }}
         >
           {isEMP ? 'EMP' : (session.actividad || '—')}
         </span>
@@ -360,32 +494,95 @@ function ClassCard({
 }
 
 function WeeklyScheduleGrid() {
-  const [selectedPeriod] = useState(INITIAL_PERIOD);
-  const [selectedCarrera, setSelectedCarrera] = useState(INITIAL_CARRERA);
-  const [selectedSemestre, setSelectedSemestre] = useState(INITIAL_SEMESTRE);
-  const [selectedBlock, setSelectedBlock] = useState(INITIAL_BLOQUE);
-  const [weekStart, setWeekStart] = useState(INITIAL_WEEK);
+  const selectedPeriod = 202620;
+  const [selectedCarrera, setSelectedCarrera] = useState('');
+  const [selectedSemestre, setSelectedSemestre] = useState('');
+  const [selectedBlock, setSelectedBlock] = useState('');
+  const [weekStart, setWeekStart] = useState(() => getDefaultWeekStart());
+  const [periodWeeks, setPeriodWeeks] = useState(18);
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
+  const [restrictions, setRestrictions] = useState({
+    ocupaciones: [],
+    disponibilidadDocentes: [],
+    docentes: [],
+    ambientes: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   
   // Drag & Drop state
   const [draggedSession, setDraggedSession] = useState(null);
   const [dragOverSlot, setDragOverSlot] = useState(null);
   const [toast, setToast] = useState('');
+  const [savingMove, setSavingMove] = useState(false);
+  const [scheduleState, setScheduleState] = useState('BORRADOR');
+  const [changingState, setChangingState] = useState(false);
+  const [holidaysMap, setHolidaysMap] = useState(new Map());
 
-  const [records, setRecords] = useState(() => RECORDS);
-  const validationRecords = useMemo(
-    () => records.map((record) => {
-      const assignment = getCourseInstructor(record.mat_cur, record.bloque);
-      return {
-        ...record,
-        instructorName: hasNoAssignedInstructor(record)
-          ? ''
-          : assignment.found ? assignment.name : record.instructor ?? '',
-        hasCatalogInstructor: assignment.found,
-        noAssignedInstructor: hasNoAssignedInstructor(record),
-      };
-    }),
-    [records]
-  );
+  const [records, setRecords] = useState([]);
+  const [operatingHours, setOperatingHours] = useState(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchHolidays({ signal: controller.signal })
+      .then((feriados) => {
+        if (!controller.signal.aborted) setHolidaysMap(buildHolidaysMap(feriados));
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    const cargarHorario = async () => {
+      try {
+        const resultado = await fetchDraftSchedule(String(selectedPeriod), {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+
+        setRecords(resultado.bloques);
+        setOperatingHours(resultado.franja);
+        setScheduleState(resultado.estado || 'BORRADOR');
+        setPeriodWeeks(resultado.semanas);
+        const bounds = getScheduleBounds(resultado.bloques);
+        const inicioPeriodo = resultado.fechaInicio ||
+          (bounds ? toISODate(bounds.min) : '');
+        const finPeriodo = resultado.fechaFin ||
+          (bounds ? toISODate(bounds.max) : '');
+        setPeriodStart(inicioPeriodo);
+        setPeriodEnd(finPeriodo);
+        setRestrictions(resultado.restricciones);
+        setWeekStart(getDefaultWeekStart(
+          resultado.bloques,
+          inicioPeriodo,
+          finPeriodo
+        ));
+        setLoadError('');
+
+        const mapping = buildCarreraMapping(resultado.bloques, selectedPeriod);
+        const carrera = Object.keys(mapping).sort()[0] || '';
+        const semestre = carrera
+          ? Object.keys(mapping[carrera]).sort((a, b) =>
+            Number(a.match(/\d+/)?.[0] || 0) - Number(b.match(/\d+/)?.[0] || 0)
+          )[0] || ''
+          : '';
+        const bloque = carrera && semestre ? mapping[carrera][semestre][0] || '' : '';
+        setSelectedCarrera(carrera);
+        setSelectedSemestre(semestre);
+        setSelectedBlock(bloque);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setRecords([]);
+          setLoadError(error.message || 'No se pudo cargar el horario borrador.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+
+    cargarHorario();
+    return () => controller.abort();
+  }, [selectedPeriod]);
   useEffect(() => {
     if (!toast) return undefined;
     const timeout = window.setTimeout(() => setToast(''), 4200);
@@ -407,6 +604,13 @@ function WeeklyScheduleGrid() {
     if (!selectedCarrera || !selectedSemestre || !carreraMap[selectedCarrera]) return [];
     return carreraMap[selectedCarrera][selectedSemestre] || [];
   }, [carreraMap, selectedCarrera, selectedSemestre]);
+
+  const selectedAcademicWeek = periodStart
+    ? Math.max(1, Math.min(
+      periodWeeks,
+      getAcademicWeekNumber(weekStart, periodStart)
+    ))
+    : 1;
 
   // Actualizar cascada cuando cambian filtros
   const handleCarreraChange = (e) => {
@@ -432,22 +636,48 @@ function WeeklyScheduleGrid() {
   };
 
   const weekSessions = useMemo(
-    () => getWeekSessions(records, { period: selectedPeriod, block: selectedBlock, weekStart }),
-    [records, selectedPeriod, selectedBlock, weekStart]
+    () => getWeekSessions(records, { period: selectedPeriod, block: selectedBlock, weekStart })
+      .filter((session) => {
+        const start = Number(session.semana_inicio);
+        const end = Number(session.semana_fin);
+        return !Number.isFinite(start) || !Number.isFinite(end) ||
+          (selectedAcademicWeek >= start && selectedAcademicWeek <= end);
+      }),
+    [records, selectedPeriod, selectedBlock, weekStart, selectedAcademicWeek]
   );
 
-  // Días de la semana visible + feriados (búsqueda O(1) contra el Map interno).
-  const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
+  // Días de la semana visible + feriados (desde la base de datos).
+  const weekDays = useMemo(() => getWeekDays(weekStart, holidaysMap), [weekStart, holidaysMap]);
+  const occupations = restrictions.ocupaciones;
+  const periodBounds = useMemo(() => {
+    const min = parseLocalDate(periodStart);
+    const max = parseLocalDate(periodEnd);
+    return {
+      firstWeek: min ? toISODate(startOfWeekMonday(min)) : '',
+      lastWeek: max ? toISODate(startOfWeekMonday(max)) : '',
+    };
+  }, [periodStart, periodEnd]);
   const sessionsByDay = useMemo(() => Object.fromEntries(
     weekDays.map((dayInfo) => [
       dayInfo.day,
       layoutSessionsByDay(
         weekSessions.filter((session) =>
-          session.dia === dayInfo.day && isSessionActiveOnDate(session, dayInfo.iso)
+          session.dia === dayInfo.day &&
+          (!periodStart || dayInfo.iso >= periodStart) &&
+          (!periodEnd || dayInfo.iso <= periodEnd) &&
+          isSessionActiveOnDate(session, dayInfo.iso)
         )
       )[dayInfo.day],
     ])
-  ), [weekDays, weekSessions]);
+  ), [weekDays, weekSessions, periodStart, periodEnd]);
+  const gridTimeBounds = useMemo(
+    () => getGridTimeBounds(operatingHours),
+    [operatingHours]
+  );
+  const timeSlots = useMemo(
+    () => createTimeSlots(gridTimeBounds.start, gridTimeBounds.end),
+    [gridTimeBounds]
+  );
   const holidaysInWeek = useMemo(
     () => weekDays.filter((dayInfo) => dayInfo.isHoliday),
     [weekDays]
@@ -456,26 +686,47 @@ function WeeklyScheduleGrid() {
     if (!draggedSession) return new Map();
     const results = new Map();
     weekDays.forEach((dayInfo) => {
-      TIME_SLOTS.forEach((slot) => {
+      timeSlots.forEach((slot) => {
         results.set(
           `${dayInfo.day}|${slot.minutes}`,
-          getDropValidation(draggedSession, dayInfo.day, slot.minutes, dayInfo, validationRecords)
+          getDropValidation(
+            draggedSession,
+            dayInfo.day,
+            slot.minutes,
+            dayInfo,
+            occupations,
+            restrictions,
+            periodStart,
+            periodEnd,
+            selectedAcademicWeek,
+            gridTimeBounds.configuredStart ?? gridTimeBounds.start,
+            gridTimeBounds.configuredEnd ?? gridTimeBounds.end
+          )
         );
       });
     });
     return results;
-  }, [draggedSession, validationRecords, weekDays]);
+  }, [
+    draggedSession,
+    weekDays,
+    timeSlots,
+    gridTimeBounds,
+    occupations,
+    restrictions,
+    periodStart,
+    periodEnd,
+    selectedAcademicWeek,
+  ]);
 
   const courses = useMemo(() => {
     const map = new Map();
     weekSessions.forEach((session) => {
-      const course = getCourseByCode(session.mat_cur);
       const entry = map.get(session.mat_cur) ?? {
         mat_cur: session.mat_cur,
-        name: course?.nombre || session.mat_cur,
-        career: course?.carrera ?? null,
-        semester: course?.semestre ?? null,
-        color: getCourseColor(session.mat_cur),
+        name: session.nombre_curso || session.mat_cur,
+        career: session.carrera_nombre || null,
+        semester: session.semestre_num ?? null,
+        color: getCourseColor(session.mat_cur, session.nombre_curso),
         count: 0,
       };
       entry.count += 1;
@@ -494,8 +745,18 @@ function WeeklyScheduleGrid() {
   );
 
   const handleDragStart = (e, session) => {
-    if (session.actividad === 'EMP' || session.tipo_reunion === 'EMP') {
+    if (savingMove) {
       e.preventDefault();
+      return;
+    }
+    if (scheduleState === 'CONFIRMADO') {
+      e.preventDefault();
+      setToast('El horario está confirmado; cámbialo a Borrador para mover clases.');
+      return;
+    }
+    if (!session.scheduleIds?.length) {
+      e.preventDefault();
+      setToast('Esta clase no tiene un registro editable en el borrador.');
       return;
     }
     setDraggedSession(session);
@@ -511,14 +772,24 @@ function WeeklyScheduleGrid() {
   const handleDragOver = (e, day, slotMinutes) => {
     e.preventDefault();
     if (!draggedSession) return;
-    const validation = dropValidationBySlot.get(`${day}|${slotMinutes}`) ?? { valid: false };
-    setDragOverSlot({ day, slotMinutes, valid: validation.valid });
+    const validation = dropValidationBySlot.get(`${day}|${slotMinutes}`) ?? {
+      valid: false,
+      reasons: [{ tipo: 'general', mensaje: 'No se pudo validar este espacio.' }],
+      reason: 'No se pudo validar este espacio.',
+    };
+    setDragOverSlot({
+      day,
+      slotMinutes,
+      valid: validation.valid,
+      reason: validation.reason,
+      reasons: validation.reasons,
+    });
     e.dataTransfer.dropEffect = validation.valid ? 'move' : 'none';
   };
 
-  const handleDrop = (e, day, slotMinutes) => {
+  const handleDrop = async (e, day, slotMinutes) => {
     e.preventDefault();
-    if (!draggedSession) return;
+    if (!draggedSession || savingMove) return;
     const currentStart = timeToMinutes(draggedSession.hora_ini);
     if (draggedSession.dia === day && currentStart === slotMinutes) {
       handleDragEnd();
@@ -530,10 +801,16 @@ function WeeklyScheduleGrid() {
       day,
       slotMinutes,
       dayInfo,
-      validationRecords
+      occupations,
+      restrictions,
+      periodStart,
+      periodEnd,
+      selectedAcademicWeek,
+      gridTimeBounds.configuredStart ?? gridTimeBounds.start,
+      gridTimeBounds.configuredEnd ?? gridTimeBounds.end
     );
     if (!validation.valid) {
-      setToast(`No se puede mover: ${validation.reason}`);
+      setToast(`No se puede mover:\n${formatConflictToast(validation.reasons)}`);
       handleDragEnd();
       return;
     }
@@ -541,19 +818,54 @@ function WeeklyScheduleGrid() {
     const duration = timeToMinutes(draggedSession.hora_fin) - currentStart;
     const newStart = formatScheduleTime(slotMinutes);
     const newEnd = formatScheduleTime(slotMinutes + duration);
-    const hasMatchingRecords = records.some(
-      (record) => getScheduleSessionKey(record) === draggedSession.key
+    const scheduleIds = draggedSession.scheduleIds ?? [];
+    const hasMatchingRecords = scheduleIds.length > 0 && records.some(
+      (record) => scheduleIds.includes(Number(record.id_horario))
     );
     if (!hasMatchingRecords) {
       setToast('No se pudo mover: no se encontraron los registros originales de la clase.');
       handleDragEnd();
       return;
     }
-    setRecords((currentRecords) => currentRecords.map((record) => {
-      if (getScheduleSessionKey(record) !== draggedSession.key) return record;
-      return { ...record, dia: day, hora_ini: newStart, hora_fin: newEnd };
-    }));
-    handleDragEnd();
+    setSavingMove(true);
+    try {
+      const resultado = await moveDraftSessions(
+        String(selectedPeriod),
+        scheduleIds,
+        day,
+        newStart.slice(0, 5)
+      );
+      const ids = new Set(
+        (resultado?.ids?.length ? resultado.ids : scheduleIds).map(Number)
+      );
+      const updateMoved = (record) => ids.has(Number(record.id_horario))
+        ? {
+          ...record,
+          dia: day,
+          dia_semana: day,
+          hora_ini: newStart,
+          hora_inicio: newStart,
+          hora_fin: newEnd,
+        }
+        : record;
+      setRecords((currentRecords) => currentRecords.map(updateMoved));
+      setRestrictions((current) => ({
+        ...current,
+        ocupaciones: current.ocupaciones.map(updateMoved),
+      }));
+      setToast(
+        `Clase movida a ${DAY_LABELS[day]} ${newStart.slice(0, 5)}–${newEnd.slice(0, 5)} en todas las semanas del curso.`
+      );
+    } catch (error) {
+      if (Array.isArray(error.conflictos) && error.conflictos.length) {
+        setToast(`No se puede mover:\n${formatConflictToast(error.conflictos)}`);
+      } else {
+        setToast(`No se pudo guardar el cambio: ${error.message}`);
+      }
+    } finally {
+      setSavingMove(false);
+      handleDragEnd();
+    }
   };
 
   const getCardDropSlot = (e, session) => {
@@ -575,37 +887,75 @@ function WeeklyScheduleGrid() {
   const handleWeekChange = (offset) => {
     const current = parseLocalDate(weekStart);
     if (!current) return;
-    setWeekStart(toISODate(addDays(current, offset * 7)));
+    const next = toISODate(addDays(current, offset * 7));
+    if (
+      (periodBounds.firstWeek && next < periodBounds.firstWeek) ||
+      (periodBounds.lastWeek && next > periodBounds.lastWeek)
+    ) return;
+    setWeekStart(next);
   };
 
   const handleDatePick = (event) => {
     const picked = parseLocalDate(event.target.value);
     if (!picked) return;
+    if (
+      (periodStart && toISODate(picked) < periodStart) ||
+      (periodEnd && toISODate(picked) > periodEnd)
+    ) return;
     setWeekStart(toISODate(startOfWeekMonday(picked)));
   };
 
   const goToCurrentWeek = () => {
-    setWeekStart(getDefaultWeekStart(records));
+    setWeekStart(getDefaultWeekStart(records, periodStart, periodEnd));
   };
+
+  const handleChangeState = async (nuevoEstado) => {
+    if (!nuevoEstado || nuevoEstado === scheduleState || changingState) return;
+    setChangingState(true);
+    try {
+      await changeScheduleState(String(selectedPeriod), nuevoEstado);
+      setScheduleState(nuevoEstado);
+      setToast(`Estado del horario actualizado a ${nuevoEstado === 'CONFIRMADO' ? 'Confirmado' : 'Borrador'}.`);
+    } catch (error) {
+      setToast(`No se pudo cambiar el estado: ${error.message}`);
+    } finally {
+      setChangingState(false);
+    }
+  };
+  const datePickerValue = periodStart && weekStart < periodStart
+    ? periodStart
+    : periodEnd && weekStart > periodEnd
+      ? periodEnd
+      : weekStart;
 
   return (
     <div className="weekly-schedule-container">
       <header className="schedule-header">
         <div>
-          <div className="schedule-kicker">
-            <span className="mock-badge">
-              <span className="mock-dot" /> Datos simulados · JSON local
-            </span>
-          </div>
           <h1 className="schedule-title">
             <i className="far fa-calendar-alt" aria-hidden="true" /> Cuadrícula Semanal de Horarios
           </h1>
-          <p className="schedule-subtitle">
-            Grilla 15 minutos • Lunes a Domingo • Drag & Drop con validación • Recesos intermedios
-          </p>
         </div>
 
         <div className="schedule-summary">
+          <div className="schedule-state" role="group" aria-label="Estado del horario">
+            <button
+              type="button"
+              className={`state-button ${scheduleState === 'BORRADOR' ? 'is-active' : ''}`}
+              onClick={() => handleChangeState('BORRADOR')}
+              disabled={changingState}
+            >
+              Borrador
+            </button>
+            <button
+              type="button"
+              className={`state-button ${scheduleState === 'CONFIRMADO' ? 'is-active' : ''}`}
+              onClick={() => handleChangeState('CONFIRMADO')}
+              disabled={changingState}
+            >
+              Confirmado
+            </button>
+          </div>
           <div className="summary-chip">
             <span className="summary-chip__value">{weekSessions.length}</span>
             <span className="summary-chip__label">sesiones</span>
@@ -644,30 +994,67 @@ function WeeklyScheduleGrid() {
               {bloques.map((b) => (<option key={b} value={b}>{b}</option>))}
             </select>
           </label>
+
         </div>
 
         <div className="week-navigator">
-          <button type="button" className="nav-button" onClick={() => handleWeekChange(-1)} aria-label="Semana anterior"><i className="fas fa-chevron-left" /></button>
+          <button
+            type="button"
+            className="nav-button"
+            onClick={() => handleWeekChange(-1)}
+            aria-label="Semana anterior"
+            disabled={Boolean(periodBounds.firstWeek && weekStart <= periodBounds.firstWeek)}
+          >
+            <i className="fas fa-chevron-left" />
+          </button>
           <div className="week-navigator__center">
-            <span className="week-label">{formatWeekRange(weekStart)}</span>
-            <input type="date" className="week-date-input" value={weekStart} onChange={handleDatePick} />
+            <span className="week-label">
+              Semana {selectedAcademicWeek}
+            </span>
+            <span className="week-label">
+              {formatWeekRange(weekStart)}
+            </span>
+            <input
+              type="date"
+              className="week-date-input"
+              value={datePickerValue}
+              min={periodStart || undefined}
+              max={periodEnd || undefined}
+              onChange={handleDatePick}
+              aria-label="Elegir una fecha del periodo"
+            />
           </div>
-          <button type="button" className="nav-button" onClick={() => handleWeekChange(1)} aria-label="Semana siguiente"><i className="fas fa-chevron-right" /></button>
+          <button
+            type="button"
+            className="nav-button"
+            onClick={() => handleWeekChange(1)}
+            aria-label="Semana siguiente"
+            disabled={Boolean(periodBounds.lastWeek && weekStart >= periodBounds.lastWeek)}
+          >
+            <i className="fas fa-chevron-right" />
+          </button>
           <button type="button" className="today-button" onClick={goToCurrentWeek}>Hoy</button>
         </div>
       </div>
 
-      {weekSessions.length === 0 && (
-        <div className="schedule-empty-banner">
-          <i className="far fa-calendar-times" />
-          <div><strong>Sin sesiones para esta semana.</strong><span>{holidaysInWeek.length ? `${holidaysInWeek.map((h) => `Feriado: ${h.holiday.mes} ${h.holiday.dia}`).join(' · ')} • ` : ''}Prueba con otra semana o selecciona otro bloque/carrera.</span></div>
+      {loading && (
+        <div className="schedule-empty-banner" role="status">
+          <i className="fas fa-spinner" aria-hidden="true" />
+          <div><strong>Cargando horario borrador.</strong><span>Consultando el periodo {selectedPeriod}.</span></div>
         </div>
       )}
 
-      {holidaysInWeek.length > 0 && weekSessions.length > 0 && (
-        <div className="holiday-alert-banner">
-          <i className="fas fa-exclamation-triangle" />
-          <div><strong>Día feriado en esta semana.</strong><span>{holidaysInWeek.map((h) => `${h.holiday.mes} ${h.holiday.dia}`).join(' · ')} • Marcado en rojo. No hay clases programadas.</span></div>
+      {!loading && loadError && (
+        <div className="schedule-empty-banner" role="alert">
+          <i className="fas fa-exclamation-circle" aria-hidden="true" />
+          <div><strong>No se pudo cargar el horario.</strong><span>{loadError}</span></div>
+        </div>
+      )}
+
+      {!loading && !loadError && weekSessions.length === 0 && (
+        <div className="schedule-empty-banner">
+          <i className="far fa-calendar-times" />
+          <div><strong>Sin sesiones para esta semana lectiva.</strong><span>{holidaysInWeek.length ? `${holidaysInWeek.map((h) => `Feriado: ${h.holiday.mes} ${h.holiday.dia}`).join(' · ')} • ` : ''}Prueba otra semana o selecciona otra cohorte.</span></div>
         </div>
       )}
 
@@ -681,7 +1068,27 @@ function WeeklyScheduleGrid() {
             </button>
           </div>
         )}
-        <div className="schedule-grid" style={{ gridTemplateColumns: `68px repeat(7, minmax(148px, 1fr))`, gridTemplateRows: `48px repeat(${TIME_SLOTS.length}, ${SLOT_HEIGHT}px)` }}>
+        {savingMove && (
+          <div className="schedule-saving" role="status" aria-live="polite">
+            Guardando el cambio de horario…
+          </div>
+        )}
+        {draggedSession && dragOverSlot && (
+          <div
+            className={`drop-feedback ${dragOverSlot.valid ? 'is-valid' : 'is-invalid'}`}
+            role="status"
+            aria-live="polite"
+          >
+            <strong>
+              {dragOverSlot.valid ? 'Espacio disponible' : 'No disponible'}
+            </strong>
+            <span>
+              {DAY_LABELS[dragOverSlot.day]} · {formatTime(formatScheduleTime(dragOverSlot.slotMinutes))}
+              {dragOverSlot.reason ? ` — ${dragOverSlot.reason}` : ''}
+            </span>
+          </div>
+        )}
+        <div className="schedule-grid" style={{ gridTemplateColumns: `68px repeat(7, minmax(148px, 1fr))`, gridTemplateRows: `48px repeat(${timeSlots.length}, ${SLOT_HEIGHT}px)` }}>
           <div className="grid-corner" style={{ gridRow: 1, gridColumn: 1 }}>
             <span className="corner-pc">DE</span>
             <span className="corner-a">A</span>
@@ -709,7 +1116,7 @@ function WeeklyScheduleGrid() {
             </div>
           ))}
 
-          {TIME_SLOTS.map((slot, index) => (
+          {timeSlots.map((slot, index) => (
             <React.Fragment key={slot.minutes}>
               <div className="grid-time time-15" style={{ gridRow: index + 2, gridColumn: 1 }}>
                 <span className="time-pc">{slot.label}</span>
@@ -718,6 +1125,10 @@ function WeeklyScheduleGrid() {
               {weekDays.map((dayInfo, dayIndex) => {
                 const isHoliday = dayInfo.isHoliday;
                 const validation = dropValidationBySlot.get(`${dayInfo.day}|${slot.minutes}`);
+                const fueraDelPeriodo = Boolean(
+                  (periodStart && dayInfo.iso < periodStart) ||
+                  (periodEnd && dayInfo.iso > periodEnd)
+                );
                 return (
                   <div
                     key={`${dayInfo.day}-${slot.minutes}`}
@@ -726,6 +1137,7 @@ function WeeklyScheduleGrid() {
                       slot.isHour ? 'is-hour' : '',
                       dayInfo.day === 'DOMINGO' ? 'is-sunday' : '',
                       isHoliday ? 'is-holiday' : '',
+                      fueraDelPeriodo ? 'is-outside-period' : '',
                       draggedSession ? 'drag-active' : '',
                       draggedSession ? (validation?.valid ? 'slot-valid' : 'slot-invalid') : '',
                       dragOverSlot?.day === dayInfo.day && dragOverSlot?.slotMinutes === slot.minutes ? 'is-drop-target' : '',
@@ -735,6 +1147,8 @@ function WeeklyScheduleGrid() {
                     data-slot-minutes={slot.minutes}
                     title={isHoliday
                       ? `Día feriado - ${dayInfo.holiday.mes} ${dayInfo.holiday.dia} • Sin clases`
+                      : fueraDelPeriodo
+                        ? 'Fuera de los límites del periodo.'
                       : draggedSession && validation && !validation.valid
                         ? validation.reason
                         : undefined}
@@ -752,7 +1166,7 @@ function WeeklyScheduleGrid() {
                 <div
                   key={`holiday-overlay-${dayInfo.day}`}
                   className="holiday-overlay"
-                  style={{ gridRow: '2 / span 60', gridColumn: dayIndex + 2 }}
+                  style={{ gridRow: `2 / span ${timeSlots.length}`, gridColumn: dayIndex + 2 }}
                   title={`Día feriado - ${dayInfo.holiday.mes} ${dayInfo.holiday.dia}`}
                 >
                   <div className="holiday-overlay__content">
@@ -767,6 +1181,7 @@ function WeeklyScheduleGrid() {
                 key={`${dayInfo.day}-${session.key}`}
                 session={session}
                 dayIndex={dayIndex}
+                firstMinute={gridTimeBounds.start}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
                 onDragOver={handleCardDragOver}
@@ -781,7 +1196,7 @@ function WeeklyScheduleGrid() {
           {weekDays.map((dayInfo, dayIndex) => {
             if (dayInfo.isHoliday) return null;
             return getBreakSlots(sessionsByDay[dayInfo.day] ?? []).map((breakSlot) => {
-              const position = getBreakGridPosition(breakSlot);
+              const position = getBreakGridPosition(breakSlot, gridTimeBounds.start);
               return (
                 <div
                   key={`break-${dayInfo.day}-${breakSlot.startMin}`}
