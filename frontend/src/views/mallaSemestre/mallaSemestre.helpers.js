@@ -39,6 +39,36 @@ export const getClaseTipo = (curso) => {
     return 'tec';
 };
 
+// Calcula la distribución automática de horas según el tipo de horario SINFO
+export const calcularDistribucionHorasAuto = (totalHoras, horarioSinfo) => {
+    const total = Number(totalHoras) || 0;
+    const horario = String(horarioSinfo || '').toUpperCase();
+    let teoria = 0;
+    let taller = 0;
+
+    if (horario === 'TEC') {
+        teoria = total;
+        taller = 0;
+    } else if (horario === 'TAL' || horario === 'EMP') {
+        taller = total;
+        teoria = 0;
+    } else if (horario === 'TEC-TAL') {
+        teoria = Math.floor(total * 0.4);
+        taller = total - teoria;
+    } else {
+        teoria = total;
+        taller = 0;
+    }
+
+    return {
+        horas_teoria: teoria,
+        horas_taller: taller,
+        horas_virtual: 0,
+        horas_evaluacion: 0,
+        total_horas: total
+    };
+};
+
 // Limpia recursivamente objetos vacíos o valores nulos/vacíos para comparaciones exactas de asignaciones
 export const limpiarAsignaciones = (obj) => {
     if (!obj || typeof obj !== 'object') return {};

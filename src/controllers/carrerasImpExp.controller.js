@@ -1,6 +1,15 @@
 const Carrera = require('../models/carrerasImpExp.model');
 const mallaSemestreController = require('./mallaSemestre.controller');
 
+/**
+ * Controlador de Carreras (Equipo 4)
+ * Permite registrar nuevas carreras con su código y nombre institucional,
+ * asegurando la creación de sus ciclos I al VI.
+ *
+ * La gestión de la Malla Curricular, Semestres y Cursos (II al VI)
+ * se encuentra modularizada en mallaSemestre.controller.js.
+ */
+
 class ErrorCarreraDuplicada extends Error {
     constructor(codigo) {
         super(`El código de carrera '${codigo}' ya se encuentra registrado en el sistema.`);
@@ -36,7 +45,7 @@ const carrerasImpExpController = {
     
     crearCarrera: async (req, res) => {
         try {
-            const { codigo_carrera, nombre_carrera } = req.body;
+            const { codigo_carrera, nombre_carrera, sector } = req.body;
 
             if (!codigo_carrera || !nombre_carrera) {
                 return res.status(400).json({
@@ -44,6 +53,10 @@ const carrerasImpExpController = {
                     mensaje: 'Debe ingresar tanto el código (sigla) como el nombre oficial de la carrera.'
                 });
             }
+
+            const sectorLimpio = ['S', 'E'].includes(String(sector).trim().toUpperCase())
+                ? String(sector).trim().toUpperCase()
+                : 'S';
 
             const codigoLimpio = String(codigo_carrera).trim().toUpperCase();
             const nombreLimpio = String(nombre_carrera).trim();
@@ -57,7 +70,7 @@ const carrerasImpExpController = {
                 }
 
                 const idCarrera = await Carrera.crear(
-                    { codigo: codigoLimpio, nombre: nombreLimpio, estado: 'A' },
+                    { codigo: codigoLimpio, nombre: nombreLimpio, estado: 'A', sector: sectorLimpio },
                     conexion
                 );
 
@@ -88,7 +101,8 @@ const carrerasImpExpController = {
                 carrera: {
                     id_carrera: nuevoIdCarrera,
                     codigo_carrera: codigoLimpio,
-                    nombre_carrera: nombreLimpio
+                    nombre_carrera: nombreLimpio,
+                    sector: sectorLimpio
                 }
             });
 

@@ -42,7 +42,6 @@ const Malla = {
      * Devuelve todos los códigos (siglas) de carrera registrados en la BD.
      * Se usan para saber si el prefijo de un MAT CUR pertenece a una carrera.
      */
-    //
     async obtenerCodigosCarreras(conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
             'SELECT codigo_carrera FROM carreras'
@@ -51,11 +50,8 @@ const Malla = {
     },
 
     /**
-     * Verifica si un MAT CUR ya existe para una carrera determinada y devuelve
-     * todos sus datos. Se une cursos con semestres para conocer el id_carrera
-     * real del curso y el semestre (romano) en el que está ubicado.
-     * Esos datos se usan para actualizar únicamente los campos que cambiaron
-     * en el Excel.
+     * Verifica si un MAT CUR ya existe para una carrera determinada.
+     * Se une cursos con semestres para conocer el id_carrera real del curso.
      */
     async obtenerCursoPorCarreraYMatricula(idCarrera, matCur, conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
@@ -191,9 +187,20 @@ const Malla = {
     //Conteos usados por el resumen de la pantalla de mallas.
 
     /**
-     * Dado un array de prefijos (ej. ['NCCU','MATH']), devuelve para cada uno
-     * si ya existe algún curso en BD con is_carrera = 1 que empiece por ese prefijo.
-     * Resultado: Map<prefijo, Boolean>
+     * Actualiza CATALOGO e IS_CARRERA de un curso ya registrado.
+     * Sirve para que al reimportar el Excel se completen/refresquen estos datos
+     * sin duplicar el curso ni alterar su semestre.
+     */
+    async actualizarDatosClasificacionCurso(idCurso, { catalogo, isCarrera }, conexion) {
+        const [resultado] = await obtenerEjecutor(conexion).query(
+            'UPDATE cursos SET catalogo = ?, is_carrera = ? WHERE id_curso = ?',
+            [catalogo, isCarrera, idCurso]
+        );
+        return resultado.affectedRows;
+    },
+
+    /**
+     * Conteos usados por el resumen de la pantalla de mallas.
      */
     async consultarPrefijosEnBD(prefijos, conexion) {
         if (!prefijos || prefijos.length === 0) return new Map();

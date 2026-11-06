@@ -1,6 +1,15 @@
 const db = require('../config/db');
 const MallaSemestre = require('./mallaSemestre.model');
 
+/**
+ * Modelo de Carreras (Equipo 4)
+ * Centraliza las consultas e inserciones a la base de datos que usa
+ * el registro y listado de carreras y sus semestres base.
+ *
+ * La gestión avanzada de Malla Curricular, Semestres y Cursos (II al VI)
+ * se encuentra modularizada en mallaSemestre.model.js.
+ */
+
 const obtenerEjecutor = (conexion) => conexion || db;
 
 const Carrera = {
@@ -37,11 +46,13 @@ const Carrera = {
                 c.codigo_carrera, 
                 c.nombre_carrera, 
                 c.estado,
+                c.sector,
                 s.id_semestre,
                 s.semestre,
                 s.estado AS estado_semestre
              FROM carreras c
              LEFT JOIN semestres s ON s.id_carrera = c.id_carrera
+             WHERE c.estado = 'A'
              ORDER BY c.nombre_carrera ASC, FIELD(s.semestre, 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X')`
         );
 
@@ -53,6 +64,7 @@ const Carrera = {
                     codigo_carrera: fila.codigo_carrera,
                     nombre_carrera: fila.nombre_carrera,
                     estado: fila.estado,
+                    sector: fila.sector,
                     semestres: []
                 });
             }
@@ -78,12 +90,13 @@ const Carrera = {
         return filas[0] || null;
     },
 
-
-    // Registra una nueva carrera y devuelve su id.
-    async crear({ codigo, nombre, estado = 'A' }, conexion) {
+    /**
+     * Registra una nueva carrera y devuelve su id.
+     */
+    async crear({ codigo, nombre, estado = 'A', sector = 'S' }, conexion) {
         const [resultado] = await obtenerEjecutor(conexion).query(
-            'INSERT INTO carreras (codigo_carrera, nombre_carrera, estado) VALUES (?, ?, ?)',
-            [codigo, nombre, estado]
+            'INSERT INTO carreras (codigo_carrera, nombre_carrera, estado, sector) VALUES (?, ?, ?, ?)',
+            [codigo, nombre, estado, sector]
         );
         return resultado.insertId;
     },
@@ -112,7 +125,7 @@ const Carrera = {
     
     async obtenerPorId(idCarrera, conexion) {
         const [filas] = await obtenerEjecutor(conexion).query(
-            'SELECT id_carrera, codigo_carrera, nombre_carrera, estado FROM carreras WHERE id_carrera = ?',
+            'SELECT id_carrera, codigo_carrera, nombre_carrera, estado, sector FROM carreras WHERE id_carrera = ?',
             [idCarrera]
         );
         return filas[0] || null;

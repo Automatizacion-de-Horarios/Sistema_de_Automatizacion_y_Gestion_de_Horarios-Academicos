@@ -19,6 +19,23 @@ const MAPA_ROMANO_A_NUM = {
     'X': 10, '10': 10
 };
 
+// Lista de semestres oficiales para los botones de acceso rápido de cada carrera
+const SEMESTRES_CHIPS = [
+    { num: 1, romano: 'I', label: 'Sem. 1' },
+    { num: 2, romano: 'II', label: 'Sem. 2' },
+    { num: 3, romano: 'III', label: 'Sem. 3' },
+    { num: 4, romano: 'IV', label: 'Sem. 4' },
+    { num: 5, romano: 'V', label: 'Sem. 5' },
+    { num: 6, romano: 'VI', label: 'Sem. 6' },
+];
+
+/**
+ * Vista de Carreras y Mallas Curriculares (Grupo 4)
+ * Lista las carreras registradas en la base de datos (GET /api/carreras),
+ * permite registrar una nueva (POST /api/carreras) y abre la importación
+ * de mallas desde Excel, que vive en CursosView.
+ */
+
 export default function CarrerasView({ activeView, setActiveView, triggerToast, carreras, cargandoCarreras, onRefrescarCarreras, onCambiosPendientesChange }) {
     const cursosRef = useRef(null);
     const [procesandoImportacion, setProcesandoImportacion] = useState(false);
@@ -39,12 +56,22 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                     ? 'sin_datos'
                     : 'activa';
 
-            const listaSem = Array.isArray(carrera.semestres) ? carrera.semestres : [];
+            const listaSem = Array.isArray(carrera.semestres) && carrera.semestres.length > 0
+                ? carrera.semestres
+                : [
+                    { id_semestre: 1, semestre: 'I', estado: 'A' },
+                    { id_semestre: 2, semestre: 'II', estado: 'A' },
+                    { id_semestre: 3, semestre: 'III', estado: 'A' },
+                    { id_semestre: 4, semestre: 'IV', estado: 'A' },
+                    { id_semestre: 5, semestre: 'V', estado: 'A' },
+                    { id_semestre: 6, semestre: 'VI', estado: 'A' }
+                ];
 
             return {
                 id,
                 codigo: carrera.codigo_carrera || '',
                 nombre: carrera.nombre_carrera || carrera.nombre || '',
+                semestres: carrera.semestres ?? 6,
                 semestres: listaSem,
                 totalSemestres: listaSem.length,
                 estado: estadosLocales[id] ?? estadoBase
@@ -92,6 +119,7 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
     const [modalNuevaCarreraAbierto, setModalNuevaCarreraAbierto] = useState(false);
     const [codigoNuevaCarrera, setCodigoNuevaCarrera] = useState('');
     const [nombreNuevaCarrera, setNombreNuevaCarrera] = useState('');
+    const [sectorNuevaCarrera, setSectorNuevaCarrera] = useState('S');
     const [guardandoCarrera, setGuardandoCarrera] = useState(false);
     const [mensajeNuevaCarrera, setMensajeNuevaCarrera] = useState(null);
 
@@ -109,7 +137,8 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     codigo_carrera: codigoNuevaCarrera.trim().toUpperCase(),
-                    nombre_carrera: nombreNuevaCarrera.trim()
+                    nombre_carrera: nombreNuevaCarrera.trim(),
+                    sector: sectorNuevaCarrera
                 })
             });
 
@@ -200,16 +229,18 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
             ) : (
                 <section
                     id="carreras-view"
-                    className={`view ${activeView === 'carreras-view' ? 'active' : ''} carreras-view-section`}
+                    className={`view ${activeView === 'carreras-view' ? 'active' : ''}`}
                     style={{
-                        backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.7)), url(${fondoCarreras})`
+                        flex: '1 1 auto',
+                        maxWidth: 'none',
+                        margin: 0
                     }}
                 >
                     {/* Encabezado con Botón para Cargar Mallas Curriculares */}
                     <header className="eq4-view-header carreras-header">
                         <div className="eq4-header-title-area">
-                            <h1 className="carreras-header-title">Directorio Institucional de Carreras y Mallas</h1>
-                            <p className="eq4-subtitle carreras-header-subtitle">
+                            <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-dark)' }}>Directorio Institucional de Carreras y Mallas</h1>
+                            <p className="eq4-subtitle" style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
                                 Estructura oficial de programas académicos y asignaturas formativas del 1.º al 6.º semestre.
                             </p>
                         </div>
@@ -232,6 +263,17 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                                     : 'Descargar todas las carreras, semestres y cursos en Excel'}
                             >
                                 <i className={`${descargandoEstructura ? 'fas fa-spinner fa-spin' : 'fas fa-file-download'} icon-success`}></i>{' '}
+                                {descargandoEstructura ? 'Generando Excel...' : 'Exportar Estructura (Excel)'}
+                            </button>
+                            <button
+                                className="eq4-btn eq4-btn-secondary"
+                                onClick={exportarEstructura}
+                                disabled={descargandoEstructura}
+                                title={descargandoEstructura
+                                    ? 'Generando el archivo Excel...'
+                                    : 'Descargar todas las carreras, semestres y cursos en Excel'}
+                            >
+                                <i className={descargandoEstructura ? 'fas fa-spinner fa-spin' : 'fas fa-file-download'} style={{ color: 'var(--success)' }}></i>{' '}
                                 {descargandoEstructura ? 'Generando Excel...' : 'Exportar Estructura (Excel)'}
                             </button>
                             <button
@@ -400,7 +442,20 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                                         required
                                     />
                                 </div>
-                                <p className="modal-info-text">
+                                <div style={{ marginBottom: '14px' }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-dark)', marginBottom: '6px' }}>
+                                        Sector / Modalidad *
+                                    </label>
+                                    <select
+                                        value={sectorNuevaCarrera}
+                                        onChange={(e) => setSectorNuevaCarrera(e.target.value)}
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '13px' }}
+                                    >
+                                        <option value="S">S — Tecnológico</option>
+                                        <option value="E">E — Empresarial / Gestión</option>
+                                    </select>
+                                </div>
+                                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
                                     <i className="fas fa-info-circle"></i> Al registrar la carrera, el sistema asegurará automáticamente los 6 semestres oficiales (I al VI).
                                 </p>
                             </div>

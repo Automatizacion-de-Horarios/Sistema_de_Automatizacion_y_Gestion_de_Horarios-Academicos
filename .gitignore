@@ -4,7 +4,16 @@ node_modules/
 algoritmo_python
 frontend/node_modules/
 
+__pycache__/
+*.pyc
+
+
 frontend/dist/
 
 algoritmo_python/venv/
 algoritmo_python/__pycache__/
+
+# Código y datos locales que no se suben al repositorio
+legacy/
+
+__pycache__

@@ -242,6 +242,14 @@ body {
     overflow-y: auto;
     position: relative;
     height: 100vh;
+    background-color: var(--bg-main);
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.6)),
+        url('./assets/img_fondo.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
 }
 
 .top-bar {
@@ -1133,7 +1141,7 @@ body {
     justify-content: flex-end;
 }
 
-.feriados-page .feriado-filtro {
+.feriado-filtro {
     min-height: 38px;
     display: inline-flex;
     align-items: center;
@@ -1147,11 +1155,11 @@ body {
     white-space: nowrap;
 }
 
-.feriados-page .feriado-filtro i {
+.feriado-filtro i {
     color: var(--senati-blue);
 }
 
-.feriados-page .feriado-filtro select {
+.feriado-filtro select {
     min-width: 0;
     max-width: 150px;
     border: 0;
@@ -1163,49 +1171,12 @@ body {
     outline: none;
 }
 
-.feriados-page .feriado-filtro:focus-within {
+.feriado-filtro:focus-within {
     border-color: var(--active-color);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-.feriados-page .feriados-btn {
-    padding: 8px 16px;
-    border: 1px solid transparent;
-    border-radius: var(--radius-md);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.feriados-page .feriados-btn-primary {
-    background: var(--senati-blue);
-    color: #fff;
-}
-
-.feriados-page .feriados-btn-primary:hover:not(:disabled) {
-    background: var(--senati-blue-hover);
-}
-
-.feriados-page .feriados-btn-secondary {
-    background: #fff;
-    color: var(--text-dark);
-    border-color: var(--border);
-}
-
-.feriados-page .feriados-btn-secondary:hover:not(:disabled) {
-    background: var(--border-light);
-}
-
-.feriados-page .feriados-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-.feriados-page .feriados-actions .feriados-btn:disabled {
+.feriados-actions .eq4-btn:disabled {
     cursor: wait;
     opacity: 0.7;
 }
@@ -1444,7 +1415,7 @@ body {
     color: #991b1b;
 }
 
-.feriados-page .btn-editar-feriado {
+.btn-editar-feriado {
     width: 34px;
     height: 34px;
     display: inline-flex;
@@ -1458,7 +1429,7 @@ body {
     transition: all 0.2s ease;
 }
 
-.feriados-page .btn-editar-feriado:hover {
+.btn-editar-feriado:hover {
     background: var(--active-bg);
     border-color: #bfdbfe;
 }
@@ -1571,83 +1542,38 @@ body {
     background: #f8fafc;
 }
 
-.feriados-page .feriados-empty {
-    margin-top: 16px;
-    padding: 40px;
-    border: 1px dashed var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--bg-card);
-    text-align: center;
-}
-
-.feriados-page .feriados-empty h2 {
-    margin-bottom: 8px;
-    color: var(--senati-blue);
-    font-size: 20px;
-}
-
-.feriados-page .feriados-empty p {
-    max-width: 600px;
-    margin: 0 auto 16px;
-    color: var(--text-muted);
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-.feriados-page .feriados-form-btn {
-    padding: 8px 16px;
-    border: 1px solid transparent;
-    border-radius: var(--radius-md);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.feriados-page .feriados-form-btn-secondary {
-    background: #fff;
-    border-color: var(--border);
-    color: var(--text-dark);
-}
-
-.feriados-page .feriados-form-btn-secondary:hover {
-    background: var(--border-light);
-}
-
-.feriados-page .feriados-form-btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--senati-blue);
-    color: #fff;
-}
-
-.feriados-page .feriados-form-btn-primary:hover {
-    background: var(--senati-blue-hover);
-}
-
 @media (max-width: 600px) {
-    .feriados-page .feriado-filtro {
+    .feriado-filtro {
         flex: 1 1 100%;
         justify-content: space-between;
     }
 
-    .feriados-page .feriado-filtro select {
+    .feriado-filtro select {
         flex: 1;
         max-width: none;
         text-align: right;
     }
 
-    .feriados-page .feriados-actions {
+    .feriados-secciones {
         width: 100%;
     }
 
-    .feriados-page .feriados-actions .feriados-btn {
+    .feriados-actions {
+        width: 100%;
+    }
+
+    .feriados-actions .eq4-btn {
         flex: 1;
         justify-content: center;
     }
 
-    .feriados-page .feriado-modal-footer .feriados-form-btn {
+    .feriados-seccion-btn {
+        flex: 1;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+
+    .feriado-modal-footer .eq4-btn {
         flex: 1;
         justify-content: center;
     }

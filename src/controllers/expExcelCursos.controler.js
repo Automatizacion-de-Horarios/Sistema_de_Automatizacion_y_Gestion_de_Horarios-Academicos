@@ -1,8 +1,24 @@
 const XLSX = require('xlsx-js-style');
 const EstructuraCurricular = require('../models/expExcelCursos.model');
 
+/**
+ * Controlador de Exportación de Estructura Curricular (Cursos y Mallas)
+ *
+ * Genera un Excel con TODOS los cursos registrados, en el mismo formato del
+ * archivo de importación ("Estructura curricular Consolidado"):
+ *
+ *   Fila 1: títulos de cabecera (PRODUCCIÓN / ESTRUCTURA)
+ *   Fila 2: encabezados de columnas
+ *   Fila 3 en adelante: un curso por fila
+ *
+ * El orden de salida es: carrera (por código) -> semestre (I a VI) -> curso
+ * (en el orden en que fue importado), para que el archivo quede ordenado
+ * aunque los Excel originales estuvieran mezclados.
+ */
+
 const xlsx = XLSX;
 
+// Encabezados exactamente como aparecen en el archivo de referencia.
 const ENCABEZADOS = [
     'CODIGO',
     'CATALOGO',
@@ -20,7 +36,7 @@ const ENCABEZADOS = [
     'HORAS SEMESTRE'
 ];
 
-// Anchos de columna para que el archivo se abra legible.
+// Anchos de columna para que el archivo se abra legible (no afectan la importación).
 const ANCHOS_COLUMNAS = [
     { wch: 10 }, // CODIGO
     { wch: 12 }, // CATALOGO
@@ -52,7 +68,11 @@ const ORDEN_SEMESTRES = {
     X: 10
 };
 
-
+// Colores de fondo por semestre (formato ARGB). Se usa el mismo color para el
+// mismo semestre en todas las carreras: I azul, II verde, III amarillo,
+// IV durazno, V lila y VI rosa. Si apareciera un semestre mayor a VI se usa gris.
+// Colores de fondo por semestre (formato ARGB sin el "#"). 
+// Ahora todos serán blancos para no interferir visualmente.
 const COLORES_SEMESTRE = {
     1: 'FFFFFFFF',
     2: 'FFFFFFFF',
@@ -61,7 +81,7 @@ const COLORES_SEMESTRE = {
     5: 'FFFFFFFF',
     6: 'FFFFFFFF'
 };
-
+// Si llega a existir un semestre 7 o mayor, también será blanco.
 const COLOR_SEMESTRE_DEFECTO = 'FFFFFFFF'; 
 
 // Paleta de las cabeceras intacta (se mantienen rojas con letras blancas)
@@ -81,7 +101,7 @@ const ordenSemestre = (valor) => {
     return Number.isFinite(numero) ? numero : 99;
 };
 
-
+// El CATALOGO se guarda como texto en la BD, pero en el Excel original es numérico.
 const normalizarCatalogo = (valor) => {
     if (valor === null || valor === undefined) return null;
 
@@ -102,17 +122,20 @@ const aNumeroONulo = (valor) => {
     return Number.isFinite(numero) ? numero : null;
 };
 
-
-//devuelve null cuando el valor es 0.Se usa en las columnas de horas para que un 0 se exporte como celda vacía.
-
+/**
+ * Igual que aNumeroONulo, pero devuelve null cuando el valor es 0.
+ * Se usa en las columnas de horas para que un 0 se exporte como celda vacía.
+ */
 const aNumeroPositivoONulo = (valor) => {
     const numero = aNumeroONulo(valor);
     return numero === null || numero === 0 ? null : numero;
 };
 
-
-// Convierte los cursos de la BD en la matriz de filas del Excel.
-
+/**
+ * Convierte los cursos de la BD en la matriz de filas del Excel.
+ * La columna HORAS SEMESTRE solo se completa en la primera fila de cada
+ * carrera/semestre (igual que en el archivo de referencia).
+ */
 const construirFilas = (cursos) => {
     const ordenados = [...cursos].sort((a, b) => {
         const carreraA = String(a.codigo_carrera || '').trim().toUpperCase();
@@ -177,9 +200,13 @@ const estiloCabecera = (colorFondo, tamanoFuente) => ({
     }
 });
 
-
-//Aplica colores y bordes sobre la hoja ya generada.
-
+/**
+ * Aplica colores y bordes sobre la hoja ya generada.
+ * - Cabeceras en rojo con letra blanca.
+ * - Fondo por semestre en toda la fila del curso.
+ * - Borde fino entre celdas, medio entre semestres y grueso alrededor de
+ *   cada carrera (incluyendo sus columnas laterales).
+ */
 const aplicarEstilos = (hoja, filasExcel) => {
     const ultimaColumna = ENCABEZADOS.length - 1;
     const ultimaFila = filasExcel.length - 1;
@@ -253,9 +280,10 @@ const obtenerCelda = (hoja, fila, columna) => {
     return hoja[direccion];
 };
 
-
-// Construye el Excel completo (datos + estilos).
-
+/**
+ * Construye el libro de Excel completo (datos + estilos).
+ * Se expone aparte del controlador para poder probarlo sin base de datos.
+ */
 const generarLibro = (cursos) => {
     const filasExcel = construirFilas(cursos);
     const hoja = xlsx.utils.aoa_to_sheet(filasExcel);
@@ -276,15 +304,19 @@ const dosDigitos = (numero) => String(numero).padStart(2, '0');
 const nombreArchivoConFecha = () => {
     const hoy = new Date();
     const fecha = `${hoy.getFullYear()}${dosDigitos(hoy.getMonth() + 1)}${dosDigitos(hoy.getDate())}`;
+    // La hora evita confundir la descarga nueva con una versión anterior del
+    // mismo día (el navegador agrega "(1)", "(2)" y es fácil abrir la vieja).
     const hora = `${dosDigitos(hoy.getHours())}${dosDigitos(hoy.getMinutes())}${dosDigitos(hoy.getSeconds())}`;
     return `Estructura_curricular_consolidado_${fecha}_${hora}.xlsx`;
 };
 
 const expExcelCursosController = {
 
- 
-    //GET /api/mallas/exportar-excel
-
+    /**
+     * GET /api/mallas/exportar-excel
+     * Descarga la estructura curricular completa (todas las carreras, con sus
+     * semestres de I a VI ordenados) en un archivo .xlsx.
+     */
     exportarExcel: async (req, res) => {
         try {
             const cursos = await EstructuraCurricular.obtenerCursosParaExportar();

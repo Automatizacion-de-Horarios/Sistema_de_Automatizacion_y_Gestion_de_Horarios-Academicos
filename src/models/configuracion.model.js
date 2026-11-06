@@ -23,7 +23,13 @@ const crearSede = async ({ codigo_sede, id_zonal, nombre_sede, direccion_sede })
 
 // 4. Obtener todos los períodos lectivos
 const obtenerPeriodos = async () => {
-    const [rows] = await db.query('SELECT * FROM periodos ORDER BY codigo_periodo DESC');
+    const [rows] = await db.query(
+        `SELECT id_periodo, codigo_periodo, descripcion, estado, cantidad_semanas,
+                DATE_FORMAT(fecha_inicio, '%Y-%m-%d') AS fecha_inicio,
+                DATE_FORMAT(fecha_fin, '%Y-%m-%d') AS fecha_fin
+         FROM periodos
+         ORDER BY codigo_periodo DESC`
+    );
     return rows;
 };
 
@@ -33,15 +39,41 @@ const obtenerFranja = async (id_periodo) => {
     return rows[0] || null;
 };
 
-// 6. Actualizar o guardar la franja horaria e incluir domingo
-const guardarFranja = async (id_periodo, hora_inicio_mañana, hora_cierre_noche, incluir_domingo) => {
-    const [result] = await db.query(
-        `INSERT INTO configuracion_franja_horaria (id_periodo, hora_inicio_mañana, hora_cierre_noche, incluir_domingo)
-         VALUES (?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE hora_inicio_mañana = VALUES(hora_inicio_mañana), hora_cierre_noche = VALUES(hora_cierre_noche), incluir_domingo = VALUES(incluir_domingo)`,
-        [id_periodo, hora_inicio_mañana, hora_cierre_noche, incluir_domingo]
-    );
-    return result;
+const guardarConfiguracionPeriodo = async ({
+    id_periodo,
+    hora_inicio_mañana,
+    hora_cierre_noche,
+    incluir_domingo,
+    fecha_inicio,
+    fecha_fin,
+    cantidad_semanas
+}) => {
+    const conexion = await db.getConnection();
+    try {
+        await conexion.beginTransaction();
+        await conexion.query(
+            `UPDATE periodos
+             SET fecha_inicio = ?, fecha_fin = ?, cantidad_semanas = ?
+             WHERE id_periodo = ?`,
+            [fecha_inicio, fecha_fin, cantidad_semanas, id_periodo]
+        );
+        await conexion.query(
+            `INSERT INTO configuracion_franja_horaria
+                (id_periodo, hora_inicio_mañana, hora_cierre_noche, incluir_domingo)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                hora_inicio_mañana = VALUES(hora_inicio_mañana),
+                hora_cierre_noche = VALUES(hora_cierre_noche),
+                incluir_domingo = VALUES(incluir_domingo)`,
+            [id_periodo, hora_inicio_mañana, hora_cierre_noche, incluir_domingo]
+        );
+        await conexion.commit();
+    } catch (error) {
+        await conexion.rollback();
+        throw error;
+    } finally {
+        conexion.release();
+    }
 };
 
 module.exports = {
@@ -50,5 +82,5 @@ module.exports = {
     crearSede,
     obtenerPeriodos,
     obtenerFranja,
-    guardarFranja
+    guardarConfiguracionPeriodo
 };

@@ -12,6 +12,23 @@ const db = require('../config/db');
 
 const obtenerEjecutor = (conexion) => conexion || db;
 
+let disponibilidadTieneEstado;
+
+async function filtrarDisponibilidadActiva(ejecutor) {
+    if (!disponibilidadTieneEstado) {
+        disponibilidadTieneEstado = ejecutor.query(
+            'SELECT COUNT(*) AS cantidad FROM information_schema.COLUMNS ' +
+            'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            ['disponibilidad_docentes', 'estado']
+        ).then(([filas]) => Number(filas[0]?.cantidad) > 0)
+            .catch((error) => {
+                disponibilidadTieneEstado = undefined;
+                throw error;
+            });
+    }
+    return (await disponibilidadTieneEstado) ? " AND disp.estado = 'A'" : '';
+}
+
 const MallaSemestre = {
     /**
      * Obtiene la estructura completa de mallas y cursos para una carrera,
@@ -324,7 +341,9 @@ const MallaSemestre = {
      */
     async obtenerDocentesPorTurno(conexion) {
         try {
-            const [filas] = await obtenerEjecutor(conexion).query(
+            const ejecutor = obtenerEjecutor(conexion);
+            const filtroDisponibilidad = await filtrarDisponibilidadActiva(ejecutor);
+            const [filas] = await ejecutor.query(
                 `SELECT 
                     d.id_docente,
                     TRIM(d.nombres) AS nombres,
@@ -340,7 +359,7 @@ const MallaSemestre = {
                     END AS turno
                 FROM docentes d
                 INNER JOIN disponibilidad_docentes disp ON disp.id_docente = d.id_docente
-                WHERE d.estado = 'A' AND disp.estado = 'A'
+                WHERE d.estado = 'A'${filtroDisponibilidad}
                 ORDER BY d.apellidos ASC, d.nombres ASC`
             );
             return filas;
@@ -396,4 +415,3 @@ const MallaSemestre = {
 };
 
 module.exports = MallaSemestre;
-

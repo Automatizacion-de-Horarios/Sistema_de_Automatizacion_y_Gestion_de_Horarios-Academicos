@@ -6,10 +6,24 @@ const obtenerConfiguracionGlobal = async (req, res) => {
         const zonales = await ConfiguracionModel.obtenerZonales();
         const sedes = await ConfiguracionModel.obtenerSedes();
         const periodos = await ConfiguracionModel.obtenerPeriodos();
-        
-        // Tomamos la franja horaria del primer período activo por defecto
-        const periodoActivo = periodos[0] ? periodos[0].id_periodo : 1;
-        const franja = await ConfiguracionModel.obtenerFranja(periodoActivo);
+        const periodoSolicitado = req.query.periodo;
+        const periodoSeleccionado = periodoSolicitado
+            ? periodos.find((periodo) =>
+                String(periodo.id_periodo) === String(periodoSolicitado) ||
+                String(periodo.codigo_periodo) === String(periodoSolicitado)
+            )
+            : periodos.find((periodo) => periodo.estado === 'A') || periodos[0];
+
+        if (periodoSolicitado && !periodoSeleccionado) {
+            return res.status(404).json({
+                success: false,
+                message: 'El período solicitado no existe en la base de datos.'
+            });
+        }
+
+        const franja = periodoSeleccionado
+            ? await ConfiguracionModel.obtenerFranja(periodoSeleccionado.id_periodo)
+            : null;
 
         res.json({
             success: true,
@@ -17,7 +31,8 @@ const obtenerConfiguracionGlobal = async (req, res) => {
                 zonales,
                 sedes,
                 periodos,
-                franja
+                franja,
+                periodo: periodoSeleccionado || null
             }
         });
     } catch (error) {
@@ -50,34 +65,88 @@ const registrarSede = async (req, res) => {
 // Guardar los cambios de inicio/cierre de turno y estado del domingo
 const actualizarFranjaHoraria = async (req, res) => {
     try {
-        const { id_periodo, hora_inicio_mañana, hora_cierre_noche, incluir_domingo } = req.body;
+        const {
+            id_periodo,
+            hora_inicio_mañana,
+            hora_cierre_noche,
+            incluir_domingo,
+            fecha_inicio,
+            fecha_fin
+        } = req.body;
 
-        if (!hora_inicio_mañana || !hora_cierre_noche) {
-            return res.status(400).json({ success: false, message: 'Faltan parámetros de hora' });
+        const horas = [hora_inicio_mañana, hora_cierre_noche];
+        if (horas.some((valor) =>
+            typeof valor !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(valor)
+        )) {
+            return res.status(400).json({
+                success: false,
+                message: 'Las horas de inicio y cierre deben tener formato HH:mm.'
+            });
+        }
+        const minutosInicio = Number(hora_inicio_mañana.slice(0, 2)) * 60 +
+            Number(hora_inicio_mañana.slice(3, 5));
+        const minutosFin = Number(hora_cierre_noche.slice(0, 2)) * 60 +
+            Number(hora_cierre_noche.slice(3, 5));
+        if (minutosInicio >= minutosFin) {
+            return res.status(400).json({
+                success: false,
+                message: 'El cierre debe ser posterior al inicio de la jornada.'
+            });
         }
 
-        // 1. Consultar la lista de períodos reales en MySQL para no romper la llave foránea
-        const periodos = await ConfiguracionModel.obtenerPeriodos();
-        
-        let periodoIdValido = null;
+        const validarFecha = (fecha) =>
+            typeof fecha === 'string' &&
+            /^\d{4}-\d{2}-\d{2}$/.test(fecha) &&
+            !Number.isNaN(Date.parse(`${fecha}T00:00:00Z`)) &&
+            new Date(`${fecha}T00:00:00Z`).toISOString().slice(0, 10) === fecha;
+        if (!validarFecha(fecha_inicio) || !validarFecha(fecha_fin)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ingresa fechas válidas de inicio y fin del período.'
+            });
+        }
+        const inicioPeriodo = Date.parse(`${fecha_inicio}T00:00:00Z`);
+        const finPeriodo = Date.parse(`${fecha_fin}T00:00:00Z`);
+        if (finPeriodo < inicioPeriodo) {
+            return res.status(400).json({
+                success: false,
+                message: 'La fecha de fin debe ser igual o posterior a la fecha de inicio.'
+            });
+        }
+        const diasPeriodo = Math.floor((finPeriodo - inicioPeriodo) / 86_400_000) + 1;
+        const cantidadSemanas = Math.ceil(diasPeriodo / 7);
 
-        if (periodos && periodos.length > 0) {
-            // Buscar si coincide por id_periodo o por el código del período (ej. "202620")
-            const periodoEncontrado = periodos.find(p => p.id_periodo == id_periodo || p.codigo_periodo == id_periodo);
-            
-            // Si lo encuentra usa ese ID; de lo contrario toma el ID del primer período registrado
-            periodoIdValido = periodoEncontrado ? periodoEncontrado.id_periodo : periodos[0].id_periodo;
-        } else {
+        const periodos = await ConfiguracionModel.obtenerPeriodos();
+        if (!periodos.length) {
             return res.status(400).json({ success: false, message: 'No existen períodos lectivos en la base de datos.' });
         }
+        const periodoEncontrado = periodos.find((periodo) =>
+            String(periodo.id_periodo) === String(id_periodo) ||
+            String(periodo.codigo_periodo) === String(id_periodo)
+        );
+        if (!periodoEncontrado) {
+            return res.status(400).json({
+                success: false,
+                message: 'Selecciona un período lectivo válido.'
+            });
+        }
 
-        // Convertir booleano a 1 o 0 para MySQL
         const valorDomingo = incluir_domingo ? 1 : 0;
+        await ConfiguracionModel.guardarConfiguracionPeriodo({
+            id_periodo: periodoEncontrado.id_periodo,
+            hora_inicio_mañana,
+            hora_cierre_noche,
+            incluir_domingo: valorDomingo,
+            fecha_inicio,
+            fecha_fin,
+            cantidad_semanas: cantidadSemanas
+        });
 
-        // 2. Guardar franja horaria usando la clave primaria válida
-        await ConfiguracionModel.guardarFranja(periodoIdValido, hora_inicio_mañana, hora_cierre_noche, valorDomingo);
-
-        res.json({ success: true, message: 'Franja horaria y configuración actualizadas correctamente' });
+        res.json({
+            success: true,
+            message: 'Configuración del período actualizada correctamente',
+            cantidad_semanas: cantidadSemanas
+        });
     } catch (error) {
         console.error("Error exacto en MySQL:", error);
         res.status(500).json({ success: false, message: 'Error al guardar la franja horaria', error: error.message });

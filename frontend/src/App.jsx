@@ -6,9 +6,8 @@ import { authFetch } from './lib/authFetch';
 import { API_BASE_URL } from './config/api';
 import ProtectedRoute from './components/ProtectedRoute';
 import CarrerasView from './views/CarrerasView';
+import WeeklyScheduleGrid from './components/WeeklyScheduleGrid';
 import DocentesView from './views/DocentesView';
-// [CONFIGURACIÓN DE DISEÑO] Importación de la imagen de fondo compartida con CarrerasView
-import fondoCarreras from './assets/fondoCarreras.png';
 
 
 function App() {
@@ -27,6 +26,7 @@ function Dashboard() {
 
     // [GRUPO 4 - CAMBIO 1]: ESTADO GLOBAL DEL PERÍODO LECTIVO (CONECTADO A TODO EL SISTEMA)
     const [periodoGlobal, setPeriodoGlobal] = useState('202620');
+    const [periodos, setPeriodos] = useState([]);
 
     // [GRUPO 4 - CAMBIO 2]: ESTADO Y FUNCIÓN PARA MOSTRAR ALERTAS TOAST FLOTANTES EN LA ESQUINA SUPERIOR DERECHA
     const [toast, setToast] = useState({ show: false, mensaje: '' });
@@ -95,6 +95,29 @@ function Dashboard() {
         };
         cargarCarrerasIniciales();
     }, [cargarCarreras]);
+
+    useEffect(() => {
+        const cargarPeriodos = async () => {
+            try {
+                const respuesta = await authFetch(`${API_BASE_URL}/api/configuracion`);
+                const resultado = await respuesta.json();
+                if (!respuesta.ok || !resultado.success) {
+                    throw new Error(resultado.message || 'No se pudieron cargar los períodos lectivos.');
+                }
+                const lista = Array.isArray(resultado.data?.periodos) ? resultado.data.periodos : [];
+                setPeriodos(lista);
+                setPeriodoGlobal((actual) =>
+                    lista.some((periodo) => String(periodo.codigo_periodo) === String(actual))
+                        ? actual
+                        : String((lista.find((periodo) => periodo.estado === 'A') || lista[0])?.codigo_periodo || '')
+                );
+            } catch (error) {
+                console.error('Error al cargar períodos lectivos:', error);
+                triggerToast(error.message || 'No se pudieron cargar los períodos lectivos.');
+            }
+        };
+        cargarPeriodos();
+    }, [triggerToast]);
 
     // Títulos de pestaña por sección
     const sectionTitles = {
@@ -229,8 +252,11 @@ function Dashboard() {
                             onChange={(e) => setPeriodoGlobal(e.target.value)}
                             style={{ border: 'none', background: 'transparent', fontWeight: '700', fontSize: '13px', color: 'var(--text-dark)', cursor: 'pointer', outline: 'none' }}
                         >
-                            <option value="202620">2026 - II</option>
-                            <option value="202610">2026 - I</option>
+                            {periodos.map((periodo) => (
+                                <option key={periodo.id_periodo} value={periodo.codigo_periodo}>
+                                    {periodo.codigo_periodo} - {periodo.descripcion}
+                                </option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -238,7 +264,9 @@ function Dashboard() {
                 {/* =============================================================== */}
                 {/*      [ÁREA DE TRABAJO] EQUIPO 4: MOTOR, MATRIZ Y EXPORTADOR     */}
                 {/* =============================================================== */}
-
+                <section id="horario-view" className={`view ${activeView === 'horario-view' ? 'active' : ''}`}>
+                    <WeeklyScheduleGrid />
+                </section>
                 {/* ===================== FIN SECCIÓN EQUIPO 4 ==================== */}
 
 
@@ -289,19 +317,16 @@ function Dashboard() {
                 id="config-view"
                 className={`view ${activeView === 'config-view' ? 'active' : ''}`}
                 style={{
-                    backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.7)), url(${fondoCarreras})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
                     flex: '1 1 auto',
                     maxWidth: 'none',
                     margin: 0
                 }}
                 >
                 <ConfiguracionModulo
-                    activeView={activeView}
                     periodoGlobal={periodoGlobal}
                     setPeriodoGlobal={setPeriodoGlobal}
+                    periodos={periodos}
+                    setPeriodos={setPeriodos}
                     triggerToast={triggerToast}
                 />
                 </section>
@@ -450,20 +475,25 @@ function Dashboard() {
 // ===============================================================
 //   MÓDULO AUTÓNOMO: CONFIGURACIÓN Y GESTIÓN DINÁMICA DE SEDES (GRUPO 4)
 // ===============================================================
-function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, triggerToast }) {
-    // [GRUPO 4 - CAMBIO 7]: ESTADO DE SEDES POR ZONAL. TACNA INICIA CON CIUDAD NUEVA Y CONO SUR
-    const [sedesPorZonal, setSedesPorZonal] = useState({
-        "Dirección Zonal Moquegua - Tacna": [
-            { codigo: "56P", nombre: "56P - CFP Tacna (Cono Sur)" },
-        ]
-    });
+function semanasEntreFechas(inicio, fin) {
+    if (!inicio || !fin) return 0;
+    const fechaInicioUtc = Date.parse(`${inicio}T00:00:00Z`);
+    const fechaFinUtc = Date.parse(`${fin}T00:00:00Z`);
+    if (!Number.isFinite(fechaInicioUtc) || !Number.isFinite(fechaFinUtc) || fechaFinUtc < fechaInicioUtc) {
+        return 0;
+    }
+    const diasIncluidos = Math.floor((fechaFinUtc - fechaInicioUtc) / 86_400_000) + 1;
+    return Math.ceil(diasIncluidos / 7);
+}
 
-    // [GRUPO 4 - CAMBIO 8]: ESTADOS PARA SELECCIÓN ACTIVA DE ZONAL Y SEDE
-    const [zonalActiva, setZonalActiva] = useState("Dirección Zonal Moquegua - Tacna");
-    const [sedeActiva, setSedeActiva] = useState("56P");
+function ConfiguracionModulo({ periodoGlobal, setPeriodoGlobal, periodos, setPeriodos, triggerToast }) {
+    const [zonales, setZonales] = useState([]);
+    const [sedes, setSedes] = useState([]);
+    const [zonalActiva, setZonalActiva] = useState('');
+    const [sedeActiva, setSedeActiva] = useState('');
 
     // [GRUPO 4 - CAMBIO 9]: ESTADOS FORMULARIO DEL MODAL NUEVA SEDE
-    const [nuevaZonal, setNuevaZonal] = useState("Dirección Zonal Moquegua - Tacna");
+    const [nuevaZonal, setNuevaZonal] = useState('');
     const [nuevoCodigo, setNuevoCodigo] = useState("");
     const [nuevoNombre, setNuevoNombre] = useState("");
     const [nuevaCiudad, setNuevaCiudad] = useState("");
@@ -474,40 +504,69 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
     // ESTADOS PARA LAS HORAS OPERATIVAS
     const [horaInicio, setHoraInicio] = useState("07:00");
     const [horaFin, setHoraFin] = useState("21:00");
+    const [fechaInicio, setFechaInicio] = useState("");
+    const [fechaFin, setFechaFin] = useState("");
 
     // 1. CARGAR CONFIGURACIÓN GLOBAL DESDE EL BACKEND AL MONTAR EL COMPONENTE
     useEffect(() => {
         const obtenerConfiguracion = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:3000/api/configuracion', {
+                const response = await fetch(
+                    `${API_BASE_URL}/api/configuracion?periodo=${encodeURIComponent(periodoGlobal)}`,
+                    {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
                 const result = await response.json();
-
-                if (result.success && result.data && result.data.franja) {
-                    const franja = result.data.franja;
-                    if (franja.hora_inicio_mañana) setHoraInicio(franja.hora_inicio_mañana.slice(0, 5));
-                    if (franja.hora_cierre_noche) setHoraFin(franja.hora_cierre_noche.slice(0, 5));
-                    
-                    // Carga el estado guardado del domingo en la BD (1 = true, 0 = false)
-                    setIncluirDomingo(franja.incluir_domingo === 1);
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No se pudo obtener la configuración.');
                 }
+
+                const datos = result.data || {};
+                const listaZonales = Array.isArray(datos.zonales) ? datos.zonales : [];
+                const listaSedes = Array.isArray(datos.sedes) ? datos.sedes : [];
+                if (Array.isArray(datos.periodos)) setPeriodos(datos.periodos);
+                setZonales(listaZonales);
+                setSedes(listaSedes);
+                const zonalId = String(listaZonales[0]?.id_zonal || '');
+                const sedesIniciales = listaSedes.filter(
+                    (sede) => String(sede.id_zonal) === zonalId
+                );
+                setZonalActiva(zonalId);
+                setSedeActiva(String(sedesIniciales[0]?.id_sede || ''));
+
+                const franja = datos.franja || {};
+                const valorHora = (valor, alternativa) => valor ? String(valor).slice(0, 5) : alternativa;
+                const inicioOperativo = valorHora(franja.hora_inicio_mañana, "07:00");
+                const finOperativo = valorHora(franja.hora_cierre_noche, "21:00");
+                setHoraInicio(inicioOperativo);
+                setHoraFin(finOperativo);
+                setIncluirDomingo(Number(franja.incluir_domingo) === 1);
+                const periodo = (datos.periodos || []).find(
+                    (item) => String(item.codigo_periodo) === String(periodoGlobal)
+                );
+                setFechaInicio(periodo?.fecha_inicio?.slice(0, 10) || "");
+                setFechaFin(periodo?.fecha_fin?.slice(0, 10) || "");
             } catch (error) {
                 console.error("Error al obtener la configuración global:", error);
+                triggerToast(error.message || 'No se pudo cargar la configuración del período.');
             }
         };
 
         obtenerConfiguracion();
-    }, []);
+    }, [periodoGlobal, setPeriodos, triggerToast]);
 
     // 2. FUNCIÓN PARA GUARDAR LA FRANJA HORARIA Y EL DOMINGO EN LA BASE DE DATOS
     const handleGuardarConfiguracion = async () => {
         try {
+            if (!fechaInicio || !fechaFin || !semanasCalculadas) {
+                triggerToast('Ingresa las fechas válidas de inicio y fin del período.', 'warning');
+                return;
+            }
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:3000/api/configuracion/franja', {
+            const response = await fetch(`${API_BASE_URL}/api/configuracion/franja`, {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -517,15 +576,23 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                     id_periodo: periodoGlobal || 1,
                     hora_inicio_mañana: horaInicio,
                     hora_cierre_noche: horaFin,
-                    incluir_domingo: incluirDomingo
+                    incluir_domingo: incluirDomingo,
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin
                 })
             });
 
             const data = await response.json();
 
-            if (data.success) {
+            if (response.ok && data.success) {
+                const semanas = semanasEntreFechas(fechaInicio, fechaFin);
+                setPeriodos((actuales) => actuales.map((periodo) =>
+                    String(periodo.codigo_periodo) === String(periodoGlobal)
+                        ? { ...periodo, fecha_inicio: fechaInicio, fecha_fin: fechaFin, cantidad_semanas: semanas }
+                        : periodo
+                ));
                 if (typeof triggerToast === 'function') {
-                    triggerToast("Ajustes guardados correctamente en la BD.", "success");
+                    triggerToast(`Configuración guardada. El período tiene ${semanas} semanas.`, "success");
                 }
             } else {
                 if (typeof triggerToast === 'function') {
@@ -541,41 +608,56 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
     };
 
     // [GRUPO 4 - CAMBIO 10]: FUNCIÓN PARA REGISTRAR SEDE CON ALERTA TOAST FLOTANTE
-    const handleRegistrarSede = () => {
-        if (!nuevoCodigo.trim() || !nuevoNombre.trim()) {
+    const handleRegistrarSede = async () => {
+        if (!nuevoCodigo.trim() || !nuevoNombre.trim() || !nuevaZonal) {
             if (typeof triggerToast === 'function') {
-                triggerToast("Por favor ingrese el código y nombre de la sede.", "warning");
+                triggerToast("Por favor ingrese el código, nombre y zonal de la sede.", "warning");
             }
             return;
         }
 
-        const nuevaSedeObj = { 
-            codigo: nuevoCodigo.trim(), 
-            nombre: `${nuevoCodigo.trim()} - ${nuevoNombre.trim()}` 
-        };
-
-        setSedesPorZonal(prev => ({
-            ...prev,
-            [nuevaZonal]: [...(prev[nuevaZonal] || []), nuevaSedeObj]
-        }));
-
-        if (nuevaZonal === zonalActiva) {
-            setSedeActiva(nuevoCodigo.trim());
-        }
-
-        setNuevoCodigo("");
-        setNuevoNombre("");
-        setNuevaCiudad("");
-        document.getElementById('modal-nueva-sede').style.display = 'none';
-
-        if (typeof triggerToast === 'function') {
-            triggerToast("Sede registrada correctamente.", "success");
+        try {
+            const response = await authFetch(`${API_BASE_URL}/api/configuracion/sedes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    codigo_sede: nuevoCodigo.trim(),
+                    id_zonal: nuevaZonal,
+                    nombre_sede: nuevoNombre.trim(),
+                    direccion_sede: nuevaCiudad.trim()
+                })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'No se pudo registrar la sede.');
+            }
+            const sedeCreada = {
+                id_sede: data.id_sede,
+                id_zonal: Number(nuevaZonal),
+                codigo_sede: nuevoCodigo.trim(),
+                nombre_sede: nuevoNombre.trim(),
+                direccion_sede: nuevaCiudad.trim()
+            };
+            setSedes((actuales) => [...actuales, sedeCreada]);
+            setZonalActiva(String(nuevaZonal));
+            setSedeActiva(String(data.id_sede));
+            document.getElementById('modal-nueva-sede').style.display = 'none';
+            setNuevoCodigo("");
+            setNuevoNombre("");
+            setNuevaCiudad("");
+            triggerToast("Sede registrada correctamente en la base de datos.", "success");
+        } catch (error) {
+            console.error("Error al registrar sede:", error);
+            triggerToast(error.message || "No se pudo registrar la sede.", "error");
         }
     };
 
-    // Obtener el nombre o código de la sede activa actual para mostrar en el KPI
-    const sedeActualObj = (sedesPorZonal[zonalActiva] || []).find(s => s.codigo === sedeActiva);
-    const nombreSedeMostrar = sedeActualObj ? sedeActualObj.nombre : (sedeActiva || "Sin Sede");
+    const sedesDeZonal = sedes.filter((sede) => String(sede.id_zonal) === String(zonalActiva));
+    const sedeActualObj = sedes.find((sede) => String(sede.id_sede) === String(sedeActiva));
+    const semanasCalculadas = semanasEntreFechas(fechaInicio, fechaFin);
+    const nombreSedeMostrar = sedeActualObj
+        ? `${sedeActualObj.codigo_sede} - ${sedeActualObj.nombre_sede}`
+        : "Sin Sede";
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '24px' }}>
@@ -717,23 +799,17 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                                 onChange={(e) => {
                                     const zonalSeleccionada = e.target.value;
                                     setZonalActiva(zonalSeleccionada);
-                                    const sedesDisponibles = sedesPorZonal[zonalSeleccionada] || [];
-                                    setSedeActiva(sedesDisponibles.length > 0 ? sedesDisponibles[0].codigo : "");
+                                    const sedesDisponibles = sedes.filter(
+                                        (sede) => String(sede.id_zonal) === String(zonalSeleccionada)
+                                    );
+                                    setSedeActiva(String(sedesDisponibles[0]?.id_sede || ''));
                                 }}
                             >
-                                <option value="Dirección Zonal Áncash">Dirección Zonal Áncash</option>
-                                <option value="Dirección Zonal Arequipa - Puno">Dirección Zonal Arequipa - Puno</option>
-                                <option value="Dirección Zonal Cajamarca - Amazonas - San Martín">Dirección Zonal Cajamarca - Amazonas - San Martín</option>
-                                <option value="Dirección Zonal Cusco - Apurímac - Madre de Dios">Dirección Zonal Cusco - Apurímac - Madre de Dios</option>
-                                <option value="Dirección Zonal Ica - Ayacucho">Dirección Zonal Ica - Ayacucho</option>
-                                <option value="Dirección Zonal Junín - Pasco - Huancavelica">Dirección Zonal Junín - Pasco - Huancavelica</option>
-                                <option value="Dirección Zonal La Libertad">Dirección Zonal La Libertad</option>
-                                <option value="Dirección Zonal Lambayeque">Dirección Zonal Lambayeque</option>
-                                <option value="Dirección Zonal Lima - Callao">Dirección Zonal Lima - Callao</option>
-                                <option value="Dirección Zonal Loreto">Dirección Zonal Loreto</option>
-                                <option value="Dirección Zonal Moquegua - Tacna">Dirección Zonal Moquegua - Tacna</option>
-                                <option value="Dirección Zonal Piura - Tumbes">Dirección Zonal Piura - Tumbes</option>
-                                <option value="Dirección Zonal Ucayali - Huánuco">Dirección Zonal Ucayali - Huánuco</option>
+                                {zonales.map((zonal) => (
+                                    <option key={zonal.id_zonal} value={String(zonal.id_zonal)}>
+                                        {zonal.nombre_zonal}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
@@ -775,9 +851,11 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                                 value={sedeActiva}
                                 onChange={(e) => setSedeActiva(e.target.value)}
                             >
-                                {(sedesPorZonal[zonalActiva] && sedesPorZonal[zonalActiva].length > 0) ? (
-                                    sedesPorZonal[zonalActiva].map((sede) => (
-                                        <option key={sede.codigo} value={sede.codigo}>{sede.nombre}</option>
+                                {sedesDeZonal.length > 0 ? (
+                                    sedesDeZonal.map((sede) => (
+                                        <option key={sede.id_sede} value={String(sede.id_sede)}>
+                                            {sede.codigo_sede} - {sede.nombre_sede}
+                                        </option>
                                     ))
                                 ) : (
                                     <option value="">-- Sin sedes registradas (Use + Nueva Sede) --</option>
@@ -797,9 +875,39 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                                 value={periodoGlobal}
                                 onChange={(e) => setPeriodoGlobal && setPeriodoGlobal(e.target.value)}
                             >
-                                <option value="202620">202620 - Semestre Académico 2026 - II</option>
-                                <option value="202610">202610 - Semestre Académico 2026 - I</option>
+                                {periodos.map((periodo) => (
+                                    <option key={periodo.id_periodo} value={periodo.codigo_periodo}>
+                                        {periodo.codigo_periodo} - {periodo.descripcion}
+                                    </option>
+                                ))}
                             </select>
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Fecha de inicio del período
+                            </label>
+                            <input
+                                type="date"
+                                value={fechaInicio}
+                                max={fechaFin || undefined}
+                                onChange={(e) => setFechaInicio(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Fecha de fin del período
+                            </label>
+                            <input
+                                type="date"
+                                value={fechaFin}
+                                min={fechaInicio || undefined}
+                                onChange={(e) => setFechaFin(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                            />
+                        </div>
+                        <div style={{ gridColumn: 'span 2', color: '#475569', fontSize: '13px' }}>
+                            Duración calculada: <strong>{semanasCalculadas} semanas</strong>
                         </div>
                     </div>
                 </div>
@@ -841,7 +949,7 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                                 type="time" 
                                 id="config-fin" 
                                 className="input-lg" 
-                                value={horaFin} 
+                                value={horaFin}
                                 onChange={(e) => setHoraFin(e.target.value)}
                                 style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
                             />
@@ -913,19 +1021,11 @@ function ConfiguracionModulo({ activeView, periodoGlobal, setPeriodoGlobal, trig
                                 value={nuevaZonal} 
                                 onChange={(e) => setNuevaZonal(e.target.value)}
                             >
-                                <option value="Dirección Zonal Áncash">Dirección Zonal Áncash</option>
-                                <option value="Dirección Zonal Arequipa - Puno">Dirección Zonal Arequipa - Puno</option>
-                                <option value="Dirección Zonal Cajamarca - Amazonas - San Martín">Dirección Zonal Cajamarca - Amazonas - San Martín</option>
-                                <option value="Dirección Zonal Cusco - Apurímac - Madre de Dios">Dirección Zonal Cusco - Apurímac - Madre de Dios</option>
-                                <option value="Dirección Zonal Ica - Ayacucho">Dirección Zonal Ica - Ayacucho</option>
-                                <option value="Dirección Zonal Junín - Pasco - Huancavelica">Dirección Zonal Junín - Pasco - Huancavelica</option>
-                                <option value="Dirección Zonal La Libertad">Dirección Zonal La Libertad</option>
-                                <option value="Dirección Zonal Lambayeque">Dirección Zonal Lambayeque</option>
-                                <option value="Dirección Zonal Lima - Callao">Dirección Zonal Lima - Callao</option>
-                                <option value="Dirección Zonal Loreto">Dirección Zonal Loreto</option>
-                                <option value="Dirección Zonal Moquegua - Tacna">Dirección Zonal Moquegua - Tacna</option>
-                                <option value="Dirección Zonal Piura - Tumbes">Dirección Zonal Piura - Tumbes</option>
-                                <option value="Dirección Zonal Ucayali - Huánuco">Dirección Zonal Ucayali - Huánuco</option>
+                                {zonales.map((zonal) => (
+                                    <option key={zonal.id_zonal} value={String(zonal.id_zonal)}>
+                                        {zonal.nombre_zonal}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
@@ -1300,14 +1400,14 @@ function FeriadosModulo({ triggerToast }) {
 
                     <button
                         type="button"
-                        className="feriados-btn feriados-btn-secondary"
+                        className="eq4-btn eq4-btn-secondary"
                         onClick={replicarFeriadosSiguienteAnio}
                         disabled={replicando}
                     >
                         <i className={`fas ${replicando ? 'fa-spinner fa-spin' : 'fa-clone'}`}></i>
                         {replicando ? 'Replicando...' : `Replicar a ${Number(filtroAnio) + 1}`}
                     </button>
-                    <button type="button" className="feriados-btn feriados-btn-primary" onClick={abrirModal}>
+                    <button type="button" className="eq4-btn eq4-btn-primary" onClick={abrirModal}>
                         <i className="fas fa-plus"></i>
                         Nuevo Feriado
                     </button>
@@ -1395,7 +1495,7 @@ function FeriadosModulo({ triggerToast }) {
             </div>
 
             {feriadosOrdenados.length === 0 && (
-                <div className="feriados-empty">
+                <div className="workspace-card">
                     <h2>No hay feriados registrados para este mes</h2>
                     <p>Intenta seleccionando otro mes o agrega un nuevo feriado.</p>
                 </div>

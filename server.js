@@ -11,6 +11,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const { verifyJWT } = require('./src/middlewares/authMiddleware');
 const docenteRoutes = require('./src/routes/docente.routers');
 const configuracionRoutes = require('./src/routes/configuracion.routes');
+const horarioRoutes = require('./src/routes/horario.routes');
 // Opcionales (si falta alguno, se avisa en consola en lugar de romper el arranque)
 let carrerasRoutes, mallasRoutes, expExcelCursosRoutes, mallaSemestreRoutes;
 try {
@@ -54,13 +55,14 @@ app.use(express.json());
 // Montaje de rutas de la API
 app.use('/api/ambientes', verifyJWT, ambienteRoutes);
 app.use('/api/tipos-ambiente', tipoAmbienteRoutes);
-app.use('/api/feriados', verifyJWT, feriadoRoutes); // 👈 Endpoint montado en /api/feriados
+app.use('/api/feriados', verifyJWT, feriadoRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/docentes', verifyJWT, docenteRoutes);
 
 app.use('/api/carreras', verifyJWT, carrerasRoutes);
 app.use('/api/mallas', verifyJWT, mallasRoutes);
 app.use('/api/configuracion', configuracionRoutes);
+app.use('/api/horarios', verifyJWT, horarioRoutes);
 
 if (mallaSemestreRoutes) {
     app.use('/api/malla-semestre', verifyJWT, mallaSemestreRoutes);
