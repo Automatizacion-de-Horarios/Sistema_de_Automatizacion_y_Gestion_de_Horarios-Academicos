@@ -388,13 +388,6 @@ function ClassCard({
   const isVAEE = session.tipo_reunion === 'VAEE';
   const isRemote = session.tipo_reunion === 'REMT';
   const isEMP = session.actividad === 'EMP' || session.tipo_reunion === 'EMP';
-  const isTheory = session.actividad === 'TEC';
-  const isWorkshop = session.actividad === 'TAL';
-  const activityColor = isTheory
-    ? { background: '#DBEAFE', border: '#2563EB', text: '#1E3A8A', chip: '#2563EB' }
-    : isWorkshop
-      ? { background: '#CCFBF1', border: '#0F766E', text: '#134E4A', chip: '#0F766E' }
-      : color;
   const position = getSessionGridPosition(session, firstMinute);
   const compact = position.duration < 45;
   const location = isEMP
@@ -448,9 +441,9 @@ function ClassCard({
         gridColumn: dayIndex + 2,
         background: isEMP
           ? 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)'
-          : isVAEE ? '#F8FAFC' : activityColor.background,
-        borderLeftColor: isEMP ? '#22C55E' : activityColor.border,
-        color: isEMP ? '#166534' : activityColor.text,
+          : color.bg,
+        borderLeftColor: isEMP ? '#22C55E' : color.border,
+        color: isEMP ? '#166534' : color.text,
         ...laneStyle,
       }}
       title={tooltip}
@@ -463,7 +456,7 @@ function ClassCard({
         <span className="schedule-class__name" title={courseName}>{courseName}</span>
         <span
           className="schedule-class__activity"
-          style={{ background: isEMP ? '#22C55E' : activityColor.chip, color: '#fff' }}
+          style={{ background: isEMP ? '#22C55E' : color.chip, color: '#fff' }}
         >
           {isEMP ? 'EMP' : (session.actividad || '—')}
         </span>
