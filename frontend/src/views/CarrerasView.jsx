@@ -266,17 +266,6 @@ export default function CarrerasView({ activeView, setActiveView, triggerToast, 
                                 {descargandoEstructura ? 'Generando Excel...' : 'Exportar Estructura (Excel)'}
                             </button>
                             <button
-                                className="eq4-btn eq4-btn-secondary"
-                                onClick={exportarEstructura}
-                                disabled={descargandoEstructura}
-                                title={descargandoEstructura
-                                    ? 'Generando el archivo Excel...'
-                                    : 'Descargar todas las carreras, semestres y cursos en Excel'}
-                            >
-                                <i className={descargandoEstructura ? 'fas fa-spinner fa-spin' : 'fas fa-file-download'} style={{ color: 'var(--success)' }}></i>{' '}
-                                {descargandoEstructura ? 'Generando Excel...' : 'Exportar Estructura (Excel)'}
-                            </button>
-                            <button
                                 className="eq4-btn eq4-btn-primary"
                                 onClick={() => cursosRef.current?.abrirImportacion()}
                                 disabled={procesandoImportacion}
