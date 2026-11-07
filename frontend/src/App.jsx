@@ -265,7 +265,7 @@ function Dashboard() {
                 {/*      [ÁREA DE TRABAJO] EQUIPO 4: MOTOR, MATRIZ Y EXPORTADOR     */}
                 {/* =============================================================== */}
                 <section id="horario-view" className={`view ${activeView === 'horario-view' ? 'active' : ''}`}>
-                    <WeeklyScheduleGrid />
+                    <WeeklyScheduleGrid periodo={periodoGlobal} />
                 </section>
                 {/* ===================== FIN SECCIÓN EQUIPO 4 ==================== */}
 

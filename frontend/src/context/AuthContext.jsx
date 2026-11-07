@@ -18,14 +18,20 @@ export function AuthProvider({ children }) {
                 const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
+                if (response.status === 401) {
+                    if (!cancelled) {
+                        localStorage.removeItem(tokenKey);
+                        setToken(null);
+                        setUser(null);
+                    }
+                    return;
+                }
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.mensaje || 'La sesión venció.');
+                if (!response.ok) throw new Error(data.mensaje || 'No se pudo verificar la sesión.');
                 if (!cancelled) setUser(data.usuario);
-            } catch {
-                localStorage.removeItem(tokenKey);
+            } catch (error) {
                 if (!cancelled) {
-                    setToken(null);
-                    setUser(null);
+                    console.error('No se pudo verificar la sesión:', error);
                 }
             } finally {
                 if (!cancelled) setReady(true);

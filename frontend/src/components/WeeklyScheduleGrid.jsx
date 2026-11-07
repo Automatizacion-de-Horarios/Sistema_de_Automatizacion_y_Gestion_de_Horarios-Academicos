@@ -377,16 +377,16 @@ function formatearRangos(rangos = []) {
 }
 
 function TarjetaClase({
-  session: sesion,
-  dayIndex: diaIndice,
-  firstMinute: primerMinuto,
+  sesion,
+  diaIndice,
+  primerMinuto,
   onDragStart,
   onDragEnd,
   onDragOver,
   onDrop,
-  isDragging: estaArrastrando,
-  isValidDrop: movimientoValido,
-  isOver: estaSobre,
+  estaArrastrando,
+  movimientoValido,
+  estaSobre,
 }) {
   const color = obtenerColorCurso(sesion.mat_cur, sesion.nombre_curso);
   const cursoNombre = sesion.nombre_curso || sesion.mat_cur;
@@ -491,8 +491,8 @@ function TarjetaClase({
   );
 }
 
-function CuadriculaSemanalHorarios() {
-  const periodoSeleccionado = 202620;
+function CuadriculaSemanalHorarios({ periodo = 202620 }) {
+  const periodoSeleccionado = Number(periodo) || 202620;
   const [carreraSeleccionada, setSelectedCarrera] = useState('');
   const [semestreSeleccionado, setSelectedSemestre] = useState('');
   const [bloqueSeleccionado, establecerSeleccionadoBloque] = useState('');
