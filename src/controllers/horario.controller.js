@@ -4,18 +4,18 @@ const atender = (operacion) => async (req, res) => {
     try {
         await operacion(req, res);
     } catch (error) {
-        const status = Number(error.status) || 500;
+        const estado = Number(error.status) || 500;
         console.error('Error al procesar horario borrador:', error.code || error.message);
-        const payload = {
+        const contenido = {
             success: false,
-            message: status < 500
+            message: estado < 500
                 ? error.message
                 : 'No se pudo procesar el horario borrador.',
         };
         if (Array.isArray(error.conflictos) && error.conflictos.length) {
-            payload.conflictos = error.conflictos;
+            contenido.conflictos = error.conflictos;
         }
-        res.status(status).json(payload);
+        res.status(estado).json(contenido);
     }
 };
 
@@ -73,14 +73,14 @@ module.exports = {
             });
         }
 
-        const ids = req.body?.ids;
+        const identificadores = req.body?.ids;
         const dia = normalizarTexto(req.body?.dia);
         const horaInicio = req.body?.hora_inicio;
         if (
-            !Array.isArray(ids) ||
-            ids.length < 1 ||
-            ids.length > 100 ||
-            ids.some((id) => !Number.isSafeInteger(Number(id)) || Number(id) <= 0) ||
+            !Array.isArray(identificadores) ||
+            identificadores.length < 1 ||
+            identificadores.length > 100 ||
+            identificadores.some((identificador) => !Number.isSafeInteger(Number(identificador)) || Number(identificador) <= 0) ||
             !DIAS.has(dia)
         ) {
             return res.status(400).json({
@@ -100,7 +100,7 @@ module.exports = {
 
         const movimiento = await Horario.moverBorradores(
             codigoPeriodo,
-            [...new Set(ids.map(Number))],
+            [...new Set(identificadores.map(Number))],
             { dia, hora_inicio: `${horaInicio}:00` }
         );
         res.json({ success: true, data: movimiento });
