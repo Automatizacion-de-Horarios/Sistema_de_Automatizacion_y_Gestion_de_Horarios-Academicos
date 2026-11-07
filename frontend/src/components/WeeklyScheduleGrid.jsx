@@ -1,41 +1,41 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ACTIVITY_LABELS,
-  DAY_LABELS,
-  MEETING_LABELS,
-  addDays,
-  formatTime,
-  formatWeekRange,
-  fetchDraftSchedule,
-  fetchHolidays,
-  buildHolidaysMap,
-  getBreakSlots,
-  getCourseColor,
-  getAcademicWeekNumber,
-  getDefaultWeekStart,
-  moveDraftSessions,
-  changeScheduleState,
-  getScheduleBounds,
-  getWeekDays,
-  getWeekSessions,
-  isSessionActiveOnDate,
-  layoutSessionsByDay,
-  parseLocalDate,
-  startOfWeekMonday,
-  timeToMinutes,
-  toISODate,
+  ETIQUETAS_ACTIVIDAD,
+  ETIQUETAS_DIAS,
+  ETIQUETAS_REUNION,
+  agregarDias,
+  formatearHora,
+  formatearRangoSemana,
+  obtenerHorarioBorrador,
+  obtenerFeriados,
+  construirMapaFeriados,
+  obtenerIntervalosReceso,
+  obtenerColorCurso,
+  obtenerNumeroSemanaAcademica,
+  obtenerInicioSemanaPredeterminado,
+  moverSesionesBorrador,
+  cambiarEstadoHorario,
+  obtenerLimitesHorario,
+  obtenerDiasSemana,
+  obtenerSesionesSemana,
+  estaSesionActivaEnFecha,
+  distribuirSesionesPorDia,
+  analizarFechaLocal,
+  inicioSemanaLunes,
+  convertirHoraAMinutos,
+  convertirAFechaISO,
 } from '../services/scheduleService';
 import './WeeklyScheduleGrid.css';
 
-const SLOT_MINUTES = 15;
-const REQUIRED_BREAK_MINUTES = 15;
-const SLOT_HEIGHT = 22;
-const GRID_START_HOUR = 7;
-const GRID_END_HOUR = 22;
-const FIRST_MINUTE = GRID_START_HOUR * 60;
+const MINUTOS_INTERVALO = 15;
+const MINUTOS_RECESO_REQUERIDOS = 15;
+const ALTURA_INTERVALO = 22;
+const HORA_INICIO_CUADRICULA = 7;
+const HORA_FIN_CUADRICULA = 22;
+const PRIMER_MINUTO = HORA_INICIO_CUADRICULA * 60;
 
 // Extraer semestre del bloque SENATI: "56PIADS201" -> después de S/E viene el dígito de semestre
-const extractSemesterFromBloque = (bloque) => {
+const extraerSemestreDelBloque = (bloque) => {
   if (!bloque || typeof bloque !== 'string') return null;
   // Buscar patrón: letras + S o E + dígito de semestre + 2 dígitos de grupo
   const match = bloque.match(/[A-Z]+([SE])(\d)\d{2}$/i);
@@ -51,10 +51,10 @@ const extractSemesterFromBloque = (bloque) => {
 };
 
 // Mapeo carrera -> semestres -> bloques
-const buildCarreraMapping = (records, period) => {
-  const map = {};
-  records.forEach((r) => {
-    if (period !== null && r.periodo !== period) return;
+const construirMapaCarreras = (registros, periodo) => {
+  const mapa = {};
+  registros.forEach((r) => {
+    if (periodo !== null && r.periodo !== periodo) return;
     if (!r.bloque) return;
     const bloque = r.bloque;
     
@@ -78,53 +78,53 @@ const buildCarreraMapping = (records, period) => {
       else if (bloque.includes('NMGD')) carrera = 'NMGD - Marketing y Gestión Comercial';
       else if (bloque.includes('NCBD')) carrera = 'NCBD - Contabilidad';
       else if (bloque.includes('NSID')) carrera = 'NSID - Seguridad Industrial y Prevención de Riesgos';
-      semNum = extractSemesterFromBloque(bloque);
+      semNum = extraerSemestreDelBloque(bloque);
     }
     if (!Number.isFinite(semNum)) return;
     
     const semestreKey = `Semestre ${semNum}`;
-    if (!map[carrera]) map[carrera] = {};
-    if (!map[carrera][semestreKey]) map[carrera][semestreKey] = new Set();
-    map[carrera][semestreKey].add(bloque);
+    if (!mapa[carrera]) mapa[carrera] = {};
+    if (!mapa[carrera][semestreKey]) mapa[carrera][semestreKey] = new Set();
+    mapa[carrera][semestreKey].add(bloque);
   });
   
-  const result = {};
-  Object.keys(map).sort().forEach(c => {
-    result[c] = {};
-    Object.keys(map[c]).sort((a,b) => {
+  const resultado = {};
+  Object.keys(mapa).sort().forEach(c => {
+    resultado[c] = {};
+    Object.keys(mapa[c]).sort((a,b) => {
       const na = parseInt(a.match(/\d+/)?.[0] || '0');
       const nb = parseInt(b.match(/\d+/)?.[0] || '0');
       return na - nb;
     }).forEach(s => {
-      result[c][s] = Array.from(map[c][s]).sort();
+      resultado[c][s] = Array.from(mapa[c][s]).sort();
     });
   });
-  return result;
+  return resultado;
 };
 
-function createTimeSlots(startMinute, endMinute) {
-  const slots = [];
-  for (let minutes = startMinute; minutes < endMinute; minutes += SLOT_MINUTES) {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    const endMinutes = minutes + SLOT_MINUTES;
-    const endHour = Math.floor(endMinutes / 60);
-    const endMinute = endMinutes % 60;
-    slots.push({
-      minutes,
+function crearIntervalosHorario(inicioMinuto, finMinuto) {
+  const intervalos = [];
+  for (let minutos = inicioMinuto; minutos < finMinuto; minutos += MINUTOS_INTERVALO) {
+    const h = Math.floor(minutos / 60);
+    const m = minutos % 60;
+    const finMinutos = minutos + MINUTOS_INTERVALO;
+    const finHora = Math.floor(finMinutos / 60);
+    const finMinuto = finMinutos % 60;
+    intervalos.push({
+      minutes: minutos,
       label: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
-      endLabel: `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`,
+      endLabel: `${String(finHora).padStart(2, '0')}:${String(finMinuto).padStart(2, '0')}`,
       isHour: m === 0,
     });
   }
-  return slots;
+  return intervalos;
 }
 
-function getGridTimeBounds(franja) {
-  const configuredStart = timeToMinutes(franja?.hora_inicio_mañana) ?? FIRST_MINUTE;
-  const configuredEnd = timeToMinutes(franja?.hora_cierre_noche) ?? GRID_END_HOUR * 60;
+function obtenerLimitesCuadriculaHorario(franja) {
+  const configuredStart = convertirHoraAMinutos(franja?.hora_inicio_mañana) ?? PRIMER_MINUTO;
+  const configuredEnd = convertirHoraAMinutos(franja?.hora_cierre_noche) ?? HORA_FIN_CUADRICULA * 60;
   if (configuredEnd <= configuredStart) {
-    return { start: FIRST_MINUTE, end: GRID_END_HOUR * 60 };
+    return { start: PRIMER_MINUTO, end: HORA_FIN_CUADRICULA * 60 };
   }
   return {
     start: Math.floor(configuredStart / 60) * 60,
@@ -134,425 +134,430 @@ function getGridTimeBounds(franja) {
   };
 }
 
-function formatScheduleTime(minutes) {
-  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}:00`;
+function formatearHoraHorario(minutos) {
+  return `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}:00`;
 }
 
-function formatConflictToast(reasons = []) {
-  if (!reasons.length) return '';
-  return reasons.map((entry) => `• ${entry.mensaje}`).join('\n');
+function formatearAvisoConflicto(motivos = []) {
+  if (!motivos.length) return '';
+  return motivos.map((entry) => `• ${entry.mensaje}`).join('\n');
 }
 
-function normalizeInstructor(value) {
-  return String(value ?? '')
+function normalizarDocente(valor) {
+  return String(valor ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toUpperCase();
 }
 
-function buildDropValidation(valid, reasons) {
+function construirValidacionMovimiento(valid, motivos) {
   return {
     valid,
-    reasons,
-    reason: reasons.map((entry) => entry.mensaje).join(' · '),
+    reasons: motivos,
+    reason: motivos.map((entry) => entry.mensaje).join(' · '),
   };
 }
 
-function getDropValidation(
-  session,
-  day,
-  slotMinutes,
-  dayInfo,
+function obtenerValidacionMovimiento(
+  sesion,
+  dia,
+  intervaloMinutos,
+  diaInformacion,
   occupations,
   restrictions,
-  periodStart,
-  periodEnd,
-  academicWeek,
+  inicioPeriodo,
+  finPeriodo,
+  academicoSemana,
   configuredStart,
   configuredEnd
 ) {
-  if (dayInfo?.isHoliday) {
-    return buildDropValidation(false, [
+  if (diaInformacion?.isHoliday) {
+    return construirValidacionMovimiento(false, [
       { tipo: 'general', mensaje: 'No se pueden programar clases en un día feriado.' },
     ]);
   }
   if (
-    (periodStart && dayInfo?.iso < periodStart) ||
-    (periodEnd && dayInfo?.iso > periodEnd)
+    (inicioPeriodo && diaInformacion?.iso < inicioPeriodo) ||
+    (finPeriodo && diaInformacion?.iso > finPeriodo)
   ) {
-    return buildDropValidation(false, [
+    return construirValidacionMovimiento(false, [
       { tipo: 'general', mensaje: 'La fecha está fuera de los límites del periodo.' },
     ]);
   }
 
-  const startMinutes = timeToMinutes(session.hora_ini);
-  const endMinutes = timeToMinutes(session.hora_fin);
-  if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-    return buildDropValidation(false, [
+  const inicioMinutos = convertirHoraAMinutos(sesion.hora_ini);
+  const finMinutos = convertirHoraAMinutos(sesion.hora_fin);
+  if (inicioMinutos === null || finMinutos === null || finMinutos <= inicioMinutos) {
+    return construirValidacionMovimiento(false, [
       { tipo: 'general', mensaje: 'No se pudo determinar la duración de la clase.' },
     ]);
   }
 
-  const duration = endMinutes - startMinutes;
-  const newEnd = slotMinutes + duration;
-  const reasons = [];
+  const duracion = finMinutos - inicioMinutos;
+  const nuevoFin = intervaloMinutos + duracion;
+  const motivos = [];
 
-  if (slotMinutes < configuredStart || newEnd > configuredEnd) {
-    reasons.push({
+  if (intervaloMinutos < configuredStart || nuevoFin > configuredEnd) {
+    motivos.push({
       tipo: 'general',
       mensaje: 'La clase quedaría fuera de la franja horaria configurada.',
     });
   }
 
-  const sessionIds = new Set(
-    session.scheduleIds?.length
-      ? session.scheduleIds.map(Number)
-      : [Number(session.id_horario)].filter(Number.isFinite)
+  const sesionIdentificadores = new Set(
+    sesion.scheduleIds?.length
+      ? sesion.scheduleIds.map(Number)
+      : [Number(sesion.id_horario)].filter(Number.isFinite)
   );
-  const instructorId = Number(session.id_docente) || null;
-  const roomId = Number(session.id_ambiente) || null;
-  const teacher = restrictions.docentes.find(
-    (entry) => Number(entry.id_docente) === instructorId
+  const docenteIdentificador = Number(sesion.id_docente) || null;
+  const ambienteIdentificador = Number(sesion.id_ambiente) || null;
+  const docente = restrictions.docentes.find(
+    (entry) => Number(entry.id_docente) === docenteIdentificador
   );
-  const teacherAvailability = restrictions.disponibilidadDocentes.filter(
-    (entry) => Number(entry.id_docente) === instructorId &&
-      normalizeInstructor(entry.dia_semana) === day
+  const docenteDisponibilidad = restrictions.disponibilidadDocentes.filter(
+    (entry) => Number(entry.id_docente) === docenteIdentificador &&
+      normalizarDocente(entry.dia_semana) === dia
   );
-  if (teacher?.usa_restriccion_horaria && !teacherAvailability.some((entry) =>
-    timeToMinutes(entry.hora_inicio) <= slotMinutes &&
-    timeToMinutes(entry.hora_fin) >= newEnd
+  if (docente?.usa_restriccion_horaria && !docenteDisponibilidad.some((entry) =>
+    convertirHoraAMinutos(entry.hora_inicio) <= intervaloMinutos &&
+    convertirHoraAMinutos(entry.hora_fin) >= nuevoFin
   )) {
-    reasons.push({
+    motivos.push({
       tipo: 'docente',
-      mensaje: `El docente no tiene disponibilidad el ${DAY_LABELS[day]} entre ${formatTime(formatScheduleTime(slotMinutes))} y ${formatTime(formatScheduleTime(newEnd))}.`,
+      mensaje: `El docente no tiene disponibilidad el ${ETIQUETAS_DIAS[dia]} entre ${formatearHora(formatearHoraHorario(intervaloMinutos))} y ${formatearHora(formatearHoraHorario(nuevoFin))}.`,
     });
   }
 
-  if (roomId && !restrictions.ambientes.some((entry) =>
-    Number(entry.id) === roomId &&
+  if (ambienteIdentificador && !restrictions.ambientes.some((entry) =>
+    Number(entry.id) === ambienteIdentificador &&
     ['A', 'ACTIVO', 'DISPONIBLE', 'OPERATIVO']
       .includes(String(entry.estado ?? '').trim().toUpperCase())
   )) {
-    reasons.push({ tipo: 'salon', mensaje: 'El salón asignado no está operativo.' });
+    motivos.push({ tipo: 'salon', mensaje: 'El salón asignado no está operativo.' });
   }
-  if (!roomId && !['VIR', 'EMP'].includes(session.actividad)) {
-    reasons.push({ tipo: 'salon', mensaje: 'La clase no tiene un salón asignado.' });
+  if (!ambienteIdentificador && !['VIR', 'EMP'].includes(sesion.actividad)) {
+    motivos.push({ tipo: 'salon', mensaje: 'La clase no tiene un salón asignado.' });
   }
 
-  const contexto = (other) => ({
-    carrera: other.carrera_codigo || other.codigo_carrera || '',
-    semestre: other.semestre || '',
-    curso: other.mat_cur || other.codigo_curso || '',
-    nombre_curso: other.nombre_curso || '',
-    ambiente: other.ambiente || '',
-    docente: other.instructor || '',
+  const contexto = (otro) => ({
+    carrera: otro.carrera_codigo || otro.codigo_carrera || '',
+    semestre: otro.semestre || '',
+    curso: otro.mat_cur || otro.codigo_curso || '',
+    nombre_curso: otro.nombre_curso || '',
+    ambiente: otro.ambiente || '',
+    docente: otro.instructor || '',
   });
 
-  for (const other of occupations) {
+  for (const otro of occupations) {
     if (
-      normalizeInstructor(other.dia) !== day ||
-      sessionIds.has(Number(other.id_horario)) ||
-      Number(other.semana_inicio) > Number(session.semana_fin) ||
-      Number(other.semana_fin) < Number(session.semana_inicio)
+      normalizarDocente(otro.dia) !== dia ||
+      sesionIdentificadores.has(Number(otro.id_horario)) ||
+      Number(otro.semana_inicio) > Number(sesion.semana_fin) ||
+      Number(otro.semana_fin) < Number(sesion.semana_inicio)
     ) {
       continue;
     }
 
-    const otherStart = timeToMinutes(other.hora_ini);
-    const otherEnd = timeToMinutes(other.hora_fin);
-    if (otherStart === null || otherEnd === null) {
+    const otroInicio = convertirHoraAMinutos(otro.hora_ini);
+    const otroFin = convertirHoraAMinutos(otro.hora_fin);
+    if (otroInicio === null || otroFin === null) {
       continue;
     }
 
-    const overlaps = newEnd > otherStart && slotMinutes < otherEnd;
-    const info = contexto(other);
-    const ubicacion = `${info.carrera || '—'} · ${info.semestre || '—'}`;
-    const detalleClase = `${info.nombre_curso || info.curso || 'curso'} ${formatTime(other.hora_ini)}–${formatTime(other.hora_fin)}`;
+    const solapan = nuevoFin > otroInicio && intervaloMinutos < otroFin;
+    const informacion = contexto(otro);
+    const ubicacion = `${informacion.carrera || '—'} · ${informacion.semestre || '—'}`;
+    const detalleClase = `${informacion.nombre_curso || informacion.curso || 'curso'} ${formatearHora(otro.hora_ini)}–${formatearHora(otro.hora_fin)}`;
 
-    const sectionNeedsBreak = other.codigo_cohorte === session.codigo_cohorte &&
-      slotMinutes < otherEnd + REQUIRED_BREAK_MINUTES &&
-      newEnd + REQUIRED_BREAK_MINUTES > otherStart;
-    if (sectionNeedsBreak) {
-      reasons.push({
+    const seccionNecesitaReceso = otro.codigo_cohorte === sesion.codigo_cohorte &&
+      intervaloMinutos < otroFin + MINUTOS_RECESO_REQUERIDOS &&
+      nuevoFin + MINUTOS_RECESO_REQUERIDOS > otroInicio;
+    if (seccionNecesitaReceso) {
+      motivos.push({
         tipo: 'cohorte',
-        ...info,
+        ...informacion,
         mensaje: `La cohorte ${ubicacion} ya tiene clase (${detalleClase}); deja al menos 15 minutos entre clases.`,
       });
     }
 
-    const sharesInstructor = instructorId &&
-      Number(other.id_docente) === instructorId;
-    const instructorNeedsBreak = sharesInstructor &&
-      slotMinutes < otherEnd + REQUIRED_BREAK_MINUTES &&
-      newEnd + REQUIRED_BREAK_MINUTES > otherStart;
-    if (instructorNeedsBreak) {
-      reasons.push({
+    const sharesInstructor = docenteIdentificador &&
+      Number(otro.id_docente) === docenteIdentificador;
+    const docenteNecesitaReceso = sharesInstructor &&
+      intervaloMinutos < otroFin + MINUTOS_RECESO_REQUERIDOS &&
+      nuevoFin + MINUTOS_RECESO_REQUERIDOS > otroInicio;
+    if (docenteNecesitaReceso) {
+      motivos.push({
         tipo: 'docente',
-        ...info,
-        mensaje: `El docente ${session.instructorName} necesita al menos 15 minutos de receso (${ubicacion}, ${detalleClase}).`,
+        ...informacion,
+        mensaje: `El docente ${sesion.instructorName} necesita al menos 15 minutos de receso (${ubicacion}, ${detalleClase}).`,
       });
     }
 
-    if (overlaps && roomId && Number(other.id_ambiente) === roomId) {
-      reasons.push({
+    if (solapan && ambienteIdentificador && Number(otro.id_ambiente) === ambienteIdentificador) {
+      motivos.push({
         tipo: 'salon',
-        ...info,
-        mensaje: `El salón ${session.ambiente || session.salon || ''} está ocupado por ${ubicacion} (${detalleClase}).`,
+        ...informacion,
+        mensaje: `El salón ${sesion.ambiente || sesion.salon || ''} está ocupado por ${ubicacion} (${detalleClase}).`,
       });
     }
   }
 
-  if (instructorId) {
-    const firstWeek = Number(session.semana_inicio) || academicWeek;
-    const lastWeek = Number(session.semana_fin) || academicWeek;
-    for (let week = firstWeek; week <= lastWeek; week += 1) {
-      const teacherDay = occupations
-        .filter((other) =>
-          Number(other.id_docente) === instructorId &&
-          normalizeInstructor(other.dia) === day &&
-          Number(other.semana_inicio) <= week &&
-          Number(other.semana_fin) >= week &&
-          !sessionIds.has(Number(other.id_horario))
+  if (docenteIdentificador) {
+    const primerSemana = Number(sesion.semana_inicio) || academicoSemana;
+    const ultimoSemana = Number(sesion.semana_fin) || academicoSemana;
+    let faltaDescansoDocente = false;
+    for (let semana = primerSemana; semana <= ultimoSemana; semana += 1) {
+      const docenteDia = occupations
+        .filter((otro) =>
+          Number(otro.id_docente) === docenteIdentificador &&
+          normalizarDocente(otro.dia) === dia &&
+          Number(otro.semana_inicio) <= semana &&
+          Number(otro.semana_fin) >= semana &&
+          !sesionIdentificadores.has(Number(otro.id_horario))
         )
-        .map((other) => ({
-          start: timeToMinutes(other.hora_ini),
-          end: timeToMinutes(other.hora_fin),
+        .map((otro) => ({
+          start: convertirHoraAMinutos(otro.hora_ini),
+          end: convertirHoraAMinutos(otro.hora_fin),
         }));
-      teacherDay.push({ start: slotMinutes, end: newEnd });
-      teacherDay.sort((left, right) => left.start - right.start);
+      docenteDia.push({ start: intervaloMinutos, end: nuevoFin });
+      docenteDia.sort((izquierda, derecha) => izquierda.start - derecha.start);
 
-      let continuousHours = (teacherDay[0].end - teacherDay[0].start) / 45;
-      for (let index = 1; index < teacherDay.length; index += 1) {
-        const previous = teacherDay[index - 1];
-        const current = teacherDay[index];
-        const gap = current.start - previous.end;
-        if (continuousHours >= 5 && gap < 45) {
-          reasons.push({
-            tipo: 'docente',
-            mensaje: 'El docente necesita 45 minutos de descanso después de 5 horas académicas continuas antes de continuar su jornada.',
-          });
+      let continuasHoras = (docenteDia[0].end - docenteDia[0].start) / 45;
+      for (let indice = 1; indice < docenteDia.length; indice += 1) {
+        const anterior = docenteDia[indice - 1];
+        const actual = docenteDia[indice];
+        const separacion = actual.start - anterior.end;
+        if (continuasHoras >= 5 && separacion < 45) {
+          faltaDescansoDocente = true;
           break;
         }
-        continuousHours = gap >= 45
-          ? (current.end - current.start) / 45
-          : continuousHours + (current.end - current.start) / 45;
+        continuasHoras = separacion >= 45
+          ? (actual.end - actual.start) / 45
+          : continuasHoras + (actual.end - actual.start) / 45;
       }
+      if (faltaDescansoDocente) break;
+    }
+    if (faltaDescansoDocente) {
+      motivos.push({
+        tipo: 'docente',
+        mensaje: 'El docente necesita 45 minutos de descanso después de 5 horas académicas continuas antes de continuar su jornada.',
+      });
     }
   }
 
-  return buildDropValidation(reasons.length === 0, reasons);
+  return construirValidacionMovimiento(motivos.length === 0, motivos);
 }
 
-function getSessionGridPosition(session, firstMinute) {
-  const startMin = timeToMinutes(session.hora_ini) ?? firstMinute;
-  const endMin = timeToMinutes(session.hora_fin) ?? startMin + SLOT_MINUTES;
-  const startSlot = Math.max(0, Math.floor((startMin - firstMinute) / SLOT_MINUTES));
-  const endSlot = Math.max(startSlot + 1, Math.ceil((endMin - firstMinute) / SLOT_MINUTES));
+function obtenerPosicionCuadriculaSesion(sesion, primerMinuto) {
+  const inicioMinimo = convertirHoraAMinutos(sesion.hora_ini) ?? primerMinuto;
+  const finMinimo = convertirHoraAMinutos(sesion.hora_fin) ?? inicioMinimo + MINUTOS_INTERVALO;
+  const inicioIntervalo = Math.max(0, Math.floor((inicioMinimo - primerMinuto) / MINUTOS_INTERVALO));
+  const finIntervalo = Math.max(inicioIntervalo + 1, Math.ceil((finMinimo - primerMinuto) / MINUTOS_INTERVALO));
   return {
-    gridRow: `${startSlot + 2} / span ${endSlot - startSlot}`,
-    startSlot,
-    span: endSlot - startSlot,
-    duration: Math.max(0, endMin - startMin),
+    gridRow: `${inicioIntervalo + 2} / span ${finIntervalo - inicioIntervalo}`,
+    startSlot: inicioIntervalo,
+    span: finIntervalo - inicioIntervalo,
+    duration: Math.max(0, finMinimo - inicioMinimo),
   };
 }
 
-function getBreakGridPosition(breakSlot, firstMinute) {
-  const startSlot = Math.max(0, Math.floor((breakSlot.startMin - firstMinute) / SLOT_MINUTES));
-  const endSlot = Math.max(startSlot + 1, Math.ceil((breakSlot.endMin - firstMinute) / SLOT_MINUTES));
+function obtenerPosicionCuadriculaReceso(recesoIntervalo, primerMinuto) {
+  const inicioIntervalo = Math.max(0, Math.floor((recesoIntervalo.startMin - primerMinuto) / MINUTOS_INTERVALO));
+  const finIntervalo = Math.max(inicioIntervalo + 1, Math.ceil((recesoIntervalo.endMin - primerMinuto) / MINUTOS_INTERVALO));
   return {
-    gridRow: `${startSlot + 2} / span ${endSlot - startSlot}`,
-    span: endSlot - startSlot,
+    gridRow: `${inicioIntervalo + 2} / span ${finIntervalo - inicioIntervalo}`,
+    span: finIntervalo - inicioIntervalo,
   };
 }
 
-function formatRanges(ranges = []) {
-  if (!ranges.length) return 'Sin rango de fechas';
-  return ranges.slice(0, 3).map((range) => `${range.start} → ${range.end}`).join('\n');
+function formatearRangos(rangos = []) {
+  if (!rangos.length) return 'Sin rango de fechas';
+  return rangos.slice(0, 3).map((rango) => `${rango.start} → ${rango.end}`).join('\n');
 }
 
-function ClassCard({
-  session,
-  dayIndex,
-  firstMinute,
+function TarjetaClase({
+  session: sesion,
+  dayIndex: diaIndice,
+  firstMinute: primerMinuto,
   onDragStart,
   onDragEnd,
   onDragOver,
   onDrop,
-  isDragging,
-  isValidDrop,
-  isOver,
+  isDragging: estaArrastrando,
+  isValidDrop: movimientoValido,
+  isOver: estaSobre,
 }) {
-  const color = getCourseColor(session.mat_cur, session.nombre_curso);
-  const courseName = session.nombre_curso || session.mat_cur;
-  const isVAEE = session.tipo_reunion === 'VAEE';
-  const isRemote = session.tipo_reunion === 'REMT';
-  const isEMP = session.actividad === 'EMP' || session.tipo_reunion === 'EMP';
-  const position = getSessionGridPosition(session, firstMinute);
-  const compact = position.duration < 45;
-  const location = isEMP
+  const color = obtenerColorCurso(sesion.mat_cur, sesion.nombre_curso);
+  const cursoNombre = sesion.nombre_curso || sesion.mat_cur;
+  const isVAEE = sesion.tipo_reunion === 'VAEE';
+  const esRemota = sesion.tipo_reunion === 'REMT';
+  const isEMP = sesion.actividad === 'EMP' || sesion.tipo_reunion === 'EMP';
+  const posicion = obtenerPosicionCuadriculaSesion(sesion, primerMinuto);
+  const compacto = posicion.duration < 45;
+  const ubicacion = isEMP
     ? '00-EX'
-    : session.ambiente || [session.edificio, session.salon].filter(Boolean).join(' · ');
-  const instructorLabel = session.noAssignedInstructor
+    : sesion.ambiente || [sesion.edificio, sesion.salon].filter(Boolean).join(' · ');
+  const etiquetaDocente = sesion.noAssignedInstructor
     ? ''
-    : session.hasCatalogInstructor
-      ? (session.instructorName
-        ? [session.instructorName, session.instructor].filter((value, index) =>
-          value && (index === 0 || value !== session.instructorName)
+    : sesion.hasCatalogInstructor
+      ? (sesion.instructorName
+        ? [sesion.instructorName, sesion.instructor].filter((valor, indice) =>
+          valor && (indice === 0 || valor !== sesion.instructorName)
         ).join(' · ')
         : 'Docente no asignado')
-      : session.instructor
-        ? `Docente no identificado · ${session.instructor}`
+      : sesion.instructor
+        ? `Docente no identificado · ${sesion.instructor}`
         : 'Docente no asignado';
 
-  const tooltip = [
-    courseName,
-    `${session.mat_cur} · ${ACTIVITY_LABELS[session.actividad] ?? session.actividad ?? 'S/A'}`,
-    `Tipo: ${MEETING_LABELS[session.tipo_reunion] ?? session.tipo_reunion ?? 'No definido'}`,
-    `Horario: ${formatTime(session.hora_ini)} – ${formatTime(session.hora_fin)}`,
-    `Bloque: ${session.bloque}`,
-    session.cohorte ? `Cohorte: ${session.cohorte}` : null,
-    location ? `Locación: ${location}` : null,
-    isEMP ? 'Empresa / Formación Práctica' : instructorLabel ? `Docente: ${instructorLabel}` : null,
-    session.semana_inicio && session.semana_fin
-      ? `Semana lectiva: ${session.semana_inicio}–${session.semana_fin}`
-      : `Vigencia:\n${formatRanges(session.ranges)}`,
+  const ayuda = [
+    cursoNombre,
+    `${sesion.mat_cur} · ${ETIQUETAS_ACTIVIDAD[sesion.actividad] ?? sesion.actividad ?? 'S/A'}`,
+    `Tipo: ${ETIQUETAS_REUNION[sesion.tipo_reunion] ?? sesion.tipo_reunion ?? 'No definido'}`,
+    `Horario: ${formatearHora(sesion.hora_ini)} – ${formatearHora(sesion.hora_fin)}`,
+    `Bloque: ${sesion.bloque}`,
+    sesion.cohorte ? `Cohorte: ${sesion.cohorte}` : null,
+    ubicacion ? `Locación: ${ubicacion}` : null,
+    isEMP ? 'Empresa / Formación Práctica' : etiquetaDocente ? `Docente: ${etiquetaDocente}` : null,
+    sesion.semana_inicio && sesion.semana_fin
+      ? `Semana lectiva: ${sesion.semana_inicio}–${sesion.semana_fin}`
+      : `Vigencia:\n${formatearRangos(sesion.ranges)}`,
   ].filter(Boolean).join('\n');
 
-  const laneStyle = session.laneCount > 1
-    ? { width: `calc(${100 / session.laneCount}% - 4px)`, marginLeft: `calc(${(session.lane * 100) / session.laneCount}% + 2px)` }
+  const carrilEstilo = sesion.laneCount > 1
+    ? { width: `calc(${100 / sesion.laneCount}% - 4px)`, marginLeft: `calc(${(sesion.lane * 100) / sesion.laneCount}% + 2px)` }
     : {};
 
   return (
     <div
-      draggable={Boolean(session.scheduleIds?.length)}
+      draggable={Boolean(sesion.scheduleIds?.length)}
       className={[
         'schedule-class',
         isVAEE ? 'is-vaee' : '',
-        isRemote ? 'is-remote' : '',
+        esRemota ? 'is-remote' : '',
         isEMP ? 'is-emp' : '',
-        compact ? 'is-compact' : '',
-        isDragging ? 'is-dragging' : '',
-        isOver && isValidDrop ? 'drop-valid' : '',
-        isOver && !isValidDrop ? 'drop-invalid' : '',
+        compacto ? 'is-compact' : '',
+        estaArrastrando ? 'is-dragging' : '',
+        estaSobre && movimientoValido ? 'drop-valid' : '',
+        estaSobre && !movimientoValido ? 'drop-invalid' : '',
       ].filter(Boolean).join(' ')}
       style={{
-        gridRow: position.gridRow,
-        gridColumn: dayIndex + 2,
+        gridRow: posicion.gridRow,
+        gridColumn: diaIndice + 2,
         background: isEMP
           ? 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)'
           : color.bg,
         borderLeftColor: isEMP ? '#22C55E' : color.border,
         color: isEMP ? '#166534' : color.text,
-        ...laneStyle,
+        ...carrilEstilo,
       }}
-      title={tooltip}
-      onDragStart={(e) => onDragStart && onDragStart(e, session)}
+      title={ayuda}
+      onDragStart={(e) => onDragStart && onDragStart(e, sesion)}
       onDragEnd={(e) => onDragEnd && onDragEnd(e)}
-      onDragOver={(e) => onDragOver && onDragOver(e, session)}
-      onDrop={(e) => onDrop && onDrop(e, session)}
+      onDragOver={(e) => onDragOver && onDragOver(e, sesion)}
+      onDrop={(e) => onDrop && onDrop(e, sesion)}
     >
       <div className="schedule-class__top">
-        <span className="schedule-class__name" title={courseName}>{courseName}</span>
+        <span className="schedule-class__name" title={cursoNombre}>{cursoNombre}</span>
         <span
           className="schedule-class__activity"
           style={{ background: isEMP ? '#22C55E' : color.chip, color: '#fff' }}
         >
-          {isEMP ? 'EMP' : (session.actividad || '—')}
+          {isEMP ? 'EMP' : (sesion.actividad || '—')}
         </span>
       </div>
 
       <div className="schedule-class__time">
-        <span className="schedule-class__code">{session.mat_cur}</span>
-        <span>{formatTime(session.hora_ini)} – {formatTime(session.hora_fin)}</span>
+        <span className="schedule-class__code">{sesion.mat_cur}</span>
+        <span>{formatearHora(sesion.hora_ini)} – {formatearHora(sesion.hora_fin)}</span>
       </div>
 
       <div className="schedule-class__badges">
-        <span className={`meeting-badge ${isEMP ? 'meeting-badge--emp' : (isVAEE ? 'meeting-badge--vaee' : isRemote ? 'meeting-badge--remt' : 'meeting-badge--clas')}`}>
-          {isEMP ? 'EMP' : (session.tipo_reunion || 'S/T')}
+        <span className={`meeting-badge ${isEMP ? 'meeting-badge--emp' : (isVAEE ? 'meeting-badge--vaee' : esRemota ? 'meeting-badge--remt' : 'meeting-badge--clas')}`}>
+          {isEMP ? 'EMP' : (sesion.tipo_reunion || 'S/T')}
         </span>
-        {location && (
-          <span className="schedule-class__location">{location}</span>
+        {ubicacion && (
+          <span className="schedule-class__location">{ubicacion}</span>
         )}
       </div>
 
-      {!isEMP && instructorLabel && (
-        <div className="schedule-class__instructor">{instructorLabel}</div>
+      {!isEMP && etiquetaDocente && (
+        <div className="schedule-class__instructor">{etiquetaDocente}</div>
       )}
       {isEMP && (
-        <div className="schedule-class__instructor">🏢 Formación en Empresa</div>
+        <div className="schedule-class__instructor">Formación en Empresa</div>
       )}
     </div>
   );
 }
 
-function WeeklyScheduleGrid() {
-  const selectedPeriod = 202620;
-  const [selectedCarrera, setSelectedCarrera] = useState('');
-  const [selectedSemestre, setSelectedSemestre] = useState('');
-  const [selectedBlock, setSelectedBlock] = useState('');
-  const [weekStart, setWeekStart] = useState(() => getDefaultWeekStart());
-  const [periodWeeks, setPeriodWeeks] = useState(18);
-  const [periodStart, setPeriodStart] = useState('');
-  const [periodEnd, setPeriodEnd] = useState('');
+function CuadriculaSemanalHorarios() {
+  const periodoSeleccionado = 202620;
+  const [carreraSeleccionada, setSelectedCarrera] = useState('');
+  const [semestreSeleccionado, setSelectedSemestre] = useState('');
+  const [bloqueSeleccionado, establecerSeleccionadoBloque] = useState('');
+  const [semanaInicio, establecerSemanaInicio] = useState(() => obtenerInicioSemanaPredeterminado());
+  const [semanasPeriodo, establecerPeriodoSemanas] = useState(18);
+  const [inicioPeriodo, establecerPeriodoInicio] = useState('');
+  const [finPeriodo, establecerPeriodoFin] = useState('');
   const [restrictions, setRestrictions] = useState({
     ocupaciones: [],
     disponibilidadDocentes: [],
     docentes: [],
     ambientes: [],
   });
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const [cargando, establecerCargando] = useState(true);
+  const [cargarError, establecerCargarError] = useState('');
   
   // Drag & Drop state
-  const [draggedSession, setDraggedSession] = useState(null);
-  const [dragOverSlot, setDragOverSlot] = useState(null);
+  const [sesionArrastrada, establecerArrastradoSesion] = useState(null);
+  const [intervaloArrastre, setDragOverSlot] = useState(null);
   const [toast, setToast] = useState('');
   const [savingMove, setSavingMove] = useState(false);
-  const [scheduleState, setScheduleState] = useState('BORRADOR');
+  const [estadoHorario, establecerHorarioEstado] = useState('BORRADOR');
   const [changingState, setChangingState] = useState(false);
-  const [holidaysMap, setHolidaysMap] = useState(new Map());
+  const [feriadosMapa, establecerFeriadosMapa] = useState(new Map());
 
-  const [records, setRecords] = useState([]);
-  const [operatingHours, setOperatingHours] = useState(null);
+  const [registros, establecerRegistros] = useState([]);
+  const [horariosOperativos, setOperatingHours] = useState(null);
   useEffect(() => {
-    const controller = new AbortController();
-    fetchHolidays({ signal: controller.signal })
+    const controlador = new AbortController();
+    obtenerFeriados({ signal: controlador.signal })
       .then((feriados) => {
-        if (!controller.signal.aborted) setHolidaysMap(buildHolidaysMap(feriados));
+        if (!controlador.signal.aborted) establecerFeriadosMapa(construirMapaFeriados(feriados));
       })
       .catch(() => {});
-    return () => controller.abort();
+    return () => controlador.abort();
   }, []);
   useEffect(() => {
-    const controller = new AbortController();
+    const controlador = new AbortController();
     const cargarHorario = async () => {
       try {
-        const resultado = await fetchDraftSchedule(String(selectedPeriod), {
-          signal: controller.signal,
+        const resultado = await obtenerHorarioBorrador(String(periodoSeleccionado), {
+          signal: controlador.signal,
         });
-        if (controller.signal.aborted) return;
+        if (controlador.signal.aborted) return;
 
-        setRecords(resultado.bloques);
+        establecerRegistros(resultado.bloques);
         setOperatingHours(resultado.franja);
-        setScheduleState(resultado.estado || 'BORRADOR');
-        setPeriodWeeks(resultado.semanas);
-        const bounds = getScheduleBounds(resultado.bloques);
+        establecerHorarioEstado(resultado.estado || 'BORRADOR');
+        establecerPeriodoSemanas(resultado.semanas);
+        const bounds = obtenerLimitesHorario(resultado.bloques);
         const inicioPeriodo = resultado.fechaInicio ||
-          (bounds ? toISODate(bounds.min) : '');
+          (bounds ? convertirAFechaISO(bounds.min) : '');
         const finPeriodo = resultado.fechaFin ||
-          (bounds ? toISODate(bounds.max) : '');
-        setPeriodStart(inicioPeriodo);
-        setPeriodEnd(finPeriodo);
+          (bounds ? convertirAFechaISO(bounds.max) : '');
+        establecerPeriodoInicio(inicioPeriodo);
+        establecerPeriodoFin(finPeriodo);
         setRestrictions(resultado.restricciones);
-        setWeekStart(getDefaultWeekStart(
+        establecerSemanaInicio(obtenerInicioSemanaPredeterminado(
           resultado.bloques,
           inicioPeriodo,
           finPeriodo
         ));
-        setLoadError('');
+        establecerCargarError('');
 
-        const mapping = buildCarreraMapping(resultado.bloques, selectedPeriod);
+        const mapping = construirMapaCarreras(resultado.bloques, periodoSeleccionado);
         const carrera = Object.keys(mapping).sort()[0] || '';
         const semestre = carrera
           ? Object.keys(mapping[carrera]).sort((a, b) =>
@@ -562,51 +567,51 @@ function WeeklyScheduleGrid() {
         const bloque = carrera && semestre ? mapping[carrera][semestre][0] || '' : '';
         setSelectedCarrera(carrera);
         setSelectedSemestre(semestre);
-        setSelectedBlock(bloque);
+        establecerSeleccionadoBloque(bloque);
       } catch (error) {
-        if (!controller.signal.aborted) {
-          setRecords([]);
-          setLoadError(error.message || 'No se pudo cargar el horario borrador.');
+        if (!controlador.signal.aborted) {
+          establecerRegistros([]);
+          establecerCargarError(error.message || 'No se pudo cargar el horario borrador.');
         }
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controlador.signal.aborted) establecerCargando(false);
       }
     };
 
     cargarHorario();
-    return () => controller.abort();
-  }, [selectedPeriod]);
+    return () => controlador.abort();
+  }, [periodoSeleccionado]);
   useEffect(() => {
     if (!toast) return undefined;
     const timeout = window.setTimeout(() => setToast(''), 4200);
     return () => window.clearTimeout(timeout);
   }, [toast]);
-  const carreraMap = useMemo(() => buildCarreraMapping(records, selectedPeriod), [records, selectedPeriod]);
+  const carreraMap = useMemo(() => construirMapaCarreras(registros, periodoSeleccionado), [registros, periodoSeleccionado]);
   const carreras = useMemo(() => Object.keys(carreraMap).sort(), [carreraMap]);
   
   const semestres = useMemo(() => {
-    if (!selectedCarrera || !carreraMap[selectedCarrera]) return [];
-    return Object.keys(carreraMap[selectedCarrera]).sort((a,b) => {
+    if (!carreraSeleccionada || !carreraMap[carreraSeleccionada]) return [];
+    return Object.keys(carreraMap[carreraSeleccionada]).sort((a,b) => {
       const na = parseInt(a.match(/\d+/)?.[0] || '0');
       const nb = parseInt(b.match(/\d+/)?.[0] || '0');
       return na - nb;
     });
-  }, [carreraMap, selectedCarrera]);
+  }, [carreraMap, carreraSeleccionada]);
   
   const bloques = useMemo(() => {
-    if (!selectedCarrera || !selectedSemestre || !carreraMap[selectedCarrera]) return [];
-    return carreraMap[selectedCarrera][selectedSemestre] || [];
-  }, [carreraMap, selectedCarrera, selectedSemestre]);
+    if (!carreraSeleccionada || !semestreSeleccionado || !carreraMap[carreraSeleccionada]) return [];
+    return carreraMap[carreraSeleccionada][semestreSeleccionado] || [];
+  }, [carreraMap, carreraSeleccionada, semestreSeleccionado]);
 
-  const selectedAcademicWeek = periodStart
+  const seleccionadoAcademicoSemana = inicioPeriodo
     ? Math.max(1, Math.min(
-      periodWeeks,
-      getAcademicWeekNumber(weekStart, periodStart)
+      semanasPeriodo,
+      obtenerNumeroSemanaAcademica(semanaInicio, inicioPeriodo)
     ))
     : 1;
 
   // Actualizar cascada cuando cambian filtros
-  const handleCarreraChange = (e) => {
+  const cambiarCarreraSeleccionada = (e) => {
     const carrera = e.target.value;
     setSelectedCarrera(carrera);
     const sems = Object.keys(carreraMap[carrera] || {}).sort((a,b) => {
@@ -617,81 +622,81 @@ function WeeklyScheduleGrid() {
     if (sems.length > 0) {
       setSelectedSemestre(sems[0]);
       const blks = carreraMap[carrera][sems[0]] || [];
-      if (blks.length > 0) setSelectedBlock(blks[0]);
+      if (blks.length > 0) establecerSeleccionadoBloque(blks[0]);
     }
   };
 
-  const handleSemestreChange = (e) => {
+  const cambiarSemestreSeleccionado = (e) => {
     const semestre = e.target.value;
     setSelectedSemestre(semestre);
-    const blks = carreraMap[selectedCarrera]?.[semestre] || [];
-    if (blks.length > 0) setSelectedBlock(blks[0]);
+    const blks = carreraMap[carreraSeleccionada]?.[semestre] || [];
+    if (blks.length > 0) establecerSeleccionadoBloque(blks[0]);
   };
 
-  const weekSessions = useMemo(
-    () => getWeekSessions(records, { period: selectedPeriod, block: selectedBlock, weekStart })
-      .filter((session) => {
-        const start = Number(session.semana_inicio);
-        const end = Number(session.semana_fin);
-        return !Number.isFinite(start) || !Number.isFinite(end) ||
-          (selectedAcademicWeek >= start && selectedAcademicWeek <= end);
+  const semanaSesiones = useMemo(
+    () => obtenerSesionesSemana(registros, { period: periodoSeleccionado, block: bloqueSeleccionado, weekStart: semanaInicio })
+      .filter((sesion) => {
+        const inicio = Number(sesion.semana_inicio);
+        const fin = Number(sesion.semana_fin);
+        return !Number.isFinite(inicio) || !Number.isFinite(fin) ||
+          (seleccionadoAcademicoSemana >= inicio && seleccionadoAcademicoSemana <= fin);
       }),
-    [records, selectedPeriod, selectedBlock, weekStart, selectedAcademicWeek]
+    [registros, periodoSeleccionado, bloqueSeleccionado, semanaInicio, seleccionadoAcademicoSemana]
   );
 
   // Días de la semana visible + feriados (desde la base de datos).
-  const weekDays = useMemo(() => getWeekDays(weekStart, holidaysMap), [weekStart, holidaysMap]);
+  const diasSemana = useMemo(() => obtenerDiasSemana(semanaInicio, feriadosMapa), [semanaInicio, feriadosMapa]);
   const occupations = restrictions.ocupaciones;
-  const periodBounds = useMemo(() => {
-    const min = parseLocalDate(periodStart);
-    const max = parseLocalDate(periodEnd);
+  const limitesPeriodo = useMemo(() => {
+    const minimo = analizarFechaLocal(inicioPeriodo);
+    const maximo = analizarFechaLocal(finPeriodo);
     return {
-      firstWeek: min ? toISODate(startOfWeekMonday(min)) : '',
-      lastWeek: max ? toISODate(startOfWeekMonday(max)) : '',
+      firstWeek: minimo ? convertirAFechaISO(inicioSemanaLunes(minimo)) : '',
+      lastWeek: maximo ? convertirAFechaISO(inicioSemanaLunes(maximo)) : '',
     };
-  }, [periodStart, periodEnd]);
-  const sessionsByDay = useMemo(() => Object.fromEntries(
-    weekDays.map((dayInfo) => [
-      dayInfo.day,
-      layoutSessionsByDay(
-        weekSessions.filter((session) =>
-          session.dia === dayInfo.day &&
-          (!periodStart || dayInfo.iso >= periodStart) &&
-          (!periodEnd || dayInfo.iso <= periodEnd) &&
-          isSessionActiveOnDate(session, dayInfo.iso)
+  }, [inicioPeriodo, finPeriodo]);
+  const sesionesPorDia = useMemo(() => Object.fromEntries(
+    diasSemana.map((diaInformacion) => [
+      diaInformacion.day,
+      distribuirSesionesPorDia(
+        semanaSesiones.filter((sesion) =>
+          sesion.dia === diaInformacion.day &&
+          (!inicioPeriodo || diaInformacion.iso >= inicioPeriodo) &&
+          (!finPeriodo || diaInformacion.iso <= finPeriodo) &&
+          estaSesionActivaEnFecha(sesion, diaInformacion.iso)
         )
-      )[dayInfo.day],
+      )[diaInformacion.day],
     ])
-  ), [weekDays, weekSessions, periodStart, periodEnd]);
+  ), [diasSemana, semanaSesiones, inicioPeriodo, finPeriodo]);
   const gridTimeBounds = useMemo(
-    () => getGridTimeBounds(operatingHours),
-    [operatingHours]
+    () => obtenerLimitesCuadriculaHorario(horariosOperativos),
+    [horariosOperativos]
   );
-  const timeSlots = useMemo(
-    () => createTimeSlots(gridTimeBounds.start, gridTimeBounds.end),
+  const intervalosHorario = useMemo(
+    () => crearIntervalosHorario(gridTimeBounds.start, gridTimeBounds.end),
     [gridTimeBounds]
   );
-  const holidaysInWeek = useMemo(
-    () => weekDays.filter((dayInfo) => dayInfo.isHoliday),
-    [weekDays]
+  const feriadosDeLaSemana = useMemo(
+    () => diasSemana.filter((diaInformacion) => diaInformacion.isHoliday),
+    [diasSemana]
   );
-  const dropValidationBySlot = useMemo(() => {
-    if (!draggedSession) return new Map();
+  const validacionesMovimientoPorIntervalo = useMemo(() => {
+    if (!sesionArrastrada) return new Map();
     const results = new Map();
-    weekDays.forEach((dayInfo) => {
-      timeSlots.forEach((slot) => {
+    diasSemana.forEach((diaInformacion) => {
+      intervalosHorario.forEach((intervalo) => {
         results.set(
-          `${dayInfo.day}|${slot.minutes}`,
-          getDropValidation(
-            draggedSession,
-            dayInfo.day,
-            slot.minutes,
-            dayInfo,
+          `${diaInformacion.day}|${intervalo.minutes}`,
+          obtenerValidacionMovimiento(
+            sesionArrastrada,
+            diaInformacion.day,
+            intervalo.minutes,
+            diaInformacion,
             occupations,
             restrictions,
-            periodStart,
-            periodEnd,
-            selectedAcademicWeek,
+            inicioPeriodo,
+            finPeriodo,
+            seleccionadoAcademicoSemana,
             gridTimeBounds.configuredStart ?? gridTimeBounds.start,
             gridTimeBounds.configuredEnd ?? gridTimeBounds.end
           )
@@ -700,214 +705,214 @@ function WeeklyScheduleGrid() {
     });
     return results;
   }, [
-    draggedSession,
-    weekDays,
-    timeSlots,
+    sesionArrastrada,
+    diasSemana,
+    intervalosHorario,
     gridTimeBounds,
     occupations,
     restrictions,
-    periodStart,
-    periodEnd,
-    selectedAcademicWeek,
+    inicioPeriodo,
+    finPeriodo,
+    seleccionadoAcademicoSemana,
   ]);
 
-  const courses = useMemo(() => {
-    const map = new Map();
-    weekSessions.forEach((session) => {
-      const entry = map.get(session.mat_cur) ?? {
-        mat_cur: session.mat_cur,
-        name: session.nombre_curso || session.mat_cur,
-        career: session.carrera_nombre || null,
-        semester: session.semestre_num ?? null,
-        color: getCourseColor(session.mat_cur, session.nombre_curso),
+  const cursos = useMemo(() => {
+    const mapa = new Map();
+    semanaSesiones.forEach((sesion) => {
+      const entry = mapa.get(sesion.mat_cur) ?? {
+        mat_cur: sesion.mat_cur,
+        name: sesion.nombre_curso || sesion.mat_cur,
+        career: sesion.carrera_nombre || null,
+        semester: sesion.semestre_num ?? null,
+        color: obtenerColorCurso(sesion.mat_cur, sesion.nombre_curso),
         count: 0,
       };
       entry.count += 1;
-      map.set(session.mat_cur, entry);
+      mapa.set(sesion.mat_cur, entry);
     });
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'));
-  }, [weekSessions]);
+    return [...mapa.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  }, [semanaSesiones]);
 
-  const totalMinutes = useMemo(
-    () => weekSessions.reduce((acc, session) => {
-      const start = timeToMinutes(session.hora_ini) ?? 0;
-      const end = timeToMinutes(session.hora_fin) ?? 0;
-      return acc + Math.max(0, end - start);
+  const totalMinutos = useMemo(
+    () => semanaSesiones.reduce((acc, sesion) => {
+      const inicio = convertirHoraAMinutos(sesion.hora_ini) ?? 0;
+      const fin = convertirHoraAMinutos(sesion.hora_fin) ?? 0;
+      return acc + Math.max(0, fin - inicio);
     }, 0),
-    [weekSessions]
+    [semanaSesiones]
   );
 
-  const handleDragStart = (e, session) => {
+  const iniciarArrastre = (e, sesion) => { //la variable
     if (savingMove) {
       e.preventDefault();
       return;
     }
-    if (scheduleState === 'CONFIRMADO') {
+    if (estadoHorario === 'CONFIRMADO') {
       e.preventDefault();
       setToast('El horario está confirmado; cámbialo a Borrador para mover clases.');
       return;
     }
-    if (!session.scheduleIds?.length) {
+    if (!sesion.scheduleIds?.length) {
       e.preventDefault();
       setToast('Esta clase no tiene un registro editable en el borrador.');
       return;
     }
-    setDraggedSession(session);
+    establecerArrastradoSesion(sesion);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', session.key);
+    e.dataTransfer.setData('text/plain', sesion.key);
   };
 
-  const handleDragEnd = () => {
-    setDraggedSession(null);
+  const finalizarArrastre = () => {
+    establecerArrastradoSesion(null);
     setDragOverSlot(null);
   };
 
-  const handleDragOver = (e, day, slotMinutes) => {
+  const arrastrarSobre = (e, dia, intervaloMinutos) => {
     e.preventDefault();
-    if (!draggedSession) return;
-    const validation = dropValidationBySlot.get(`${day}|${slotMinutes}`) ?? {
+    if (!sesionArrastrada) return;
+    const validacion = validacionesMovimientoPorIntervalo.get(`${dia}|${intervaloMinutos}`) ?? {
       valid: false,
       reasons: [{ tipo: 'general', mensaje: 'No se pudo validar este espacio.' }],
       reason: 'No se pudo validar este espacio.',
     };
     setDragOverSlot({
-      day,
-      slotMinutes,
-      valid: validation.valid,
-      reason: validation.reason,
-      reasons: validation.reasons,
+      day: dia,
+      slotMinutes: intervaloMinutos,
+      valid: validacion.valid,
+      reason: validacion.reason,
+      reasons: validacion.reasons,
     });
-    e.dataTransfer.dropEffect = validation.valid ? 'move' : 'none';
+    e.dataTransfer.dropEffect = validacion.valid ? 'move' : 'none';
   };
 
-  const handleDrop = async (e, day, slotMinutes) => {
+  const soltarElemento = async (e, dia, intervaloMinutos) => {
     e.preventDefault();
-    if (!draggedSession || savingMove) return;
-    const currentStart = timeToMinutes(draggedSession.hora_ini);
-    if (draggedSession.dia === day && currentStart === slotMinutes) {
-      handleDragEnd();
+    if (!sesionArrastrada || savingMove) return;
+    const actualInicio = convertirHoraAMinutos(sesionArrastrada.hora_ini);
+    if (sesionArrastrada.dia === dia && actualInicio === intervaloMinutos) {
+      finalizarArrastre();
       return;
     }
-    const dayInfo = weekDays.find((entry) => entry.day === day);
-    const validation = getDropValidation(
-      draggedSession,
-      day,
-      slotMinutes,
-      dayInfo,
+    const diaInformacion = diasSemana.find((entry) => entry.day === dia);
+    const validacion = obtenerValidacionMovimiento(
+      sesionArrastrada,
+      dia,
+      intervaloMinutos,
+      diaInformacion,
       occupations,
       restrictions,
-      periodStart,
-      periodEnd,
-      selectedAcademicWeek,
+      inicioPeriodo,
+      finPeriodo,
+      seleccionadoAcademicoSemana,
       gridTimeBounds.configuredStart ?? gridTimeBounds.start,
       gridTimeBounds.configuredEnd ?? gridTimeBounds.end
     );
-    if (!validation.valid) {
-      setToast(`No se puede mover:\n${formatConflictToast(validation.reasons)}`);
-      handleDragEnd();
+    if (!validacion.valid) {
+      setToast(`No se puede mover:\n${formatearAvisoConflicto(validacion.reasons)}`);
+      finalizarArrastre();
       return;
     }
 
-    const duration = timeToMinutes(draggedSession.hora_fin) - currentStart;
-    const newStart = formatScheduleTime(slotMinutes);
-    const newEnd = formatScheduleTime(slotMinutes + duration);
-    const scheduleIds = draggedSession.scheduleIds ?? [];
-    const hasMatchingRecords = scheduleIds.length > 0 && records.some(
-      (record) => scheduleIds.includes(Number(record.id_horario))
+    const duracion = convertirHoraAMinutos(sesionArrastrada.hora_fin) - actualInicio;
+    const nuevoInicio = formatearHoraHorario(intervaloMinutos);
+    const nuevoFin = formatearHoraHorario(intervaloMinutos + duracion);
+    const horarioIdentificadores = sesionArrastrada.scheduleIds ?? [];
+    const hasMatchingRecords = horarioIdentificadores.length > 0 && registros.some(
+      (registro) => horarioIdentificadores.includes(Number(registro.id_horario))
     );
     if (!hasMatchingRecords) {
       setToast('No se pudo mover: no se encontraron los registros originales de la clase.');
-      handleDragEnd();
+      finalizarArrastre();
       return;
     }
     setSavingMove(true);
     try {
-      const resultado = await moveDraftSessions(
-        String(selectedPeriod),
-        scheduleIds,
-        day,
-        newStart.slice(0, 5)
+      const resultado = await moverSesionesBorrador(
+        String(periodoSeleccionado),
+        horarioIdentificadores,
+        dia,
+        nuevoInicio.slice(0, 5)
       );
-      const ids = new Set(
-        (resultado?.ids?.length ? resultado.ids : scheduleIds).map(Number)
+      const identificadores = new Set(
+        (resultado?.ids?.length ? resultado.ids : horarioIdentificadores).map(Number)
       );
-      const updateMoved = (record) => ids.has(Number(record.id_horario))
+      const updateMoved = (registro) => identificadores.has(Number(registro.id_horario))
         ? {
-          ...record,
-          dia: day,
-          dia_semana: day,
-          hora_ini: newStart,
-          hora_inicio: newStart,
-          hora_fin: newEnd,
+          ...registro,
+          dia: dia,
+          dia_semana: dia,
+          hora_ini: nuevoInicio,
+          hora_inicio: nuevoInicio,
+          hora_fin: nuevoFin,
         }
-        : record;
-      setRecords((currentRecords) => currentRecords.map(updateMoved));
-      setRestrictions((current) => ({
-        ...current,
-        ocupaciones: current.ocupaciones.map(updateMoved),
+        : registro;
+      establecerRegistros((actualRegistros) => actualRegistros.map(updateMoved));
+      setRestrictions((actual) => ({
+        ...actual,
+        ocupaciones: actual.ocupaciones.map(updateMoved),
       }));
       setToast(
-        `Clase movida a ${DAY_LABELS[day]} ${newStart.slice(0, 5)}–${newEnd.slice(0, 5)} en todas las semanas del curso.`
+        `Clase movida a ${ETIQUETAS_DIAS[dia]} ${nuevoInicio.slice(0, 5)}–${nuevoFin.slice(0, 5)} en todas las semanas del curso.`
       );
     } catch (error) {
       if (Array.isArray(error.conflictos) && error.conflictos.length) {
-        setToast(`No se puede mover:\n${formatConflictToast(error.conflictos)}`);
+        setToast(`No se puede mover:\n${formatearAvisoConflicto(error.conflictos)}`);
       } else {
         setToast(`No se pudo guardar el cambio: ${error.message}`);
       }
     } finally {
       setSavingMove(false);
-      handleDragEnd();
+      finalizarArrastre();
     }
   };
 
-  const getCardDropSlot = (e, session) => {
+  const getCardDropSlot = (e, sesion) => {
     const bounds = e.currentTarget.getBoundingClientRect();
-    const start = timeToMinutes(session.hora_ini) ?? FIRST_MINUTE;
-    const end = timeToMinutes(session.hora_fin) ?? start + SLOT_MINUTES;
-    const position = Math.max(0, Math.min(1, (e.clientY - bounds.top) / bounds.height));
-    return Math.floor((start + (end - start) * position) / SLOT_MINUTES) * SLOT_MINUTES;
+    const inicio = convertirHoraAMinutos(sesion.hora_ini) ?? PRIMER_MINUTO;
+    const fin = convertirHoraAMinutos(sesion.hora_fin) ?? inicio + MINUTOS_INTERVALO;
+    const posicion = Math.max(0, Math.min(1, (e.clientY - bounds.top) / bounds.height));
+    return Math.floor((inicio + (fin - inicio) * posicion) / MINUTOS_INTERVALO) * MINUTOS_INTERVALO;
   };
 
-  const handleCardDragOver = (e, session) => {
-    handleDragOver(e, session.dia, getCardDropSlot(e, session));
+  const handleCardDragOver = (e, sesion) => {
+    arrastrarSobre(e, sesion.dia, getCardDropSlot(e, sesion));
   };
 
-  const handleCardDrop = (e, session) => {
-    handleDrop(e, session.dia, getCardDropSlot(e, session));
+  const handleCardDrop = (e, sesion) => {
+    soltarElemento(e, sesion.dia, getCardDropSlot(e, sesion));
   };
 
-  const handleWeekChange = (offset) => {
-    const current = parseLocalDate(weekStart);
-    if (!current) return;
-    const next = toISODate(addDays(current, offset * 7));
+  const cambiarSemana = (offset) => {
+    const actual = analizarFechaLocal(semanaInicio);
+    if (!actual) return;
+    const siguiente = convertirAFechaISO(agregarDias(actual, offset * 7));
     if (
-      (periodBounds.firstWeek && next < periodBounds.firstWeek) ||
-      (periodBounds.lastWeek && next > periodBounds.lastWeek)
+      (limitesPeriodo.firstWeek && siguiente < limitesPeriodo.firstWeek) ||
+      (limitesPeriodo.lastWeek && siguiente > limitesPeriodo.lastWeek)
     ) return;
-    setWeekStart(next);
+    establecerSemanaInicio(siguiente);
   };
 
-  const handleDatePick = (event) => {
-    const picked = parseLocalDate(event.target.value);
-    if (!picked) return;
+  const seleccionarFecha = (event) => {
+    const seleccionado = analizarFechaLocal(event.target.value);
+    if (!seleccionado) return;
     if (
-      (periodStart && toISODate(picked) < periodStart) ||
-      (periodEnd && toISODate(picked) > periodEnd)
+      (inicioPeriodo && convertirAFechaISO(seleccionado) < inicioPeriodo) ||
+      (finPeriodo && convertirAFechaISO(seleccionado) > finPeriodo)
     ) return;
-    setWeekStart(toISODate(startOfWeekMonday(picked)));
+    establecerSemanaInicio(convertirAFechaISO(inicioSemanaLunes(seleccionado)));
   };
 
-  const goToCurrentWeek = () => {
-    setWeekStart(getDefaultWeekStart(records, periodStart, periodEnd));
+  const irASemanaActual = () => {
+    establecerSemanaInicio(obtenerInicioSemanaPredeterminado(registros, inicioPeriodo, finPeriodo));
   };
 
-  const handleChangeState = async (nuevoEstado) => {
-    if (!nuevoEstado || nuevoEstado === scheduleState || changingState) return;
+  const manejarCambioEstadoHorario = async (nuevoEstado) => {
+    if (!nuevoEstado || nuevoEstado === estadoHorario || changingState) return;
     setChangingState(true);
     try {
-      await changeScheduleState(String(selectedPeriod), nuevoEstado);
-      setScheduleState(nuevoEstado);
+      await cambiarEstadoHorario(String(periodoSeleccionado), nuevoEstado);
+      establecerHorarioEstado(nuevoEstado);
       setToast(`Estado del horario actualizado a ${nuevoEstado === 'CONFIRMADO' ? 'Confirmado' : 'Borrador'}.`);
     } catch (error) {
       setToast(`No se pudo cambiar el estado: ${error.message}`);
@@ -915,11 +920,11 @@ function WeeklyScheduleGrid() {
       setChangingState(false);
     }
   };
-  const datePickerValue = periodStart && weekStart < periodStart
-    ? periodStart
-    : periodEnd && weekStart > periodEnd
-      ? periodEnd
-      : weekStart;
+  const datePickerValue = inicioPeriodo && semanaInicio < inicioPeriodo
+    ? inicioPeriodo
+    : finPeriodo && semanaInicio > finPeriodo
+      ? finPeriodo
+      : semanaInicio;
 
   return (
     <div className="weekly-schedule-container">
@@ -934,31 +939,31 @@ function WeeklyScheduleGrid() {
           <div className="schedule-state" role="group" aria-label="Estado del horario">
             <button
               type="button"
-              className={`state-button ${scheduleState === 'BORRADOR' ? 'is-active' : ''}`}
-              onClick={() => handleChangeState('BORRADOR')}
+              className={`state-button ${estadoHorario === 'BORRADOR' ? 'is-active' : ''}`}
+              onClick={() => manejarCambioEstadoHorario('BORRADOR')}
               disabled={changingState}
             >
               Borrador
             </button>
             <button
               type="button"
-              className={`state-button ${scheduleState === 'CONFIRMADO' ? 'is-active' : ''}`}
-              onClick={() => handleChangeState('CONFIRMADO')}
+              className={`state-button ${estadoHorario === 'CONFIRMADO' ? 'is-active' : ''}`}
+              onClick={() => manejarCambioEstadoHorario('CONFIRMADO')}
               disabled={changingState}
             >
               Confirmado
             </button>
           </div>
           <div className="summary-chip">
-            <span className="summary-chip__value">{weekSessions.length}</span>
+            <span className="summary-chip__value">{semanaSesiones.length}</span>
             <span className="summary-chip__label">sesiones</span>
           </div>
           <div className="summary-chip">
-            <span className="summary-chip__value">{courses.length}</span>
+            <span className="summary-chip__value">{cursos.length}</span>
             <span className="summary-chip__label">cursos</span>
           </div>
           <div className="summary-chip">
-            <span className="summary-chip__value">{(totalMinutes/60).toLocaleString('es-PE',{maximumFractionDigits:1})}</span>
+            <span className="summary-chip__value">{(totalMinutos/60).toLocaleString('es-PE',{maximumFractionDigits:1})}</span>
             <span className="summary-chip__label">horas</span>
           </div>
         </div>
@@ -969,22 +974,22 @@ function WeeklyScheduleGrid() {
         <div className="toolbar-group">
           <label className="toolbar-field toolbar-field--wide" htmlFor="carrera-select">
             <span>1. Seleccionar Carrera</span>
-            <select id="carrera-select" value={selectedCarrera} onChange={handleCarreraChange}>
-              {carreras.map((c) => (<option key={c} value={c}>{c}</option>))}
+            <select id="carrera-select" valor={carreraSeleccionada} onChange={cambiarCarreraSeleccionada}>
+              {carreras.map((c) => (<option key={c} valor={c}>{c}</option>))}
             </select>
           </label>
 
           <label className="toolbar-field" htmlFor="semestre-select">
             <span>2. Seleccionar Semestre</span>
-            <select id="semestre-select" value={selectedSemestre} onChange={handleSemestreChange}>
-              {semestres.map((s) => (<option key={s} value={s}>{s}</option>))}
+            <select id="semestre-select" valor={semestreSeleccionado} onChange={cambiarSemestreSeleccionado}>
+              {semestres.map((s) => (<option key={s} valor={s}>{s}</option>))}
             </select>
           </label>
 
           <label className="toolbar-field" htmlFor="bloque-select">
             <span>3. Seleccionar Bloque</span>
-            <select id="bloque-select" value={selectedBlock} onChange={(e) => setSelectedBlock(e.target.value)}>
-              {bloques.map((b) => (<option key={b} value={b}>{b}</option>))}
+            <select id="bloque-select" valor={bloqueSeleccionado} onChange={(e) => establecerSeleccionadoBloque(e.target.value)}>
+              {bloques.map((b) => (<option key={b} valor={b}>{b}</option>))}
             </select>
           </label>
 
@@ -994,60 +999,60 @@ function WeeklyScheduleGrid() {
           <button
             type="button"
             className="nav-button"
-            onClick={() => handleWeekChange(-1)}
+            onClick={() => cambiarSemana(-1)}
             aria-label="Semana anterior"
-            disabled={Boolean(periodBounds.firstWeek && weekStart <= periodBounds.firstWeek)}
+            disabled={Boolean(limitesPeriodo.firstWeek && semanaInicio <= limitesPeriodo.firstWeek)}
           >
             <i className="fas fa-chevron-left" />
           </button>
           <div className="week-navigator__center">
             <span className="week-label">
-              Semana {selectedAcademicWeek}
+              Semana {seleccionadoAcademicoSemana}
             </span>
             <span className="week-label">
-              {formatWeekRange(weekStart)}
+              {formatearRangoSemana(semanaInicio)}
             </span>
             <input
               type="date"
               className="week-date-input"
-              value={datePickerValue}
-              min={periodStart || undefined}
-              max={periodEnd || undefined}
-              onChange={handleDatePick}
+              valor={datePickerValue}
+              minimo={inicioPeriodo || undefined}
+              maximo={finPeriodo || undefined}
+              onChange={seleccionarFecha}
               aria-label="Elegir una fecha del periodo"
             />
           </div>
           <button
             type="button"
             className="nav-button"
-            onClick={() => handleWeekChange(1)}
+            onClick={() => cambiarSemana(1)}
             aria-label="Semana siguiente"
-            disabled={Boolean(periodBounds.lastWeek && weekStart >= periodBounds.lastWeek)}
+            disabled={Boolean(limitesPeriodo.lastWeek && semanaInicio >= limitesPeriodo.lastWeek)}
           >
             <i className="fas fa-chevron-right" />
           </button>
-          <button type="button" className="today-button" onClick={goToCurrentWeek}>Hoy</button>
+          <button type="button" className="today-button" onClick={irASemanaActual}>Hoy</button>
         </div>
       </div>
 
-      {loading && (
+      {cargando && (
         <div className="schedule-empty-banner" role="status">
           <i className="fas fa-spinner" aria-hidden="true" />
-          <div><strong>Cargando horario borrador.</strong><span>Consultando el periodo {selectedPeriod}.</span></div>
+          <div><strong>Cargando horario borrador.</strong><span>Consultando el periodo {periodoSeleccionado}.</span></div>
         </div>
       )}
 
-      {!loading && loadError && (
+      {!cargando && cargarError && (
         <div className="schedule-empty-banner" role="alert">
           <i className="fas fa-exclamation-circle" aria-hidden="true" />
-          <div><strong>No se pudo cargar el horario.</strong><span>{loadError}</span></div>
+          <div><strong>No se pudo cargar el horario.</strong><span>{cargarError}</span></div>
         </div>
       )}
 
-      {!loading && !loadError && weekSessions.length === 0 && (
+      {!cargando && !cargarError && semanaSesiones.length === 0 && (
         <div className="schedule-empty-banner">
           <i className="far fa-calendar-times" />
-          <div><strong>Sin sesiones para esta semana lectiva.</strong><span>{holidaysInWeek.length ? `${holidaysInWeek.map((h) => `Feriado: ${h.holiday.mes} ${h.holiday.dia}`).join(' · ')} • ` : ''}Prueba otra semana o selecciona otra cohorte.</span></div>
+          <div><strong>Sin sesiones para esta semana lectiva.</strong><span>{feriadosDeLaSemana.length ? `${feriadosDeLaSemana.map((h) => `Feriado: ${h.holiday.mes} ${h.holiday.dia}`).join(' · ')} • ` : ''}Prueba otra semana o selecciona otra cohorte.</span></div>
         </div>
       )}
 
@@ -1066,138 +1071,138 @@ function WeeklyScheduleGrid() {
             Guardando el cambio de horario…
           </div>
         )}
-        {draggedSession && dragOverSlot && (
+        {sesionArrastrada && intervaloArrastre && (
           <div
-            className={`drop-feedback ${dragOverSlot.valid ? 'is-valid' : 'is-invalid'}`}
+            className={`drop-feedback ${intervaloArrastre.valid ? 'is-valid' : 'is-invalid'}`}
             role="status"
             aria-live="polite"
           >
             <strong>
-              {dragOverSlot.valid ? 'Espacio disponible' : 'No disponible'}
+              {intervaloArrastre.valid ? 'Espacio disponible' : 'No disponible'}
             </strong>
             <span>
-              {DAY_LABELS[dragOverSlot.day]} · {formatTime(formatScheduleTime(dragOverSlot.slotMinutes))}
-              {dragOverSlot.reason ? ` — ${dragOverSlot.reason}` : ''}
+              {ETIQUETAS_DIAS[intervaloArrastre.day]} · {formatearHora(formatearHoraHorario(intervaloArrastre.slotMinutes))}
+              {intervaloArrastre.reason ? ` — ${intervaloArrastre.reason}` : ''}
             </span>
           </div>
         )}
-        <div className="schedule-grid" style={{ gridTemplateColumns: `68px repeat(7, minmax(148px, 1fr))`, gridTemplateRows: `48px repeat(${timeSlots.length}, ${SLOT_HEIGHT}px)` }}>
+        <div className="schedule-grid" style={{ gridTemplateColumns: `68px repeat(7, minmax(148px, 1fr))`, gridTemplateRows: `48px repeat(${intervalosHorario.length}, ${ALTURA_INTERVALO}px)` }}>
           <div className="grid-corner" style={{ gridRow: 1, gridColumn: 1 }}>
             <span className="corner-pc">DE</span>
             <span className="corner-a">A</span>
           </div>
-          {weekDays.map((dayInfo, index) => (
+          {diasSemana.map((diaInformacion, indice) => (
             <div
-              key={dayInfo.day}
+              key={diaInformacion.day}
               className={[
                 'grid-day-header',
-                dayInfo.day === 'DOMINGO' ? 'is-sunday' : '',
-                dayInfo.isHoliday ? 'is-holiday' : '',
+                diaInformacion.day === 'DOMINGO' ? 'is-sunday' : '',
+                diaInformacion.isHoliday ? 'is-holiday' : '',
               ].filter(Boolean).join(' ')}
-              style={{ gridRow: 1, gridColumn: index + 2 }}
-              title={dayInfo.isHoliday ? `Feriado: ${dayInfo.holiday.mes} ${dayInfo.holiday.dia}` : `${DAY_LABELS[dayInfo.day]} ${dayInfo.label}`}
+              style={{ gridRow: 1, gridColumn: indice + 2 }}
+              title={diaInformacion.isHoliday ? `Feriado: ${diaInformacion.holiday.mes} ${diaInformacion.holiday.dia}` : `${ETIQUETAS_DIAS[diaInformacion.day]} ${diaInformacion.label}`}
             >
               <span className="grid-day-header__long">
-                {DAY_LABELS[dayInfo.day]}
-                {dayInfo.isHoliday ? <span className="holiday-badge">FERIADO</span> : null}
+                {ETIQUETAS_DIAS[diaInformacion.day]}
+                {diaInformacion.isHoliday ? <span className="holiday-badge">FERIADO</span> : null}
               </span>
               <span className="grid-day-header__short">
-                {dayInfo.day.slice(0, 3)}
-                {dayInfo.isHoliday ? ' • F' : ''}
+                {diaInformacion.day.slice(0, 3)}
+                {diaInformacion.isHoliday ? ' • F' : ''}
               </span>
-              <span className="grid-day-header__date">{dayInfo.label}</span>
+              <span className="grid-day-header__date">{diaInformacion.label}</span>
             </div>
           ))}
 
-          {timeSlots.map((slot, index) => (
-            <React.Fragment key={slot.minutes}>
-              <div className="grid-time time-15" style={{ gridRow: index + 2, gridColumn: 1 }}>
-                <span className="time-pc">{slot.label}</span>
-                <span className="time-a">{slot.endLabel}</span>
+          {intervalosHorario.map((intervalo, indice) => (
+            <React.Fragment key={intervalo.minutes}>
+              <div className="grid-time time-15" style={{ gridRow: indice + 2, gridColumn: 1 }}>
+                <span className="time-pc">{intervalo.label}</span>
+                <span className="time-a">{intervalo.endLabel}</span>
               </div>
-              {weekDays.map((dayInfo, dayIndex) => {
-                const isHoliday = dayInfo.isHoliday;
-                const validation = dropValidationBySlot.get(`${dayInfo.day}|${slot.minutes}`);
+              {diasSemana.map((diaInformacion, diaIndice) => {
+                const esFeriado = diaInformacion.isHoliday;
+                const validacion = validacionesMovimientoPorIntervalo.get(`${diaInformacion.day}|${intervalo.minutes}`);
                 const fueraDelPeriodo = Boolean(
-                  (periodStart && dayInfo.iso < periodStart) ||
-                  (periodEnd && dayInfo.iso > periodEnd)
+                  (inicioPeriodo && diaInformacion.iso < inicioPeriodo) ||
+                  (finPeriodo && diaInformacion.iso > finPeriodo)
                 );
                 return (
                   <div
-                    key={`${dayInfo.day}-${slot.minutes}`}
+                    key={`${diaInformacion.day}-${intervalo.minutes}`}
                     className={[
                       'grid-slot',
-                      slot.isHour ? 'is-hour' : '',
-                      dayInfo.day === 'DOMINGO' ? 'is-sunday' : '',
-                      isHoliday ? 'is-holiday' : '',
+                      intervalo.isHour ? 'is-hour' : '',
+                      diaInformacion.day === 'DOMINGO' ? 'is-sunday' : '',
+                      esFeriado ? 'is-holiday' : '',
                       fueraDelPeriodo ? 'is-outside-period' : '',
-                      draggedSession ? 'drag-active' : '',
-                      draggedSession ? (validation?.valid ? 'slot-valid' : 'slot-invalid') : '',
-                      dragOverSlot?.day === dayInfo.day && dragOverSlot?.slotMinutes === slot.minutes ? 'is-drop-target' : '',
+                      sesionArrastrada ? 'drag-active' : '',
+                      sesionArrastrada ? (validacion?.valid ? 'slot-valid' : 'slot-invalid') : '',
+                      intervaloArrastre?.day === diaInformacion.day && intervaloArrastre?.slotMinutes === intervalo.minutes ? 'is-drop-target' : '',
                     ].filter(Boolean).join(' ')}
-                    style={{ gridRow: index + 2, gridColumn: dayIndex + 2 }}
-                    data-day={dayInfo.day}
-                    data-slot-minutes={slot.minutes}
-                    title={isHoliday
-                      ? `Día feriado - ${dayInfo.holiday.mes} ${dayInfo.holiday.dia} • Sin clases`
+                    style={{ gridRow: indice + 2, gridColumn: diaIndice + 2 }}
+                    data-day={diaInformacion.day}
+                    data-slot-minutes={intervalo.minutes}
+                    title={esFeriado
+                      ? `Día feriado - ${diaInformacion.holiday.mes} ${diaInformacion.holiday.dia} • Sin clases`
                       : fueraDelPeriodo
                         ? 'Fuera de los límites del periodo.'
-                      : draggedSession && validation && !validation.valid
-                        ? validation.reason
+                      : sesionArrastrada && validacion && !validacion.valid
+                        ? validacion.reason
                         : undefined}
-                    onDragOver={(e) => handleDragOver(e, dayInfo.day, slot.minutes)}
-                    onDrop={(e) => handleDrop(e, dayInfo.day, slot.minutes)}
+                    onDragOver={(e) => arrastrarSobre(e, diaInformacion.day, intervalo.minutes)}
+                    onDrop={(e) => soltarElemento(e, diaInformacion.day, intervalo.minutes)}
                   />
                 );
               })}
             </React.Fragment>
           ))}
 
-          {weekDays.map((dayInfo, dayIndex) => {
-            if (dayInfo.isHoliday) {
+          {diasSemana.map((diaInformacion, diaIndice) => {
+            if (diaInformacion.isHoliday) {
               return (
                 <div
-                  key={`holiday-overlay-${dayInfo.day}`}
+                  key={`holiday-overlay-${diaInformacion.day}`}
                   className="holiday-overlay"
-                  style={{ gridRow: `2 / span ${timeSlots.length}`, gridColumn: dayIndex + 2 }}
-                  title={`Día feriado - ${dayInfo.holiday.mes} ${dayInfo.holiday.dia}`}
+                  style={{ gridRow: `2 / span ${intervalosHorario.length}`, gridColumn: diaIndice + 2 }}
+                  title={`Día feriado - ${diaInformacion.holiday.mes} ${diaInformacion.holiday.dia}`}
                 >
                   <div className="holiday-overlay__content">
                     <span className="holiday-overlay__title">FERIADO</span>
-                    <span className="holiday-overlay__subtitle">{dayInfo.holiday.mes} {dayInfo.holiday.dia} • No hay clases</span>
+                    <span className="holiday-overlay__subtitle">{diaInformacion.holiday.mes} {diaInformacion.holiday.dia} • No hay clases</span>
                   </div>
                 </div>
               );
             }
-            return (sessionsByDay[dayInfo.day] ?? []).map((session) => (
-              <ClassCard
-                key={`${dayInfo.day}-${session.key}`}
-                session={session}
-                dayIndex={dayIndex}
-                firstMinute={gridTimeBounds.start}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
+            return (sesionesPorDia[diaInformacion.day] ?? []).map((sesion) => (
+              <TarjetaClase
+                key={`${diaInformacion.day}-${sesion.key}`}
+                sesion={sesion}
+                diaIndice={diaIndice}
+                primerMinuto={gridTimeBounds.start}
+                onDragStart={iniciarArrastre}
+                onDragEnd={finalizarArrastre}
                 onDragOver={handleCardDragOver}
                 onDrop={handleCardDrop}
-                isDragging={draggedSession?.key === session.key}
-                isOver={dragOverSlot?.day === dayInfo.day}
-                isValidDrop={dragOverSlot?.valid}
+                estaArrastrando={sesionArrastrada?.key === sesion.key}
+                estaSobre={intervaloArrastre?.day === diaInformacion.day}
+                movimientoValido={intervaloArrastre?.valid}
               />
             ));
           })}
 
-          {weekDays.map((dayInfo, dayIndex) => {
-            if (dayInfo.isHoliday) return null;
-            return getBreakSlots(sessionsByDay[dayInfo.day] ?? []).map((breakSlot) => {
-              const position = getBreakGridPosition(breakSlot, gridTimeBounds.start);
+          {diasSemana.map((diaInformacion, diaIndice) => {
+            if (diaInformacion.isHoliday) return null;
+            return obtenerIntervalosReceso(sesionesPorDia[diaInformacion.day] ?? []).map((recesoIntervalo) => {
+              const posicion = obtenerPosicionCuadriculaReceso(recesoIntervalo, gridTimeBounds.start);
               return (
                 <div
-                  key={`break-${dayInfo.day}-${breakSlot.startMin}`}
-                  className={`schedule-break ${position.span > 1 ? 'is-tall' : ''}`}
-                  style={{ gridRow: position.gridRow, gridColumn: dayIndex + 2 }}
-                  title={`Receso (${breakSlot.minutes} min)`}
+                  key={`break-${diaInformacion.day}-${recesoIntervalo.startMin}`}
+                  className={`schedule-break ${posicion.span > 1 ? 'is-tall' : ''}`}
+                  style={{ gridRow: posicion.gridRow, gridColumn: diaIndice + 2 }}
+                  title={`Receso (${recesoIntervalo.minutes} min)`}
                 >
-                  <span>Receso ({breakSlot.minutes} min)</span>
+                  <span>Receso ({recesoIntervalo.minutes} min)</span>
                 </div>
               );
             });
@@ -1208,15 +1213,15 @@ function WeeklyScheduleGrid() {
       <footer className="schedule-legend">
         <section className="legend-block">
           <h2 className="legend-title">Cursos en la semana</h2>
-          {courses.length > 0 ? (
+          {cursos.length > 0 ? (
             <div className="legend-items">
-              {courses.map((course) => (
-                <span key={course.mat_cur} className="legend-course" title={course.name}>
-                  <span className="legend-swatch" style={{ background: course.color.bg, borderColor: course.color.border }} />
-                  <strong>{course.name}</strong>
-                  <span className="legend-course-code">{course.mat_cur}</span>
-                  {course.career && <span className="legend-course-meta">{course.career} · S{course.semester ?? '—'}</span>}
-                  <span className="legend-count">{course.count}</span>
+              {cursos.map((curso) => (
+                <span key={curso.mat_cur} className="legend-course" title={curso.name}>
+                  <span className="legend-swatch" style={{ background: curso.color.bg, borderColor: curso.color.border }} />
+                  <strong>{curso.name}</strong>
+                  <span className="legend-course-code">{curso.mat_cur}</span>
+                  {curso.career && <span className="legend-course-meta">{curso.career} · S{curso.semester ?? '—'}</span>}
+                  <span className="legend-count">{curso.count}</span>
                 </span>
               ))}
             </div>
@@ -1245,4 +1250,4 @@ function WeeklyScheduleGrid() {
   );
 }
 
-export default WeeklyScheduleGrid;
+export default CuadriculaSemanalHorarios;

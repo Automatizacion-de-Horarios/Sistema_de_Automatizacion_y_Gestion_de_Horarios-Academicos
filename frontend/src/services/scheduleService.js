@@ -11,43 +11,43 @@
 import { API_BASE_URL } from '../config/api';
 import { authFetch } from '../lib/authFetch';
 
-function normalizePeriodo(value) {
-  const digits = String(value ?? '202620').replace(/\D/g, '');
+function normalizarPeriodo(valor) {
+  const digits = String(valor ?? '202620').replace(/\D/g, '');
   return digits ? Number(digits) : 202620;
 }
 
-export const DAYS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO'];
+export const DIAS = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SABADO', 'DOMINGO'];
 
-export function getScheduleSessionKey(row) {
+export function obtenerClaveSesionHorario(fila) {
   return [
-    row.periodo,
-    row.bloque,
-    row.dia,
-    row.hora_ini,
-    row.hora_fin,
-    row.mat_cur,
-    row.actividad,
-    row.tipo_reunion,
-    row.edificio,
-    row.salon,
-    row.instructor,
-    row.semana_inicio ?? '',
-    row.semana_fin ?? '',
+    fila.periodo,
+    fila.bloque,
+    fila.dia,
+    fila.hora_ini,
+    fila.hora_fin,
+    fila.mat_cur,
+    fila.actividad,
+    fila.tipo_reunion,
+    fila.edificio,
+    fila.salon,
+    fila.instructor,
+    fila.semana_inicio ?? '',
+    fila.semana_fin ?? '',
   ].join('|');
 }
 
 /** Whether a class's active date ranges include the specific calendar day. */
-export function isSessionActiveOnDate(session, date) {
-  if (!date || !session.ranges?.length) return true;
-  return session.ranges.some((range) =>
-    (!range.start || range.start <= date) &&
-    (!range.end || range.end >= date)
+export function estaSesionActivaEnFecha(sesion, fecha) {
+  if (!fecha || !sesion.ranges?.length) return true;
+  return sesion.ranges.some((rango) =>
+    (!rango.start || rango.start <= fecha) &&
+    (!rango.end || rango.end >= fecha)
   );
 }
 
-export function hasNoAssignedInstructor(row) {
-  return String(row?.edificio ?? '').trim().toUpperCase() === 'SV-EV' ||
-    String(row?.tipo_reunion ?? '').trim().toUpperCase() === 'VAEE';
+export function noTieneDocenteAsignado(fila) {
+  return String(fila?.edificio ?? '').trim().toUpperCase() === 'SV-EV' ||
+    String(fila?.tipo_reunion ?? '').trim().toUpperCase() === 'VAEE';
 }
 
 /* ============================================================================
@@ -60,18 +60,18 @@ const MESES = [
 ];
 
 /** Descarga los feriados desde la base de datos. */
-export async function fetchHolidays(options = {}) {
-  const response = await authFetch(`${API_BASE_URL}/api/feriados`, options);
-  if (!response.ok) return [];
-  return response.json();
+export async function obtenerFeriados(opciones = {}) {
+  const respuesta = await authFetch(`${API_BASE_URL}/api/feriados`, opciones);
+  if (!respuesta.ok) return [];
+  return respuesta.json();
 }
 
 /**
  * Convierte las filas de `feriados` de la BD en un Map "MM-DD" -> info.
  * La BD expone `fecha` como "YYYY-MM-DD".
  */
-export function buildHolidaysMap(feriados = []) {
-  const map = new Map();
+export function construirMapaFeriados(feriados = []) {
+  const mapa = new Map();
   feriados.forEach((feriado) => {
     const fecha = String(feriado?.fecha ?? '');
     const partes = fecha.split('-').map(Number);
@@ -79,26 +79,26 @@ export function buildHolidaysMap(feriados = []) {
     const mes = partes[1];
     const dia = partes[2];
     const mmdd = `${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-    map.set(mmdd, {
+    mapa.set(mmdd, {
       mes: MESES[mes - 1] ?? String(mes),
       dia,
       fecha_formatted: mmdd,
     });
   });
-  return map;
+  return mapa;
 }
 
 /** Normaliza Date / "YYYY-MM-DD" / "MM-DD" a "MM-DD". */
-function toMonthDay(value) {
-  if (!value) return null;
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return `${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+function obtenerMesDia(valor) {
+  if (!valor) return null;
+  if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
+    return `${String(valor.getMonth() + 1).padStart(2, '0')}-${String(valor.getDate()).padStart(2, '0')}`;
   }
-  const match = String(value).match(/(\d{2})-(\d{2})/);
+  const match = String(valor).match(/(\d{2})-(\d{2})/);
   return match ? `${match[1]}-${match[2]}` : null;
 }
 
-export const DAY_LABELS = {
+export const ETIQUETAS_DIAS = {
   LUNES: 'Lunes',
   MARTES: 'Martes',
   MIERCOLES: 'Miércoles',
@@ -108,20 +108,20 @@ export const DAY_LABELS = {
   DOMINGO: 'Domingo',
 };
 
-export const ACTIVITY_LABELS = {
+export const ETIQUETAS_ACTIVIDAD = {
   TEC: 'Teoría',
   TAL: 'Taller',
   ACT: 'Actividad',
   EMP: 'Empresa',
 };
 
-export const MEETING_LABELS = {
+export const ETIQUETAS_REUNION = {
   CLAS: 'Con docente',
   VAEE: 'Virtual / sin docente',
   REMT: 'Remota',
 };
 
-const COURSE_COLOR_PALETTE = [
+const PALETA_COLORES_CURSO = [
   { hex: '#F97316', hue: 24 },
   { hex: '#3B82F6', hue: 217 },
   { hex: '#22C55E', hue: 142 },
@@ -136,8 +136,8 @@ const COURSE_COLOR_PALETTE = [
   { hex: '#7C3AED', hue: 262 },
 ];
 
-function normalizeCourseName(value) {
-  return String(value ?? '')
+function normalizarNombreCurso(valor) {
+  return String(valor ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
@@ -145,276 +145,276 @@ function normalizeCourseName(value) {
     .trim();
 }
 
-function getCourseColorEntry(value) {
-  const key = normalizeCourseName(value);
-  let hash = 0;
-  for (let index = 0; index < key.length; index += 1) {
-    hash = key.charCodeAt(index) + ((hash << 5) - hash);
+function obtenerEntradaColorCurso(valor) {
+  const clave = normalizarNombreCurso(valor);
+  let huella = 0;
+  for (let indice = 0; indice < clave.length; indice += 1) {
+    huella = clave.charCodeAt(indice) + ((huella << 5) - huella);
   }
-  return COURSE_COLOR_PALETTE[Math.abs(hash) % COURSE_COLOR_PALETTE.length];
+  return PALETA_COLORES_CURSO[Math.abs(huella) % PALETA_COLORES_CURSO.length];
 }
 
-function normalizeDraftScheduleRecord(record) {
-  const dia = String(record?.dia ?? '')
+function normalizarRegistroHorarioBorrador(registro) {
+  const dia = String(registro?.dia ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase();
-  const modalidad = String(record?.tipo_modalidad ?? '').toUpperCase();
+  const modalidad = String(registro?.tipo_modalidad ?? '').toUpperCase();
 
   return {
-    ...record,
-    periodo: normalizePeriodo(record?.periodo),
-    bloque: record?.codigo_cohorte,
-    cohorte: record?.cohorte,
-    carrera_codigo: record?.codigo_carrera,
-    carrera_nombre: record?.nombre_carrera,
-    semestre_num: Number(record?.semestre_num) || null,
-    mat_cur: record?.codigo_curso ?? '',
-    nombre_curso: record?.nombre_curso ?? '',
+    ...registro,
+    periodo: normalizarPeriodo(registro?.periodo),
+    bloque: registro?.codigo_cohorte,
+    cohorte: registro?.cohorte,
+    carrera_codigo: registro?.codigo_carrera,
+    carrera_nombre: registro?.nombre_carrera,
+    semestre_num: Number(registro?.semestre_num) || null,
+    mat_cur: registro?.codigo_curso ?? '',
+    nombre_curso: registro?.nombre_curso ?? '',
     actividad: modalidad,
     tipo_reunion: modalidad === 'VIR' ? 'VAEE' : modalidad === 'EMP' ? 'EMP' : 'CLAS',
     dia,
-    hora_ini: record?.hora_inicio ?? '',
-    hora_fin: record?.hora_fin ?? '',
-    instructor: record?.docente ?? null,
-    ambiente: record?.ambiente ?? null,
-    semana_inicio: Number(record?.semana_inicio),
-    semana_fin: Number(record?.semana_fin),
+    hora_ini: registro?.hora_inicio ?? '',
+    hora_fin: registro?.hora_fin ?? '',
+    instructor: registro?.docente ?? null,
+    ambiente: registro?.ambiente ?? null,
+    semana_inicio: Number(registro?.semana_inicio),
+    semana_fin: Number(registro?.semana_fin),
   };
 }
 
-export async function fetchDraftSchedule(periodo = '202620', options = {}) {
-  const response = await authFetch(
+export async function obtenerHorarioBorrador(periodo = '202620', opciones = {}) {
+  const respuesta = await authFetch(
     `${API_BASE_URL}/api/horarios/borradores?periodo=${encodeURIComponent(periodo)}`,
-    options
+    opciones
   );
-  const result = await response.json();
-  if (!response.ok || !result?.success) {
-    throw new Error(result?.message || 'No se pudo cargar el horario borrador.');
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    throw new Error(resultado?.message || 'No se pudo cargar el horario borrador.');
   }
 
   return {
-    periodo: result.data.codigo,
-    estado: result.data.estado,
-    semanas: Number(result.data.semanas) || 18,
-    fechaInicio: result.data.fecha_inicio ?? null,
-    fechaFin: result.data.fecha_fin ?? null,
-    franja: result.data.franja ?? null,
+    periodo: resultado.data.codigo,
+    estado: resultado.data.estado,
+    semanas: Number(resultado.data.semanas) || 18,
+    fechaInicio: resultado.data.fecha_inicio ?? null,
+    fechaFin: resultado.data.fecha_fin ?? null,
+    franja: resultado.data.franja ?? null,
     restricciones: {
-      ocupaciones: Array.isArray(result.data.restricciones?.ocupaciones)
-        ? result.data.restricciones.ocupaciones.map(normalizeDraftScheduleRecord)
+      ocupaciones: Array.isArray(resultado.data.restricciones?.ocupaciones)
+        ? resultado.data.restricciones.ocupaciones.map(normalizarRegistroHorarioBorrador)
         : [],
-      disponibilidadDocentes: Array.isArray(result.data.restricciones?.disponibilidad_docentes)
-        ? result.data.restricciones.disponibilidad_docentes
+      disponibilidadDocentes: Array.isArray(resultado.data.restricciones?.disponibilidad_docentes)
+        ? resultado.data.restricciones.disponibilidad_docentes
         : [],
-      docentes: Array.isArray(result.data.restricciones?.docentes)
-        ? result.data.restricciones.docentes
+      docentes: Array.isArray(resultado.data.restricciones?.docentes)
+        ? resultado.data.restricciones.docentes
         : [],
-      ambientes: Array.isArray(result.data.restricciones?.ambientes)
-        ? result.data.restricciones.ambientes
+      ambientes: Array.isArray(resultado.data.restricciones?.ambientes)
+        ? resultado.data.restricciones.ambientes
         : [],
     },
-    bloques: Array.isArray(result.data.bloques)
-      ? result.data.bloques.map(normalizeDraftScheduleRecord)
+    bloques: Array.isArray(resultado.data.bloques)
+      ? resultado.data.bloques.map(normalizarRegistroHorarioBorrador)
       : [],
   };
 }
 
-export async function moveDraftSessions(periodo, ids, day, startTime, options = {}) {
-  const response = await authFetch(
+export async function moverSesionesBorrador(periodo, identificadores, dia, inicioTiempo, opciones = {}) {
+  const respuesta = await authFetch(
     `${API_BASE_URL}/api/horarios/borradores/${encodeURIComponent(periodo)}/mover`,
     {
-      ...options,
+      ...opciones,
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...opciones.headers,
       },
-      body: JSON.stringify({ ids, dia: day, hora_inicio: startTime }),
+      body: JSON.stringify({ ids: identificadores, dia: dia, hora_inicio: inicioTiempo }),
     }
   );
-  const result = await response.json();
-  if (!response.ok || !result?.success) {
-    const error = new Error(result?.message || 'No se pudo guardar el cambio de horario.');
-    error.conflictos = Array.isArray(result?.conflictos) ? result.conflictos : [];
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    const error = new Error(resultado?.message || 'No se pudo guardar el cambio de horario.');
+    error.conflictos = Array.isArray(resultado?.conflictos) ? resultado.conflictos : [];
     throw error;
   }
-  return result.data;
+  return resultado.data;
 }
 
-export async function changeScheduleState(periodo, estado, options = {}) {
-  const response = await authFetch(
+export async function cambiarEstadoHorario(periodo, estado, opciones = {}) {
+  const respuesta = await authFetch(
     `${API_BASE_URL}/api/horarios/borradores/${encodeURIComponent(periodo)}/estado`,
     {
-      ...options,
+      ...opciones,
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...opciones.headers,
       },
       body: JSON.stringify({ estado }),
     }
   );
-  const result = await response.json();
-  if (!response.ok || !result?.success) {
-    throw new Error(result?.message || 'No se pudo cambiar el estado del horario.');
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    throw new Error(resultado?.message || 'No se pudo cambiar el estado del horario.');
   }
-  return result.data;
+  return resultado.data;
 }
 
 /** Convierte "HH:MM:SS" a minutos desde medianoche. */
-export function timeToMinutes(time) {
-  if (!time || typeof time !== 'string') return null;
-  const [h, m] = time.split(':').map(Number);
+export function convertirHoraAMinutos(tiempo) {
+  if (!tiempo || typeof tiempo !== 'string') return null;
+  const [h, m] = tiempo.split(':').map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   return h * 60 + m;
 }
 
 /** Formatea "HH:MM:SS" como "HH:MM". */
-export function formatTime(time) {
-  if (!time) return '';
-  return time.slice(0, 5);
+export function formatearHora(tiempo) {
+  if (!tiempo) return '';
+  return tiempo.slice(0, 5);
 }
 
 /** Parsea "YYYY-MM-DD" como fecha local (evita desfases de zona horaria). */
-export function parseLocalDate(value) {
-  if (!value || typeof value !== 'string') return null;
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+export function analizarFechaLocal(valor) {
+  if (!valor || typeof valor !== 'string') return null;
+  const match = valor.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!match) return null;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return Number.isNaN(date.getTime()) ? null : date;
+  const fecha = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
 }
 
-export function addDays(date, amount) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + amount);
-  return next;
+export function agregarDias(fecha, cantidad) {
+  const siguiente = new Date(fecha);
+  siguiente.setDate(siguiente.getDate() + cantidad);
+  return siguiente;
 }
 
 /** Devuelve el lunes de la semana que contiene la fecha. */
-export function startOfWeekMonday(date) {
-  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const day = result.getDay(); // 0 = domingo
-  const diff = day === 0 ? -6 : 1 - day;
-  return addDays(result, diff);
+export function inicioSemanaLunes(fecha) {
+  const resultado = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  const dia = resultado.getDay(); // 0 = domingo
+  const diferencia = dia === 0 ? -6 : 1 - dia;
+  return agregarDias(resultado, diferencia);
 }
 
-export function toISODate(date) {
-  if (!date) return '';
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+export function convertirAFechaISO(fecha) {
+  if (!fecha) return '';
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
-export function formatWeekRange(weekStart) {
-  const start = parseLocalDate(weekStart);
-  if (!start) return '';
-  const end = addDays(start, 6);
-  const monthShort = (date) =>
-    date.toLocaleDateString('es-PE', { month: 'short' }).replace('.', '');
-  const sameMonth = start.getMonth() === end.getMonth();
-  const left = `${start.getDate()} ${monthShort(start)}`;
-  const right = sameMonth ? `${end.getDate()}` : `${end.getDate()} ${monthShort(end)}`;
-  return `${left} – ${right} ${end.getFullYear()}`;
+export function formatearRangoSemana(semanaInicio) {
+  const inicio = analizarFechaLocal(semanaInicio);
+  if (!inicio) return '';
+  const fin = agregarDias(inicio, 6);
+  const monthShort = (fecha) =>
+    fecha.toLocaleDateString('es-PE', { month: 'short' }).replace('.', '');
+  const mismoMes = inicio.getMonth() === fin.getMonth();
+  const izquierda = `${inicio.getDate()} ${monthShort(inicio)}`;
+  const derecha = mismoMes ? `${fin.getDate()}` : `${fin.getDate()} ${monthShort(fin)}`;
+  return `${izquierda} – ${derecha} ${fin.getFullYear()}`;
 }
 
 /**
  * Datos de los 7 días de la semana seleccionada, incluyendo si es feriado.
  * El lunes es el índice 0 (coincide con el orden de `DAYS`).
  */
-export function getWeekDays(weekStart, holidaysMap = new Map()) {
-  const start = parseLocalDate(weekStart);
-  if (!start) return [];
-  return DAYS.map((day, index) => {
-    const date = addDays(start, index);
-    const mmdd = toMonthDay(date);
-    const holiday = holidaysMap.get(mmdd) ?? null;
+export function obtenerDiasSemana(semanaInicio, feriadosMapa = new Map()) {
+  const inicio = analizarFechaLocal(semanaInicio);
+  if (!inicio) return [];
+  return DIAS.map((dia, indice) => {
+    const fecha = agregarDias(inicio, indice);
+    const mmdd = obtenerMesDia(fecha);
+    const feriado = feriadosMapa.get(mmdd) ?? null;
     return {
-      day,
-      date,
-      iso: toISODate(date),
+      day: dia,
+      date: fecha,
+      iso: convertirAFechaISO(fecha),
       mmdd,
-      holiday,
-      isHoliday: Boolean(holiday),
-      label: date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }).replace('.', ''),
+      holiday: feriado,
+      isHoliday: Boolean(feriado),
+      label: fecha.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }).replace('.', ''),
     };
   });
 }
 
 /** Fila válida para pintar en la cuadrícula. */
-export function isRenderableSession(row) {
+export function esSesionRepresentable(fila) {
   return Boolean(
-    row &&
-      row.dia &&
-      DAYS.includes(row.dia) &&
-      row.hora_ini &&
-      row.hora_fin &&
-      row.bloque &&
-      row.mat_cur
+    fila &&
+      fila.dia &&
+      DIAS.includes(fila.dia) &&
+      fila.hora_ini &&
+      fila.hora_fin &&
+      fila.bloque &&
+      fila.mat_cur
   );
 }
 
 /** Periodos disponibles, más reciente primero. */
-export function getPeriods(records = []) {
-  return [...new Set(records.map((r) => r.periodo).filter((p) => Number.isFinite(p)))].sort(
+export function obtenerPeriodos(registros = []) {
+  return [...new Set(registros.map((r) => r.periodo).filter((p) => Number.isFinite(p)))].sort(
     (a, b) => Number(b) - Number(a)
   );
 }
 
 /** Bloques/carreras disponibles para un periodo. */
-export function getBlocks(records = [], period) {
+export function obtenerBloques(registros = [], periodo) {
   return [
     ...new Set(
-      records
-        .filter((r) => isRenderableSession(r) && (period === null || r.periodo === period))
+      registros
+        .filter((r) => esSesionRepresentable(r) && (periodo === null || r.periodo === periodo))
         .map((r) => r.bloque)
     ),
   ].sort((a, b) => String(a).localeCompare(String(b), 'es'));
 }
 
 /** Límites de fechas del dataset completo. */
-export function getScheduleBounds(records = []) {
-  const starts = [];
-  const ends = [];
-  records.forEach((r) => {
-    const start = parseLocalDate(r.d_inicio);
-    const end = parseLocalDate(r.d_fin);
-    if (start) starts.push(start);
-    if (end) ends.push(end);
+export function obtenerLimitesHorario(registros = []) {
+  const inicios = [];
+  const finales = [];
+  registros.forEach((r) => {
+    const inicio = analizarFechaLocal(r.d_inicio);
+    const fin = analizarFechaLocal(r.d_fin);
+    if (inicio) inicios.push(inicio);
+    if (fin) finales.push(fin);
   });
-  if (!starts.length || !ends.length) return null;
+  if (!inicios.length || !finales.length) return null;
   return {
-    min: new Date(Math.min(...starts.map((d) => d.getTime()))),
-    max: new Date(Math.max(...ends.map((d) => d.getTime()))),
+    min: new Date(Math.min(...inicios.map((d) => d.getTime()))),
+    max: new Date(Math.max(...finales.map((d) => d.getTime()))),
   };
 }
 
 /** Semana inicial: la actual si cae dentro del calendario; si no, la primera. */
-export function getDefaultWeekStart(records = [], periodStart = null, periodEnd = null) {
-  const bounds = getScheduleBounds(records);
-  const today = new Date();
-  const startLimit = parseLocalDate(periodStart);
-  const endLimit = parseLocalDate(periodEnd);
+export function obtenerInicioSemanaPredeterminado(registros = [], inicioPeriodo = null, finPeriodo = null) {
+  const bounds = obtenerLimitesHorario(registros);
+  const hoy = new Date();
+  const startLimit = analizarFechaLocal(inicioPeriodo);
+  const endLimit = analizarFechaLocal(finPeriodo);
   if (startLimit) {
-    const reference = today < startLimit
+    const referencia = hoy < startLimit
       ? startLimit
-      : endLimit && today > endLimit
+      : endLimit && hoy > endLimit
         ? endLimit
-        : today;
-    return toISODate(startOfWeekMonday(reference));
+        : hoy;
+    return convertirAFechaISO(inicioSemanaLunes(referencia));
   }
-  const reference = bounds && today >= bounds.min && today <= bounds.max ? today : bounds?.min ?? today;
-  return toISODate(startOfWeekMonday(reference));
+  const referencia = bounds && hoy >= bounds.min && hoy <= bounds.max ? hoy : bounds?.min ?? hoy;
+  return convertirAFechaISO(inicioSemanaLunes(referencia));
 }
 
-export function getAcademicWeekNumber(weekStart, periodStart) {
-  const start = parseLocalDate(weekStart);
-  const firstDay = parseLocalDate(periodStart);
-  if (!start || !firstDay) return 1;
-  const calendarStart = startOfWeekMonday(start);
-  const periodWeekStart = startOfWeekMonday(firstDay);
-  return Math.floor((calendarStart - periodWeekStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+export function obtenerNumeroSemanaAcademica(semanaInicio, inicioPeriodo) {
+  const inicio = analizarFechaLocal(semanaInicio);
+  const primerDia = analizarFechaLocal(inicioPeriodo);
+  if (!inicio || !primerDia) return 1;
+  const calendarStart = inicioSemanaLunes(inicio);
+  const periodoSemanaInicio = inicioSemanaLunes(primerDia);
+  return Math.floor((calendarStart - periodoSemanaInicio) / (7 * 24 * 60 * 60 * 1000)) + 1;
 }
 
 /**
@@ -422,154 +422,154 @@ export function getAcademicWeekNumber(weekStart, periodStart) {
  * - Filtra por periodo, bloque y solapamiento con [lunes, domingo].
  * - Deduplica el mismo slot repetido en varios rangos de fechas (módulos).
  */
-export function getWeekSessions(records = [], { period, block, weekStart }) {
-  if (!block) return [];
-  const start = parseLocalDate(weekStart);
-  if (!start) return [];
-  const end = addDays(start, 6);
+export function obtenerSesionesSemana(registros = [], { period: periodo, block: bloque, weekStart: semanaInicio }) {
+  if (!bloque) return [];
+  const inicio = analizarFechaLocal(semanaInicio);
+  if (!inicio) return [];
+  const fin = agregarDias(inicio, 6);
 
-  const overlapping = records.filter((row) => {
-    if (!isRenderableSession(row)) return false;
-    if (period !== null && row.periodo !== period) return false;
-    if (row.bloque !== block) return false;
-    const rowStart = parseLocalDate(row.d_inicio);
-    const rowEnd = parseLocalDate(row.d_fin);
-    if (!rowStart || !rowEnd) return true;
-    return rowStart <= end && rowEnd >= start;
+  const superpuesto = registros.filter((fila) => {
+    if (!esSesionRepresentable(fila)) return false;
+    if (periodo !== null && fila.periodo !== periodo) return false;
+    if (fila.bloque !== bloque) return false;
+    const filaInicio = analizarFechaLocal(fila.d_inicio);
+    const filaFin = analizarFechaLocal(fila.d_fin);
+    if (!filaInicio || !filaFin) return true;
+    return filaInicio <= fin && filaFin >= inicio;
   });
 
-  const unique = new Map();
-  overlapping.forEach((row) => {
-    const key = getScheduleSessionKey(row);
-    const noAssignedInstructor = hasNoAssignedInstructor(row);
-    const instructorName = noAssignedInstructor ? '' : (row.instructor || '');
+  const unico = new Map();
+  superpuesto.forEach((fila) => {
+    const clave = obtenerClaveSesionHorario(fila);
+    const noAssignedInstructor = noTieneDocenteAsignado(fila);
+    const docenteNombre = noAssignedInstructor ? '' : (fila.instructor || '');
 
-    if (!unique.has(key)) {
-      unique.set(key, {
-        ...row,
-        key,
-        instructorName,
-        hasCatalogInstructor: Boolean(instructorName),
+    if (!unico.has(clave)) {
+      unico.set(clave, {
+        ...fila,
+        key: clave,
+        instructorName: docenteNombre,
+        hasCatalogInstructor: Boolean(docenteNombre),
         noAssignedInstructor,
         ranges: [],
         scheduleIds: [],
       });
     }
-    const session = unique.get(key);
-    if (row.id_horario != null && !session.scheduleIds.includes(Number(row.id_horario))) {
-      session.scheduleIds.push(Number(row.id_horario));
+    const sesion = unico.get(clave);
+    if (fila.id_horario != null && !sesion.scheduleIds.includes(Number(fila.id_horario))) {
+      sesion.scheduleIds.push(Number(fila.id_horario));
     }
-    if (row.d_inicio && row.d_fin) {
-      const rangeKey = `${row.d_inicio}|${row.d_fin}`;
-      if (!session.ranges.some((r) => `${r.start}|${r.end}` === rangeKey)) {
-        session.ranges.push({ start: row.d_inicio, end: row.d_fin });
+    if (fila.d_inicio && fila.d_fin) {
+      const rangoClave = `${fila.d_inicio}|${fila.d_fin}`;
+      if (!sesion.ranges.some((r) => `${r.start}|${r.end}` === rangoClave)) {
+        sesion.ranges.push({ start: fila.d_inicio, end: fila.d_fin });
       }
     }
   });
 
-  return [...unique.values()];
+  return [...unico.values()];
 }
 
 /**
  * Agrupa por día y calcula carriles para sesiones que se solapan.
  * Devuelve { LUNES: [session...], ... } con `lane` y `laneCount`.
  */
-export function layoutSessionsByDay(sessions = []) {
-  const byDay = {};
-  DAYS.forEach((day) => {
-    byDay[day] = [];
+export function distribuirSesionesPorDia(sesiones = []) {
+  const porDia = {};
+  DIAS.forEach((dia) => {
+    porDia[dia] = [];
   });
-  sessions.forEach((session) => {
-    if (byDay[session.dia]) byDay[session.dia].push(session);
+  sesiones.forEach((sesion) => {
+    if (porDia[sesion.dia]) porDia[sesion.dia].push(sesion);
   });
 
-  DAYS.forEach((day) => {
-    const list = [...byDay[day]].sort(
-      (a, b) => timeToMinutes(a.hora_ini) - timeToMinutes(b.hora_ini) ||
-        timeToMinutes(a.hora_fin) - timeToMinutes(b.hora_fin)
+  DIAS.forEach((dia) => {
+    const list = [...porDia[dia]].sort(
+      (a, b) => convertirHoraAMinutos(a.hora_ini) - convertirHoraAMinutos(b.hora_ini) ||
+        convertirHoraAMinutos(a.hora_fin) - convertirHoraAMinutos(b.hora_fin)
     );
 
-    let cluster = [];
-    let clusterEnd = -1;
+    let grupo = [];
+    let grupoFin = -1;
 
-    const flush = () => {
-      if (!cluster.length) return;
-      const laneEnds = [];
-      const lanes = new Map();
+    const cerrar = () => {
+      if (!grupo.length) return;
+      const carrilFinales = [];
+      const carriles = new Map();
 
-      cluster.forEach((session) => {
-        const start = timeToMinutes(session.hora_ini);
-        const end = timeToMinutes(session.hora_fin);
-        let lane = laneEnds.findIndex((laneEnd) => laneEnd <= start);
-        if (lane === -1) {
-          lane = laneEnds.length;
-          laneEnds.push(end);
+      grupo.forEach((sesion) => {
+        const inicio = convertirHoraAMinutos(sesion.hora_ini);
+        const fin = convertirHoraAMinutos(sesion.hora_fin);
+        let carril = carrilFinales.findIndex((carrilFin) => carrilFin <= inicio);
+        if (carril === -1) {
+          carril = carrilFinales.length;
+          carrilFinales.push(fin);
         } else {
-          laneEnds[lane] = end;
+          carrilFinales[carril] = fin;
         }
-        lanes.set(session.key, lane);
+        carriles.set(sesion.key, carril);
       });
 
-      cluster.forEach((session) => {
-        session.lane = lanes.get(session.key) ?? 0;
-        session.laneCount = laneEnds.length;
+      grupo.forEach((sesion) => {
+        sesion.lane = carriles.get(sesion.key) ?? 0;
+        sesion.laneCount = carrilFinales.length;
       });
 
-      cluster = [];
-      clusterEnd = -1;
+      grupo = [];
+      grupoFin = -1;
     };
 
-    list.forEach((session) => {
-      const start = timeToMinutes(session.hora_ini);
-      const end = timeToMinutes(session.hora_fin);
-      if (cluster.length && start >= clusterEnd) flush();
-      cluster.push(session);
-      clusterEnd = Math.max(clusterEnd, end);
+    list.forEach((sesion) => {
+      const inicio = convertirHoraAMinutos(sesion.hora_ini);
+      const fin = convertirHoraAMinutos(sesion.hora_fin);
+      if (grupo.length && inicio >= grupoFin) cerrar();
+      grupo.push(sesion);
+      grupoFin = Math.max(grupoFin, fin);
     });
-    flush();
+    cerrar();
   });
 
-  return byDay;
+  return porDia;
 }
 
 /**
  * Recesos entre bloques ocupados. Se consideran recesos los huecos de 15 a 30
  * minutos (el estándar SENATI es 15 min; se toleran variaciones de redondeo).
  */
-export function getBreakSlots(daySessions = []) {
-  if (!daySessions.length) return [];
-  const sorted = [...daySessions].sort(
-    (a, b) => timeToMinutes(a.hora_ini) - timeToMinutes(b.hora_ini)
+export function obtenerIntervalosReceso(diaSesiones = []) {
+  if (!diaSesiones.length) return [];
+  const ordenado = [...diaSesiones].sort(
+    (a, b) => convertirHoraAMinutos(a.hora_ini) - convertirHoraAMinutos(b.hora_ini)
   );
-  const busy = [];
-  sorted.forEach((session) => {
-    const start = timeToMinutes(session.hora_ini);
-    const end = timeToMinutes(session.hora_fin);
-    const last = busy[busy.length - 1];
-    if (last && start <= last.end) {
-      last.end = Math.max(last.end, end);
+  const ocupado = [];
+  ordenado.forEach((sesion) => {
+    const inicio = convertirHoraAMinutos(sesion.hora_ini);
+    const fin = convertirHoraAMinutos(sesion.hora_fin);
+    const ultimo = ocupado[ocupado.length - 1];
+    if (ultimo && inicio <= ultimo.end) {
+      ultimo.end = Math.max(ultimo.end, fin);
     } else {
-      busy.push({ start, end });
+      ocupado.push({ start: inicio, end: fin });
     }
   });
 
-  const breaks = [];
-  for (let i = 0; i < busy.length - 1; i += 1) {
-    const gap = busy[i + 1].start - busy[i].end;
-    if (gap >= 15 && gap <= 30) {
-      breaks.push({
-        startMin: busy[i].end,
-        endMin: busy[i + 1].start,
-        minutes: gap,
-        label: `Receso ${gap}m`,
+  const recesos = [];
+  for (let i = 0; i < ocupado.length - 1; i += 1) {
+    const separacion = ocupado[i + 1].start - ocupado[i].end;
+    if (separacion >= 15 && separacion <= 30) {
+      recesos.push({
+        startMin: ocupado[i].end,
+        endMin: ocupado[i + 1].start,
+        minutes: separacion,
+        label: `Receso ${separacion}m`,
       });
     }
   }
-  return breaks;
+  return recesos;
 }
 
 /** Color estable y diferenciado por código de materia. */
-export function getCourseColor(matCur, nombre = '') {
+export function obtenerColorCurso(matCur, nombre = '') {
   if (!matCur && !nombre) {
     return {
       bg: 'hsl(215 25% 96%)',
@@ -578,7 +578,7 @@ export function getCourseColor(matCur, nombre = '') {
       chip: 'hsl(215 15% 55%)',
     };
   }
-  const color = getCourseColorEntry(nombre || matCur);
+  const color = obtenerEntradaColorCurso(nombre || matCur);
   const { hue } = color;
   return {
     hex: color.hex,
