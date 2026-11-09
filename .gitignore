@@ -17,3 +17,6 @@ algoritmo_python/__pycache__/
 legacy/
 
 __pycache__
+
+# Entorno virtual del solver
+.venv-solver/
