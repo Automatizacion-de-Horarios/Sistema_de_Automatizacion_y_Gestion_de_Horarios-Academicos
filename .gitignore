@@ -24,3 +24,6 @@ horarios_generados/
 venv/
 
 __pycache__
+
+# Entorno virtual del solver
+.venv-solver/
