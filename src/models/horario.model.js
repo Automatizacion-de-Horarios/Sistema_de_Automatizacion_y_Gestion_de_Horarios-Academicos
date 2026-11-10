@@ -1,4 +1,5 @@
 const baseDatos = require('../config/db');
+const HorarioBorrador = require('./horarioBorrador.model');
 const {
     bloquesQueSolapanRangos,
     hora,
@@ -74,7 +75,7 @@ function exigir(condicion, mensaje, estado = 409) {
 }
 
 const Horario = {
-    async listarBorradores(codigoPeriodo) {
+    async listarBorradores(codigoPeriodo, idBorrador = null) {
         const [periodos] = await baseDatos.query(
             'SELECT * FROM periodos WHERE codigo_periodo = ?',
             [codigoPeriodo]
@@ -90,10 +91,45 @@ const Horario = {
              WHERE id_periodo = ?`,
             [periodo.id_periodo]
         );
+        const { borrador, borradores } = await HorarioBorrador.resolver(
+            codigoPeriodo,
+            idBorrador
+        );
+        const periodoPublico = {
+            codigo: periodo.codigo_periodo,
+            semanas: Number(periodo.cantidad_semanas),
+            fecha_inicio: fechaPeriodo(periodo, [
+                'fecha_inicio', 'fecha_inicio_periodo', 'inicio_periodo',
+                'fecha_ini', 'fecha_desde', 'limite_inicio',
+            ]),
+            fecha_fin: fechaPeriodo(periodo, [
+                'fecha_fin', 'fecha_fin_periodo', 'fin_periodo',
+                'fecha_termino', 'fecha_hasta', 'limite_fin',
+            ]),
+            franja: franjas[0] ?? null,
+        };
+
+        if (!borrador) {
+            return {
+                estado: 'BORRADOR',
+                borrador: null,
+                borradores,
+                periodo: periodoPublico,
+                bloques: [],
+                restricciones: {
+                    ocupaciones: [],
+                    disponibilidad_docentes: [],
+                    docentes: [],
+                    ambientes: [],
+                },
+            };
+        }
+
         const [bloques] = await baseDatos.query(
             `SELECT
                 hg.id_horario,
                 hg.id_periodo,
+                hg.id_borrador,
                 p.codigo_periodo AS periodo,
                 hg.id_programacion,
                 hg.id_ambiente,
@@ -140,6 +176,7 @@ const Horario = {
             LEFT JOIN docentes d ON d.id_docente = hg.id_docente
             LEFT JOIN ambientes a ON a.id = hg.id_ambiente
             WHERE p.codigo_periodo = ?
+              AND hg.id_borrador = ?
               AND hg.estado IN ('BORRADOR', 'CONFIRMADO')
             ORDER BY
                 ca.codigo_carrera,
@@ -153,7 +190,7 @@ const Horario = {
                 ),
                 hg.hora_inicio,
                 c.mat_cur`,
-            [codigoPeriodo]
+            [codigoPeriodo, borrador.id_borrador]
         );
         const [ocupaciones] = await baseDatos.query(
             `SELECT
@@ -199,8 +236,9 @@ const Horario = {
             LEFT JOIN ambientes a ON a.id = hg.id_ambiente
             LEFT JOIN docentes d ON d.id_docente = hg.id_docente
             WHERE hg.id_periodo = ?
+              AND hg.id_borrador = ?
               AND hg.estado IN ('BORRADOR', 'CONFIRMADO')`,
-            [periodo.id_periodo]
+            [periodo.id_periodo, borrador.id_borrador]
         );
         const [disponibilidadDocentes] = await baseDatos.query(
             `SELECT dd.id_docente, dd.dia_semana,
@@ -220,29 +258,15 @@ const Horario = {
         const [ambientes] = await baseDatos.query(
             'SELECT id, estado FROM ambientes'
         );
-        const [estados] = await baseDatos.query(
-            'SELECT DISTINCT estado FROM horarios_generados WHERE id_periodo = ?',
-            [periodo.id_periodo]
-        );
-        const estado = estados.some((fila) => fila.estado === 'CONFIRMADO')
+        const estado = borrador.estado === 'CONFIRMADO'
             ? 'CONFIRMADO'
             : 'BORRADOR';
 
         return {
             estado,
-            periodo: {
-                codigo: periodo.codigo_periodo,
-                semanas: Number(periodo.cantidad_semanas),
-                fecha_inicio: fechaPeriodo(periodo, [
-                    'fecha_inicio', 'fecha_inicio_periodo', 'inicio_periodo',
-                    'fecha_ini', 'fecha_desde', 'limite_inicio',
-                ]),
-                fecha_fin: fechaPeriodo(periodo, [
-                    'fecha_fin', 'fecha_fin_periodo', 'fin_periodo',
-                    'fecha_termino', 'fecha_hasta', 'limite_fin',
-                ]),
-                franja: franjas[0] ?? null,
-            },
+            borrador,
+            borradores,
+            periodo: periodoPublico,
             bloques: bloques.map((bloque) => ({
                 ...bloque,
                 semestre_num: SEMESTRES[bloque.semestre] ?? null,
@@ -261,13 +285,19 @@ const Horario = {
         };
     },
 
-    async moverBorradores(codigoPeriodo, identificadores, movimiento) {
+    async moverBorradores(codigoPeriodo, identificadores, movimiento, idBorrador = null) {
         const conexion = await baseDatos.getConnection();
         try {
             await conexion.beginTransaction();
             const marcadores = identificadores.map(() => '?').join(', ');
+            const filtroBorrador = idBorrador != null ? ' AND hg.id_borrador = ?' : '';
+            const parametrosBloques = [
+                codigoPeriodo,
+                ...(idBorrador != null ? [idBorrador] : []),
+                ...identificadores,
+            ];
             const [bloques] = await conexion.query(
-                `SELECT hg.id_horario, hg.id_periodo, hg.id_programacion,
+                `SELECT hg.id_horario, hg.id_periodo, hg.id_borrador, hg.id_programacion,
                         hg.id_ambiente, hg.id_docente, hg.tipo_modalidad,
                         hg.dia_semana, TIME_FORMAT(hg.hora_inicio, '%H:%i:%s') AS hora_inicio,
                         TIME_FORMAT(hg.hora_fin, '%H:%i:%s') AS hora_fin,
@@ -284,10 +314,11 @@ const Horario = {
                  INNER JOIN carreras ca ON ca.id_carrera = s.id_carrera
                  LEFT JOIN docentes d ON d.id_docente = hg.id_docente
                  WHERE p.codigo_periodo = ?
+                   ${filtroBorrador}
                    AND hg.estado = 'BORRADOR'
                    AND hg.id_horario IN (${marcadores})
                  FOR UPDATE`,
-                [codigoPeriodo, ...identificadores]
+                parametrosBloques
             );
             exigir(
                 bloques.length === identificadores.length,
@@ -364,6 +395,7 @@ const Horario = {
                  FROM horarios_generados hg
                  INNER JOIN periodos p ON p.id_periodo = hg.id_periodo
                  WHERE p.codigo_periodo = ?
+                   AND hg.id_borrador = ?
                    AND hg.estado = 'BORRADOR'
                    AND hg.id_programacion = ?
                    AND hg.tipo_modalidad = ?
@@ -375,6 +407,7 @@ const Horario = {
                  FOR UPDATE`,
                 [
                     codigoPeriodo,
+                    base.id_borrador,
                     base.id_programacion,
                     base.tipo_modalidad,
                     base.id_docente,
@@ -418,6 +451,7 @@ const Horario = {
                  LEFT JOIN ambientes a ON a.id = hg.id_ambiente
                  LEFT JOIN docentes d ON d.id_docente = hg.id_docente
                  WHERE hg.id_periodo = ?
+                   AND hg.id_borrador = ?
                    AND hg.estado IN ('BORRADOR', 'CONFIRMADO')
                    AND hg.dia_semana = ?
                    AND hg.semana_inicio <= ?
@@ -425,6 +459,7 @@ const Horario = {
                    AND hg.id_horario NOT IN (${placeholdersClase})`,
                 [
                     base.id_periodo,
+                    base.id_borrador,
                     diaDb,
                     maxFin,
                     minInicio,
@@ -559,26 +594,28 @@ const Horario = {
             await conexion.query(
                 `UPDATE horarios_generados
                  SET dia_semana = ?, hora_inicio = ?, hora_fin = ?
-                 WHERE id_periodo = ? AND estado = 'BORRADOR'
+                 WHERE id_periodo = ? AND id_borrador = ? AND estado = 'BORRADOR'
                    AND id_horario IN (${placeholdersClase})`,
                 [
                     diaDb,
                     movimiento.hora_inicio,
                     nuevoFin,
                     base.id_periodo,
+                    base.id_borrador,
                     ...idsClase,
                 ]
             );
             const [[verificacion]] = await conexion.query(
                 `SELECT COUNT(*) AS total
                  FROM horarios_generados
-                 WHERE id_periodo = ? AND estado = 'BORRADOR'
+                 WHERE id_periodo = ? AND id_borrador = ? AND estado = 'BORRADOR'
                    AND id_horario IN (${placeholdersClase})
                    AND dia_semana = ?
                    AND TIME_FORMAT(hora_inicio, '%H:%i:%s') = ?
                    AND TIME_FORMAT(hora_fin, '%H:%i:%s') = ?`,
                 [
                     base.id_periodo,
+                    base.id_borrador,
                     ...idsClase,
                     diaDb,
                     movimiento.hora_inicio,
@@ -604,18 +641,17 @@ const Horario = {
         }
     },
 
-    async cambiarEstado(codigoPeriodo, estado) {
-        const [periodos] = await baseDatos.query(
-            'SELECT id_periodo FROM periodos WHERE codigo_periodo = ?',
-            [codigoPeriodo]
+    async cambiarEstado(codigoPeriodo, estado, idBorrador) {
+        exigir(
+            Number.isSafeInteger(Number(idBorrador)) && Number(idBorrador) > 0,
+            'Debes indicar el borrador que quieres actualizar.',
+            400
         );
-        exigir(periodos.length > 0, `No existe el periodo ${codigoPeriodo}.`, 404);
-        const periodo = periodos[0];
-        const [resultado] = await baseDatos.query(
-            'UPDATE horarios_generados SET estado = ? WHERE id_periodo = ?',
-            [estado, periodo.id_periodo]
+        return HorarioBorrador.cambiarEstado(
+            codigoPeriodo,
+            Number(idBorrador),
+            estado
         );
-        return { estado, afectados: resultado.affectedRows };
     },
 };
 

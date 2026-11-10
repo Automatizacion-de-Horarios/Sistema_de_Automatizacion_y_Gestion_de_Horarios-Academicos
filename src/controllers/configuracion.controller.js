@@ -1,4 +1,18 @@
 const ConfiguracionModel = require('../models/configuracion.model');
+const controladorSolver = require('./horarioSolver.controller');
+
+const validarFechaISO = (fecha) =>
+    typeof fecha === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(fecha) &&
+    !Number.isNaN(Date.parse(`${fecha}T00:00:00Z`)) &&
+    new Date(`${fecha}T00:00:00Z`).toISOString().slice(0, 10) === fecha;
+
+const calcularCantidadSemanas = (fecha_inicio, fecha_fin) => {
+    const inicio = Date.parse(`${fecha_inicio}T00:00:00Z`);
+    const fin = Date.parse(`${fecha_fin}T00:00:00Z`);
+    const dias = Math.floor((fin - inicio) / 86_400_000) + 1;
+    return Math.ceil(dias / 7);
+};
 
 // Cargar toda la información necesaria para pintar la pantalla
 const obtenerConfiguracionGlobal = async (req, res) => {
@@ -153,8 +167,142 @@ const actualizarFranjaHoraria = async (req, res) => {
     }
 };
 
+const crearPeriodo = async (req, res) => {
+    try {
+        const codigo = String(req.body?.codigo_periodo || '').trim();
+        const descripcion = String(req.body?.descripcion || '').trim();
+        const fecha_inicio = req.body?.fecha_inicio;
+        const fecha_fin = req.body?.fecha_fin;
+        const estado = req.body?.estado === 'C' ? 'C' : 'A';
+
+        if (!/^[A-Za-z0-9_-]{1,10}$/.test(codigo)) {
+            return res.status(400).json({
+                success: false,
+                message: 'El código del período debe tener entre 1 y 10 caracteres alfanuméricos.'
+            });
+        }
+        if (!descripcion || descripcion.length > 100) {
+            return res.status(400).json({
+                success: false,
+                message: 'La descripción es obligatoria y no puede superar los 100 caracteres.'
+            });
+        }
+        if (!validarFechaISO(fecha_inicio) || !validarFechaISO(fecha_fin)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ingresa fechas válidas de inicio y fin del período.'
+            });
+        }
+        if (Date.parse(`${fecha_fin}T00:00:00Z`) < Date.parse(`${fecha_inicio}T00:00:00Z`)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La fecha de fin debe ser igual o posterior a la fecha de inicio.'
+            });
+        }
+
+        const periodos = await ConfiguracionModel.obtenerPeriodos();
+        if (periodos.some((periodo) => String(periodo.codigo_periodo) === codigo)) {
+            return res.status(409).json({
+                success: false,
+                message: `El período ${codigo} ya existe.`
+            });
+        }
+
+        const periodo = await ConfiguracionModel.crearPeriodo({
+            codigo_periodo: codigo,
+            descripcion,
+            estado,
+            fecha_inicio,
+            fecha_fin,
+            cantidad_semanas: calcularCantidadSemanas(fecha_inicio, fecha_fin)
+        });
+
+        res.status(201).json({ success: true, data: { periodo } });
+    } catch (error) {
+        console.error('Error al crear período:', error);
+        if (error?.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                success: false,
+                message: 'Ya existe un período con ese código.'
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: 'No se pudo crear el período.',
+            error: error.message
+        });
+    }
+};
+
+const duplicarPeriodo = async (req, res) => {
+    try {
+        if (controladorSolver.hayTrabajoActivo()) {
+            return res.status(409).json({
+                success: false,
+                message: 'Hay una generación de horario en curso. Espera a que termine o cancélala antes de duplicar datos.'
+            });
+        }
+
+        const periodoOrigen = String(req.body?.periodoOrigen || '').trim();
+        const periodoDestino = String(req.body?.periodoDestino || '').trim();
+        const reemplazar = req.body?.reemplazar === true;
+
+        if (!periodoOrigen || !periodoDestino) {
+            return res.status(400).json({
+                success: false,
+                message: 'Debes indicar el período de origen y el período de destino.'
+            });
+        }
+
+        const periodos = await ConfiguracionModel.obtenerPeriodos();
+        const buscarPeriodo = (valor) => periodos.find(
+            (periodo) =>
+                String(periodo.id_periodo) === String(valor) ||
+                String(periodo.codigo_periodo) === String(valor)
+        );
+        const origen = buscarPeriodo(periodoOrigen);
+        const destino = buscarPeriodo(periodoDestino);
+
+        if (!origen || !destino) {
+            return res.status(400).json({
+                success: false,
+                message: 'El período de origen o destino no existe.'
+            });
+        }
+        if (Number(origen.id_periodo) === Number(destino.id_periodo)) {
+            return res.status(400).json({
+                success: false,
+                message: 'El período de origen y destino deben ser diferentes.'
+            });
+        }
+
+        const resultado = await ConfiguracionModel.duplicarConfiguracionPeriodo({
+            idPeriodoOrigen: origen.id_periodo,
+            idPeriodoDestino: destino.id_periodo,
+            reemplazar
+        });
+
+        res.json({
+            success: true,
+            message: `Datos duplicados de ${resultado.origen} a ${resultado.destino}.`,
+            data: resultado
+        });
+    } catch (error) {
+        console.error('Error al duplicar período:', error);
+        const status = Number(error?.status) || 500;
+        res.status(status).json({
+            success: false,
+            message: error.message || 'No se pudieron duplicar los datos del período.',
+            code: error.code,
+            data: error.data
+        });
+    }
+};
+
 module.exports = {
     obtenerConfiguracionGlobal,
     registrarSede,
-    actualizarFranjaHoraria
+    actualizarFranjaHoraria,
+    crearPeriodo,
+    duplicarPeriodo
 };

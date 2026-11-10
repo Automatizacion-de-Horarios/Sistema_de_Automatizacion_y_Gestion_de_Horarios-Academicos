@@ -304,7 +304,12 @@ function Dashboard() {
     className={`view ${activeView === 'feriados-view' ? 'active' : ''}`}
 >
     <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', padding: '24px' }}>
-        <FeriadosModulo triggerToast={triggerToast} />
+        <FeriadosModulo
+            key={periodoGlobal || 'sin-periodo'}
+            triggerToast={triggerToast}
+            periodoGlobal={periodoGlobal}
+            periodos={periodos}
+        />
     </div>
 </section>
                 {/* ===================== FIN SECCIÓN EQUIPO 2 ==================== */}
@@ -507,6 +512,18 @@ function ConfiguracionModulo({ periodoGlobal, setPeriodoGlobal, periodos, setPer
     const [fechaInicio, setFechaInicio] = useState("");
     const [fechaFin, setFechaFin] = useState("");
 
+    // Creación y duplicación de períodos lectivos
+    const [modalNuevoPeriodo, setModalNuevoPeriodo] = useState(false);
+    const [nuevoPeriodoCodigo, setNuevoPeriodoCodigo] = useState('');
+    const [nuevoPeriodoDescripcion, setNuevoPeriodoDescripcion] = useState('');
+    const [nuevoPeriodoFechaInicio, setNuevoPeriodoFechaInicio] = useState('');
+    const [nuevoPeriodoFechaFin, setNuevoPeriodoFechaFin] = useState('');
+    const [creandoPeriodo, setCreandoPeriodo] = useState(false);
+    const [modalDuplicarPeriodo, setModalDuplicarPeriodo] = useState(false);
+    const [periodoOrigenDuplicar, setPeriodoOrigenDuplicar] = useState('');
+    const [duplicandoPeriodo, setDuplicandoPeriodo] = useState(false);
+    const [confirmacionDuplicar, setConfirmacionDuplicar] = useState(null);
+
     // 1. CARGAR CONFIGURACIÓN GLOBAL DESDE EL BACKEND AL MONTAR EL COMPONENTE
     useEffect(() => {
         const obtenerConfiguracion = async () => {
@@ -557,6 +574,21 @@ function ConfiguracionModulo({ periodoGlobal, setPeriodoGlobal, periodos, setPer
 
         obtenerConfiguracion();
     }, [periodoGlobal, setPeriodos, triggerToast]);
+
+    useEffect(() => {
+        const candidatos = periodos.filter(
+            (periodo) => String(periodo.codigo_periodo) !== String(periodoGlobal)
+        );
+        setPeriodoOrigenDuplicar((actual) => {
+            if (actual && candidatos.some(
+                (periodo) => String(periodo.codigo_periodo) === String(actual)
+            )) {
+                return actual;
+            }
+            return String(candidatos[0]?.codigo_periodo || '');
+        });
+        setConfirmacionDuplicar(null);
+    }, [periodoGlobal, periodos]);
 
     // 2. FUNCIÓN PARA GUARDAR LA FRANJA HORARIA Y EL DOMINGO EN LA BASE DE DATOS
     const handleGuardarConfiguracion = async () => {
@@ -652,12 +684,136 @@ function ConfiguracionModulo({ periodoGlobal, setPeriodoGlobal, periodos, setPer
         }
     };
 
+    const abrirModalNuevoPeriodo = () => {
+        setNuevoPeriodoCodigo('');
+        setNuevoPeriodoDescripcion('');
+        setNuevoPeriodoFechaInicio('');
+        setNuevoPeriodoFechaFin('');
+        setModalNuevoPeriodo(true);
+    };
+
+    const handleCrearPeriodo = async () => {
+        const codigo = nuevoPeriodoCodigo.trim();
+        const descripcion = nuevoPeriodoDescripcion.trim();
+        if (!/^[A-Za-z0-9_-]{1,10}$/.test(codigo)) {
+            triggerToast('El código debe tener entre 1 y 10 caracteres alfanuméricos.', 'warning');
+            return;
+        }
+        if (!descripcion) {
+            triggerToast('Ingresa una descripción para el período.', 'warning');
+            return;
+        }
+        if (!nuevoPeriodoFechaInicio || !nuevoPeriodoFechaFin) {
+            triggerToast('Ingresa las fechas de inicio y fin del período.', 'warning');
+            return;
+        }
+        if (nuevoPeriodoFechaFin < nuevoPeriodoFechaInicio) {
+            triggerToast('La fecha de fin debe ser posterior a la fecha de inicio.', 'warning');
+            return;
+        }
+
+        setCreandoPeriodo(true);
+        try {
+            const respuesta = await authFetch(`${API_BASE_URL}/api/configuracion/periodos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    codigo_periodo: codigo,
+                    descripcion,
+                    fecha_inicio: nuevoPeriodoFechaInicio,
+                    fecha_fin: nuevoPeriodoFechaFin
+                })
+            });
+            const resultado = await respuesta.json();
+            if (!respuesta.ok || !resultado.success) {
+                throw new Error(resultado.message || 'No se pudo crear el período.');
+            }
+
+            const periodoCreado = resultado.data?.periodo;
+            if (periodoCreado) {
+                setPeriodos((actuales) => [
+                    periodoCreado,
+                    ...actuales.filter(
+                        (periodo) => String(periodo.codigo_periodo) !== String(periodoCreado.codigo_periodo)
+                    )
+                ].sort((a, b) => String(b.codigo_periodo).localeCompare(String(a.codigo_periodo))));
+                setPeriodoGlobal(periodoCreado.codigo_periodo);
+            }
+
+            setModalNuevoPeriodo(false);
+            triggerToast(`Período ${codigo} creado correctamente.`, 'success');
+        } catch (error) {
+            console.error('Error al crear período:', error);
+            triggerToast(error.message || 'No se pudo crear el período.', 'error');
+        } finally {
+            setCreandoPeriodo(false);
+        }
+    };
+
+    const ejecutarDuplicacionPeriodo = async (reemplazar = false) => {
+        if (!periodoOrigenDuplicar) {
+            triggerToast('Selecciona el período de origen.', 'warning');
+            return;
+        }
+
+        setDuplicandoPeriodo(true);
+        try {
+            const respuesta = await authFetch(`${API_BASE_URL}/api/configuracion/periodos/duplicar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    periodoOrigen: periodoOrigenDuplicar,
+                    periodoDestino: periodoGlobal,
+                    reemplazar
+                })
+            });
+            const resultado = await respuesta.json();
+
+            if (!respuesta.ok || !resultado.success) {
+                if (respuesta.status === 409 && resultado.code === 'DESTINO_CON_DATOS') {
+                    setConfirmacionDuplicar(resultado.data || {});
+                    setModalDuplicarPeriodo(true);
+                    return;
+                }
+                throw new Error(resultado.message || 'No se pudieron duplicar los datos.');
+            }
+
+            const datos = resultado.data || {};
+            if (datos.franjaConfig) {
+                const valorHora = (valor, alternativa) =>
+                    valor ? String(valor).slice(0, 5) : alternativa;
+                setHoraInicio(valorHora(datos.franjaConfig['hora_inicio_mañana'], '07:00'));
+                setHoraFin(valorHora(datos.franjaConfig.hora_cierre_noche, '21:00'));
+                setIncluirDomingo(Number(datos.franjaConfig.incluir_domingo) === 1);
+            }
+            setModalDuplicarPeriodo(false);
+            setConfirmacionDuplicar(null);
+            const infraestructura = datos.infraestructura || {};
+            const asignacionesInfraestructura = infraestructura.asignaciones ?? datos.compatibilidad ?? 0;
+            const detalleAmbientes = infraestructura.ambientes
+                ? ` en ${infraestructura.ambientes} ambientes`
+                : '';
+            triggerToast(
+                `Se copiaron ${datos.programacion || 0} cursos y ${asignacionesInfraestructura} asignaciones de infraestructura${detalleAmbientes} al período ${periodoGlobal}.`,
+                'success'
+            );
+        } catch (error) {
+            console.error('Error al duplicar período:', error);
+            triggerToast(error.message || 'No se pudieron duplicar los datos.', 'error');
+        } finally {
+            setDuplicandoPeriodo(false);
+        }
+    };
+
     const sedesDeZonal = sedes.filter((sede) => String(sede.id_zonal) === String(zonalActiva));
     const sedeActualObj = sedes.find((sede) => String(sede.id_sede) === String(sedeActiva));
     const semanasCalculadas = semanasEntreFechas(fechaInicio, fechaFin);
     const nombreSedeMostrar = sedeActualObj
         ? `${sedeActualObj.codigo_sede} - ${sedeActualObj.nombre_sede}`
         : "Sin Sede";
+    const periodosOrigenDisponibles = periodos.filter(
+        (periodo) => String(periodo.codigo_periodo) !== String(periodoGlobal)
+    );
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '24px' }}>
@@ -912,6 +1068,105 @@ function ConfiguracionModulo({ periodoGlobal, setPeriodoGlobal, periodos, setPer
                     </div>
                 </div>
 
+                {/* TARJETA: GESTIÓN DE PERÍODOS LECTIVOS */}
+                <div style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    padding: '24px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                        <i className="fas fa-calendar-plus" style={{ color: '#0045aa', fontSize: '16px' }}></i>
+                        <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#1e293b', margin: 0 }}>
+                            Períodos Lectivos
+                        </h2>
+                    </div>
+                    <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '13px', lineHeight: 1.5 }}>
+                        Crea el siguiente período y copia la programación académica, los docentes asignados,
+                        la infraestructura (cursos permitidos por aula/laboratorio) y la franja horaria desde otro
+                        período existente.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={abrirModalNuevoPeriodo}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '9px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid #0045aa',
+                            backgroundColor: '#eff6ff',
+                            color: '#0045aa',
+                            fontWeight: '700',
+                            fontSize: '13px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <i className="fas fa-plus-circle"></i> Crear nuevo período
+                    </button>
+
+                    <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0' }}>
+                        <p style={{ margin: '0 0 10px', color: '#475569', fontSize: '13px' }}>
+                            Duplicar datos al período actual <strong>{periodoGlobal || 'Sin seleccionar'}</strong>:
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '12px', alignItems: 'end' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                    Período de origen
+                                </label>
+                                <select
+                                    value={periodoOrigenDuplicar}
+                                    onChange={(e) => {
+                                        setPeriodoOrigenDuplicar(e.target.value);
+                                        setConfirmacionDuplicar(null);
+                                    }}
+                                    disabled={!periodoGlobal || periodosOrigenDisponibles.length === 0}
+                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff' }}
+                                >
+                                    {periodosOrigenDisponibles.length > 0 ? (
+                                        periodosOrigenDisponibles.map((periodo) => (
+                                            <option key={periodo.id_periodo} value={periodo.codigo_periodo}>
+                                                {periodo.codigo_periodo} - {periodo.descripcion}
+                                            </option>
+                                        ))
+                                    ) : (
+                                        <option value="">No hay otro período disponible</option>
+                                    )}
+                                </select>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => ejecutarDuplicacionPeriodo(false)}
+                                disabled={duplicandoPeriodo || !periodoGlobal || !periodoOrigenDuplicar}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '10px 16px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #16a34a',
+                                    backgroundColor: duplicandoPeriodo || !periodoGlobal || !periodoOrigenDuplicar ? '#f8fafc' : '#ecfdf5',
+                                    color: duplicandoPeriodo || !periodoGlobal || !periodoOrigenDuplicar ? '#94a3b8' : '#166534',
+                                    fontWeight: '700',
+                                    fontSize: '13px',
+                                    cursor: duplicandoPeriodo || !periodoGlobal || !periodoOrigenDuplicar ? 'not-allowed' : 'pointer',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                <i className={duplicandoPeriodo ? 'fas fa-spinner fa-spin' : 'fas fa-copy'}></i>
+                                {duplicandoPeriodo ? 'Duplicando...' : 'Duplicar datos'}
+                            </button>
+                        </div>
+                        <p style={{ margin: '12px 0 0', color: '#475569', fontSize: '12px', lineHeight: 1.5 }}>
+                            Se copiarán programación académica, docentes asignados, infraestructura (asignaciones de
+                            cursos a aulas/laboratorios) y franja horaria. El catálogo físico de ambientes es
+                            compartido entre períodos. No se copian horarios ni borradores.
+                        </p>
+                    </div>
+                </div>
+
                 {/* TARJETA B: FRANJA HORARIA OPERATIVA */}
                 <div style={{ 
                     backgroundColor: '#ffffff', 
@@ -978,6 +1233,204 @@ function ConfiguracionModulo({ periodoGlobal, setPeriodoGlobal, periodos, setPer
                 </div>
 
             </div>
+
+            {/* MODAL: CREAR NUEVO PERÍODO */}
+            {modalNuevoPeriodo && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+                    backdropFilter: 'blur(3px)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: '20px'
+                }}>
+                    <div className="card" style={{ width: '520px', maxWidth: '100%', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', borderRadius: '12px', background: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <i className="fas fa-calendar-plus" style={{ color: '#0045aa' }}></i> Crear nuevo período
+                            </h3>
+                            <button
+                                type="button"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#64748b' }}
+                                onClick={() => setModalNuevoPeriodo(false)}
+                                disabled={creandoPeriodo}
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: '14px' }}>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Código del período
+                            </label>
+                            <input
+                                type="text"
+                                maxLength={10}
+                                placeholder="Ej. 202710"
+                                value={nuevoPeriodoCodigo}
+                                onChange={(e) => setNuevoPeriodoCodigo(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                            />
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: '14px' }}>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                Descripción
+                            </label>
+                            <input
+                                type="text"
+                                maxLength={100}
+                                placeholder="Ej. 2027 - I"
+                                value={nuevoPeriodoDescripcion}
+                                onChange={(e) => setNuevoPeriodoDescripcion(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                    Fecha de inicio
+                                </label>
+                                <input
+                                    type="date"
+                                    value={nuevoPeriodoFechaInicio}
+                                    max={nuevoPeriodoFechaFin || undefined}
+                                    onChange={(e) => setNuevoPeriodoFechaInicio(e.target.value)}
+                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                                    Fecha de fin
+                                </label>
+                                <input
+                                    type="date"
+                                    value={nuevoPeriodoFechaFin}
+                                    min={nuevoPeriodoFechaInicio || undefined}
+                                    onChange={(e) => setNuevoPeriodoFechaFin(e.target.value)}
+                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                />
+                            </div>
+                        </div>
+
+                        <p style={{ margin: '0 0 18px', color: '#475569', fontSize: '13px' }}>
+                            Duración calculada: <strong>{semanasEntreFechas(nuevoPeriodoFechaInicio, nuevoPeriodoFechaFin)} semanas</strong>
+                        </p>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                            <button
+                                type="button"
+                                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+                                onClick={() => setModalNuevoPeriodo(false)}
+                                disabled={creandoPeriodo}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                style={{ padding: '8px 16px', borderRadius: '6px', background: '#0045aa', color: '#fff', border: 'none', cursor: creandoPeriodo ? 'not-allowed' : 'pointer', fontWeight: '600', opacity: creandoPeriodo ? 0.7 : 1 }}
+                                onClick={handleCrearPeriodo}
+                                disabled={creandoPeriodo}
+                            >
+                                <i className={creandoPeriodo ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i>{' '}
+                                {creandoPeriodo ? 'Creando...' : 'Crear período'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: DUPLICAR DATOS DE OTRO PERÍODO */}
+            {modalDuplicarPeriodo && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+                    backdropFilter: 'blur(3px)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: '20px'
+                }}>
+                    <div className="card" style={{ width: '560px', maxWidth: '100%', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', borderRadius: '12px', background: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <i className="fas fa-exclamation-triangle" style={{ color: '#d97706' }}></i> Confirmar duplicación
+                            </h3>
+                            <button
+                                type="button"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#64748b' }}
+                                onClick={() => {
+                                    setModalDuplicarPeriodo(false);
+                                    setConfirmacionDuplicar(null);
+                                }}
+                                disabled={duplicandoPeriodo}
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <p style={{ margin: '0 0 14px', color: '#475569', fontSize: '13px' }}>
+                            Período de origen: <strong>{periodoOrigenDuplicar}</strong> → Período destino: <strong>{periodoGlobal}</strong>
+                        </p>
+
+                        {confirmacionDuplicar && (
+                            <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fdba74', borderRadius: '8px', padding: '12px', color: '#9a3412', fontSize: '12px', lineHeight: 1.5, marginBottom: '16px' }}>
+                                <strong>El período destino ya tiene datos.</strong>
+                                <p style={{ margin: '6px 0 0' }}>
+                                    Programación: {confirmacionDuplicar.programacion || 0}
+                                    {' · '}Infraestructura: {confirmacionDuplicar.infraestructura ?? confirmacionDuplicar.compatibilidad ?? 0} asignaciones
+                                    {' · '}Borradores: {confirmacionDuplicar.borradores || 0} · Horarios: {confirmacionDuplicar.horarios || 0}
+                                </p>
+                                <p style={{ margin: '6px 0 0' }}>
+                                    ¿Deseas borrar esos datos y duplicar de todos modos?
+                                </p>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                            <button
+                                type="button"
+                                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+                                onClick={() => {
+                                    setModalDuplicarPeriodo(false);
+                                    setConfirmacionDuplicar(null);
+                                }}
+                                disabled={duplicandoPeriodo}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    background: confirmacionDuplicar ? '#dc2626' : '#16a34a',
+                                    color: '#fff',
+                                    border: 'none',
+                                    cursor: duplicandoPeriodo ? 'not-allowed' : 'pointer',
+                                    fontWeight: '600',
+                                    opacity: duplicandoPeriodo ? 0.7 : 1
+                                }}
+                                onClick={() => ejecutarDuplicacionPeriodo(Boolean(confirmacionDuplicar))}
+                                disabled={duplicandoPeriodo}
+                            >
+                                <i className={duplicandoPeriodo ? 'fas fa-spinner fa-spin' : confirmacionDuplicar ? 'fas fa-trash-alt' : 'fas fa-copy'}></i>{' '}
+                                {duplicandoPeriodo
+                                    ? 'Duplicando...'
+                                    : confirmacionDuplicar
+                                        ? 'Sí, borrar y duplicar'
+                                        : 'Duplicar datos'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 4. MODAL FLOTANTE DE REGISTRO DE NUEVA SEDE */}
             <div 
@@ -1098,7 +1551,7 @@ function ConfiguracionModulo({ periodoGlobal, setPeriodoGlobal, periodos, setPer
 // ===============================================================
 //   MÓDULO AUTÓNOMO: FERIADOS (EQUIPO 2) - CON FILTRO POR MES
 // ===============================================================
-function FeriadosModulo({ triggerToast }) {
+function FeriadosModulo({ triggerToast, periodoGlobal = '', periodos = [] }) {
     // 1. Iniciamos con un arreglo vacío; los datos vendrán de la base de datos
     const [feriados, setFeriados] = useState([]);
 
@@ -1113,7 +1566,17 @@ function FeriadosModulo({ triggerToast }) {
 
     // [NUEVO]: Estado para almacenar el mes seleccionado (vacío significa "Todos los meses")
     const anioActual = String(new Date().getFullYear());
-    const [filtroAnio, setFiltroAnio] = useState(anioActual);
+    const anioPeriodo = (() => {
+        const periodo = periodos.find(
+            (item) => String(item.codigo_periodo) === String(periodoGlobal)
+        );
+        const fechaInicio = periodo?.fecha_inicio;
+        const anio = fechaInicio
+            ? String(fechaInicio).slice(0, 4)
+            : String(periodoGlobal || '').slice(0, 4);
+        return /^\d{4}$/.test(anio) ? anio : '';
+    })();
+    const [filtroAnio, setFiltroAnio] = useState(anioPeriodo || anioActual);
     const [filtroMes, setFiltroMes] = useState('todos');
 
     // Cargar feriados desde la Base de Datos
@@ -1138,7 +1601,6 @@ function FeriadosModulo({ triggerToast }) {
         const soloFecha = fechaStr ? fechaStr.split('T')[0] : '';
         const partes = soloFecha.split('-'); // [YYYY, MM, DD]
         if (partes.length === 3) {
-            const anio = partes[0];
             const mesIndex = parseInt(partes[1], 10) - 1;
             const dia = partes[2];
             
@@ -1170,11 +1632,12 @@ function FeriadosModulo({ triggerToast }) {
     };
     const aniosDisponibles = [...new Set([
         anioActual,
+        anioPeriodo,
         feriados
             .filter(feriado => feriado.fecha)
             .map(feriado => feriado.fecha.split('T')[0].slice(0, 4))
             .filter(anio => /^\d{4}$/.test(anio))
-    ].flat())].sort((a, b) => b.localeCompare(a));
+    ].flat())].filter(Boolean).sort((a, b) => b.localeCompare(a));
 
     // [MODIFICADO]: Filtrar por mes seleccionado además de ordenar cronológicamente
     const feriadosFiltrados = feriados.filter(feriado => {

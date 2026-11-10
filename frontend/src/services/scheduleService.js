@@ -67,21 +67,31 @@ export async function obtenerFeriados(opciones = {}) {
 }
 
 /**
- * Convierte las filas de `feriados` de la BD en un Map "MM-DD" -> info.
- * La BD expone `fecha` como "YYYY-MM-DD".
+ * Convierte las filas de `feriados` de la BD en un Map "YYYY-MM-DD" -> info.
+ * Se usa la fecha completa para que los feriados de 2027 no se mezclen con
+ * los de 2026 cuando ambos años comparten el mismo mes y día.
  */
 export function construirMapaFeriados(feriados = []) {
   const mapa = new Map();
   feriados.forEach((feriado) => {
-    const fecha = String(feriado?.fecha ?? '');
-    const partes = fecha.split('-').map(Number);
-    if (partes.length < 3 || !partes[1] || !partes[2]) return;
-    const mes = partes[1];
-    const dia = partes[2];
+    const fecha = String(feriado?.fecha ?? '').slice(0, 10);
+    const coincidencia = fecha.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!coincidencia) return;
+
+    const estado = String(feriado?.estado ?? '').toLowerCase();
+    if (estado === 'inhabilitado' || estado === 'inactivo') return;
+
+    const anio = Number(coincidencia[1]);
+    const mes = Number(coincidencia[2]);
+    const dia = Number(coincidencia[3]);
     const mmdd = `${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-    mapa.set(mmdd, {
+
+    mapa.set(fecha, {
+      fecha,
+      anio,
       mes: MESES[mes - 1] ?? String(mes),
       dia,
+      descripcion: feriado?.descripcion ?? '',
       fecha_formatted: mmdd,
     });
   });
@@ -183,9 +193,19 @@ function normalizarRegistroHorarioBorrador(registro) {
   };
 }
 
-export async function obtenerHorarioBorrador(periodo = '202620', opciones = {}) {
+export async function obtenerHorarioBorrador(periodo = '202620', idBorrador = null, opciones = {}) {
+  if (idBorrador && typeof idBorrador === 'object') {
+    opciones = idBorrador;
+    idBorrador = null;
+  }
+
+  const parametros = new URLSearchParams({ periodo: String(periodo) });
+  if (idBorrador !== null && idBorrador !== undefined && idBorrador !== '') {
+    parametros.set('id_borrador', String(idBorrador));
+  }
+
   const respuesta = await authFetch(
-    `${API_BASE_URL}/api/horarios/borradores?periodo=${encodeURIComponent(periodo)}`,
+    `${API_BASE_URL}/api/horarios/borradores?${parametros.toString()}`,
     opciones
   );
   const resultado = await respuesta.json();
@@ -196,6 +216,10 @@ export async function obtenerHorarioBorrador(periodo = '202620', opciones = {}) 
   return {
     periodo: resultado.data.codigo,
     estado: resultado.data.estado,
+    borrador: resultado.data.borrador ?? null,
+    borradores: Array.isArray(resultado.data.borradores)
+      ? resultado.data.borradores
+      : [],
     semanas: Number(resultado.data.semanas) || 18,
     fechaInicio: resultado.data.fecha_inicio ?? null,
     fechaFin: resultado.data.fecha_fin ?? null,
@@ -220,7 +244,96 @@ export async function obtenerHorarioBorrador(periodo = '202620', opciones = {}) 
   };
 }
 
-export async function moverSesionesBorrador(periodo, identificadores, dia, inicioTiempo, opciones = {}) {
+export async function listarBorradoresPeriodo(periodo = '202620', opciones = {}) {
+  const respuesta = await authFetch(
+    `${API_BASE_URL}/api/horarios/borradores/versiones?periodo=${encodeURIComponent(periodo)}`,
+    opciones
+  );
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    throw new Error(resultado?.message || 'No se pudieron cargar los borradores.');
+  }
+
+  return {
+    periodo: resultado.data?.periodo ?? String(periodo),
+    borradores: Array.isArray(resultado.data?.borradores)
+      ? resultado.data.borradores
+      : [],
+  };
+}
+
+export async function eliminarBorradorPeriodo(periodo, idBorrador, opciones = {}) {
+  const respuesta = await authFetch(
+    `${API_BASE_URL}/api/horarios/borradores/${encodeURIComponent(periodo)}/versiones/${encodeURIComponent(idBorrador)}`,
+    {
+      ...opciones,
+      method: 'DELETE',
+    }
+  );
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    throw new Error(resultado?.message || 'No se pudo eliminar el borrador.');
+  }
+  return resultado.data;
+}
+
+export async function generarBorradorPeriodo(periodo = '202620', opciones = {}) {
+  const respuesta = await authFetch(
+    `${API_BASE_URL}/api/horarios/solver/ejecutar`,
+    {
+      ...opciones,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...opciones.headers,
+      },
+      body: JSON.stringify({ periodo: String(periodo) }),
+    }
+  );
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    const error = new Error(resultado?.message || 'No se pudo iniciar el solver.');
+    error.data = resultado?.data ?? null;
+    throw error;
+  }
+  return {
+    jobId: resultado.jobId,
+    ...resultado.data,
+  };
+}
+
+export async function cancelarSolver(opciones = {}) {
+  const respuesta = await authFetch(
+    `${API_BASE_URL}/api/horarios/solver/cancelar`,
+    {
+      ...opciones,
+      method: 'POST',
+    }
+  );
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    throw new Error(resultado?.message || 'No se pudo cancelar la generación.');
+  }
+  return resultado.data;
+}
+
+export async function obtenerEstadoSolver(jobId, opciones = {}) {
+  const respuesta = await authFetch(
+    `${API_BASE_URL}/api/horarios/solver/estado/${encodeURIComponent(jobId)}`,
+    opciones
+  );
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    throw new Error(resultado?.message || 'No se pudo consultar el estado del solver.');
+  }
+  return resultado.data;
+}
+
+export async function moverSesionesBorrador(periodo, identificadores, dia, inicioTiempo, idBorrador = null, opciones = {}) {
+  if (idBorrador && typeof idBorrador === 'object') {
+    opciones = idBorrador;
+    idBorrador = null;
+  }
   const respuesta = await authFetch(
     `${API_BASE_URL}/api/horarios/borradores/${encodeURIComponent(periodo)}/mover`,
     {
@@ -230,7 +343,12 @@ export async function moverSesionesBorrador(periodo, identificadores, dia, inici
         'Content-Type': 'application/json',
         ...opciones.headers,
       },
-      body: JSON.stringify({ ids: identificadores, dia: dia, hora_inicio: inicioTiempo }),
+      body: JSON.stringify({
+        ids: identificadores,
+        dia: dia,
+        hora_inicio: inicioTiempo,
+        ...(idBorrador ? { id_borrador: idBorrador } : {}),
+      }),
     }
   );
   const resultado = await respuesta.json();
@@ -242,7 +360,86 @@ export async function moverSesionesBorrador(periodo, identificadores, dia, inici
   return resultado.data;
 }
 
-export async function cambiarEstadoHorario(periodo, estado, opciones = {}) {
+export async function descargarHorariosZip(periodo = '202620', idBorrador = null, opciones = {}) {
+  if (idBorrador && typeof idBorrador === 'object') {
+    opciones = idBorrador;
+    idBorrador = null;
+  }
+
+  const parametros = new URLSearchParams({ periodo: String(periodo) });
+  if (idBorrador !== null && idBorrador !== undefined && idBorrador !== '') {
+    parametros.set('id_borrador', String(idBorrador));
+  }
+
+  const respuesta = await authFetch(
+    `${API_BASE_URL}/api/horarios/exportar?${parametros.toString()}`,
+    opciones
+  );
+
+  if (!respuesta.ok) {
+    let mensaje = 'No se pudo generar el ZIP de horarios por carrera.';
+    try {
+      const resultado = await respuesta.json();
+      if (resultado?.message) mensaje = resultado.message;
+    } catch {
+      // La respuesta de error puede no ser JSON.
+    }
+    throw new Error(mensaje);
+  }
+
+  const blob = await respuesta.blob();
+  const disposicion = respuesta.headers.get('Content-Disposition') || '';
+  const coincidencia = disposicion.match(/filename\*=UTF-8''([^;]+)/i)
+    || disposicion.match(/filename="?([^";]+)"?/i);
+  const nombreArchivo = coincidencia
+    ? decodeURIComponent(coincidencia[1])
+    : `horarios_${periodo}.zip`;
+
+  return { blob, nombreArchivo };
+}
+
+export async function obtenerAulasPorSede(sedeId, opciones = {}) {
+  const respuesta = await authFetch(
+    `${API_BASE_URL}/api/horarios/ambientes?sede=${encodeURIComponent(sedeId)}`,
+    opciones
+  );
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    throw new Error(resultado?.message || 'No se pudieron cargar las aulas.');
+  }
+  return resultado.data?.aulas ?? [];
+}
+
+export async function cambiarAulaHorario(periodo, identificadores, idAmbiente, idBorrador, opciones = {}) {
+  const respuesta = await authFetch(
+    `${API_BASE_URL}/api/horarios/borradores/${encodeURIComponent(periodo)}/aula`,
+    {
+      ...opciones,
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...opciones.headers,
+      },
+      body: JSON.stringify({
+        ids: identificadores,
+        id_ambiente: idAmbiente,
+        id_borrador: idBorrador,
+      }),
+    }
+  );
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado?.success) {
+    throw new Error(resultado?.message || 'No se pudo cambiar el aula.');
+  }
+  return resultado.data;
+}
+
+export async function cambiarEstadoHorario(periodo, estado, idBorrador = null, opciones = {}) {
+  if (idBorrador && typeof idBorrador === 'object') {
+    opciones = idBorrador;
+    idBorrador = null;
+  }
+
   const respuesta = await authFetch(
     `${API_BASE_URL}/api/horarios/borradores/${encodeURIComponent(periodo)}/estado`,
     {
@@ -252,7 +449,10 @@ export async function cambiarEstadoHorario(periodo, estado, opciones = {}) {
         'Content-Type': 'application/json',
         ...opciones.headers,
       },
-      body: JSON.stringify({ estado }),
+      body: JSON.stringify({
+        estado,
+        ...(idBorrador ? { id_borrador: idBorrador } : {}),
+      }),
     }
   );
   const resultado = await respuesta.json();
@@ -328,12 +528,13 @@ export function obtenerDiasSemana(semanaInicio, feriadosMapa = new Map()) {
   if (!inicio) return [];
   return DIAS.map((dia, indice) => {
     const fecha = agregarDias(inicio, indice);
+    const iso = convertirAFechaISO(fecha);
     const mmdd = obtenerMesDia(fecha);
-    const feriado = feriadosMapa.get(mmdd) ?? null;
+    const feriado = feriadosMapa.get(iso) ?? null;
     return {
       day: dia,
       date: fecha,
-      iso: convertirAFechaISO(fecha),
+      iso,
       mmdd,
       holiday: feriado,
       isHoliday: Boolean(feriado),
@@ -390,7 +591,12 @@ export function obtenerLimitesHorario(registros = []) {
   };
 }
 
-/** Semana inicial: la actual si cae dentro del calendario; si no, la primera. */
+/**
+ * Semana inicial vinculada al periodo:
+ * - Si el periodo aún no inicia, la semana de la fecha de inicio.
+ * - Si hoy está dentro del periodo, la semana actual.
+ * - Si el periodo ya terminó, la semana de la fecha de fin.
+ */
 export function obtenerInicioSemanaPredeterminado(registros = [], inicioPeriodo = null, finPeriodo = null) {
   const bounds = obtenerLimitesHorario(registros);
   const hoy = new Date();

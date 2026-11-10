@@ -54,6 +54,29 @@ jobs:
             npm install bcryptjs jsonwebtoken --omit=dev
 
             echo "=========================================="
+            echo "2.1 INSTALANDO DEPENDENCIAS PYTHON DEL SOLVER"
+            echo "=========================================="
+
+            if ! command -v python3 >/dev/null 2>&1; then
+              echo "ERROR: python3 no está instalado en el VPS."
+              echo "Instala python3, python3-venv y python3-pip antes de desplegar."
+              exit 1
+            fi
+
+            if [ ! -x "$APP_DIR/.venv/bin/python" ]; then
+              echo "Creando entorno virtual .venv..."
+              if ! python3 -m venv "$APP_DIR/.venv"; then
+                echo "ERROR: no se pudo crear .venv."
+                echo "Instala el paquete python3-venv en el VPS."
+                exit 1
+              fi
+            fi
+
+            "$APP_DIR/.venv/bin/python" -m pip install --upgrade pip
+            "$APP_DIR/.venv/bin/python" -m pip install -r "$APP_DIR/requirements-solver.txt"
+            "$APP_DIR/.venv/bin/python" -c "import ortools, pymysql, openpyxl; print('Dependencias Python del solver OK')"
+
+            echo "=========================================="
             echo "3. INSTALANDO DEPENDENCIAS DEL FRONTEND"
             echo "=========================================="
 
@@ -66,6 +89,14 @@ jobs:
             echo "=========================================="
 
             npm run build
+
+            echo "=========================================="
+            echo "4.1 MIGRANDO BORRADORES"
+            echo "=========================================="
+
+            cd "$APP_DIR"
+            node scripts/migrar-borradores.js
+            node scripts/migrar-auditoria.js
 
             echo "=========================================="
             echo "5. REINICIANDO BACKEND"

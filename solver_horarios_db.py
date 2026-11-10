@@ -197,6 +197,15 @@ def construir_parser() -> argparse.ArgumentParser:
         help="Resuelve y valida, pero no escribe en MySQL.",
     )
     parser.add_argument(
+        "--id-borrador",
+        type=int,
+        help=(
+            "ID de un borrador ya creado (por ejemplo, desde la API web). "
+            "Las filas se guardan en ese borrador y no se exige reemplazar "
+            "los borradores existentes."
+        ),
+    )
+    parser.add_argument(
         "--reemplazar-borradores",
         action="store_true",
         help="Borra los BORRADORES del periodo antes de insertar el nuevo horario.",
@@ -528,6 +537,15 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.tiempo_diagnostico <= 0:
         parser.error("--tiempo-diagnostico debe ser mayor que cero.")
+    if args.id_borrador is not None and args.id_borrador <= 0:
+        parser.error("--id-borrador debe ser un entero positivo.")
+    if args.id_borrador is not None and (
+        args.reemplazar_borradores or args.reemplazar_borradores_filtrados
+    ):
+        parser.error(
+            "--id-borrador no se puede combinar con "
+            "--reemplazar-borradores ni --reemplazar-borradores-filtrados."
+        )
     if args.diagnostico_semilla and not args.horario_semilla:
         parser.error("--diagnostico-semilla requiere --horario-semilla.")
     if args.diagnostico_infactibilidad and not args.dry_run:
@@ -617,6 +635,7 @@ def main(argv: list[str] | None = None) -> int:
         existentes = repo.contar_borradores(periodo.id_periodo)
         if (
             existentes
+            and args.id_borrador is None
             and not args.dry_run
             and not args.diagnostico_semilla
             and not args.reemplazar_borradores
@@ -760,6 +779,7 @@ def main(argv: list[str] | None = None) -> int:
                 repo,
                 filas,
                 id_periodo=periodo.id_periodo,
+                id_borrador=args.id_borrador,
                 reemplazar_borradores=args.reemplazar_borradores,
                 reemplazar_programaciones=(
                     {oferta.id_programacion for oferta in ctx.ofertas}

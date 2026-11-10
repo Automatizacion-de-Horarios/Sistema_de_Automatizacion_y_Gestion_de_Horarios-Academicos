@@ -94,6 +94,94 @@ reemplaza transaccionalmente solo borradores vinculados a las programaciones
 del subconjunto Semestre II; no borra ni modifica los registros de otros
 semestres. Las fechas usadas para excluir feriados son 2026-08-17 a 2026-12-12.
 
+### Exportar horarios por carrera (Excel + ZIP)
+
+Con el servidor Express activo, la vista de horarios ofrece el botón
+**Descargar ZIP**. También se puede invocar directamente:
+
+```http
+GET /api/horarios/exportar?periodo=202620
+Authorization: Bearer <token>
+```
+
+La respuesta es un ZIP con un Excel institucional por zonal/carrera (por
+ejemplo `TACNA_INGENIERIA_DE_SOFTWARE_CON_IA.xlsx`). Los archivos se generan
+con las 24 columnas del formato institucional: `PARTE_PERIODO` y
+`NRO_ALUMNOS_INSCRITOS` quedan vacíos, `INSTRUCTOR` se inserta después de
+`D_FIN`, `IND_SESION` vale 1 cuando la fila tiene docente y 2 cuando no, y
+`SECCION` es un consecutivo único por curso/bloque/grupo/actividad dentro de cada
+archivo (las sesiones virtuales comparten la sección TEC del curso).
+
+Los archivos Excel y el ZIP se escriben únicamente dentro de
+`horarios_generados/`, sin modificar ni sobrescribir los archivos de datos base.
+
+### Ejecutar el solver desde el backend
+
+El backend puede lanzar el CLI `solver_horarios_db.py` sin reescribir la lógica
+del solver. El proceso se ejecuta en segundo plano para no bloquear la petición
+HTTP mientras CP-SAT busca una solución.
+
+```http
+POST /api/horarios/solver/ejecutar
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "periodo": "202620",
+  "reemplazar_borradores": true,
+  "dry_run": false
+}
+```
+
+- `reemplazar_borradores` debe ser `true` si el periodo ya tiene filas
+  `BORRADOR`; de lo contrario el solver se negará a sobrescribirlas.
+- `dry_run: true` resuelve y valida sin escribir en MySQL.
+
+La respuesta inmediata es `202 Accepted` con un identificador de trabajo:
+
+```json
+{
+  "success": true,
+  "message": "Ejecución del solver iniciada.",
+  "jobId": "...",
+  "data": {
+    "id": "...",
+    "estado": "EJECUTANDO",
+    "periodo": "202620"
+  }
+}
+```
+
+Para consultar el avance:
+
+```http
+GET /api/horarios/solver/estado/:jobId
+GET /api/horarios/solver/actual
+Authorization: Bearer <token>
+```
+
+El estado puede ser `EJECUTANDO`, `COMPLETADO` o `ERROR`. La respuesta incluye
+las últimas líneas del log, con credenciales redactadas. El log completo se
+guarda en `horarios_generados/solver/`.
+
+El backend elige el intérprete en este orden:
+
+1. `PYTHON_BIN` del entorno.
+2. `.venv/bin/python` o `.venv/Scripts/python.exe` del proyecto.
+3. `python3` en Linux o `python` en Windows.
+
+Variables opcionales:
+
+```env
+PYTHON_BIN=/home/senati/apps/sistema-horarios/.venv/bin/python
+SOLVER_TIEMPO_LIMITE=300
+SOLVER_TRABAJADORES=2
+SOLVER_TIMEOUT_MS=900000
+```
+
+El despliegue crea `.venv` y ejecuta
+`pip install -r requirements-solver.txt` antes de reiniciar PM2.
+
 ### Usar horario base como semilla
 
 `integrar_horario_semilla.py` carga `horario_base_detallado.json`, consulta la
