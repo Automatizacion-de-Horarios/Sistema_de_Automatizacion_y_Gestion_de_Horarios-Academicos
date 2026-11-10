@@ -11,6 +11,38 @@ const Ambiente = {
     return filas[0]; 
   }, 
 
+  async listarAulasPorSede(sedeId) {
+    const [filas] = await db.query(
+      `SELECT id, codigo_ambiente, aforo_maximo, piso_ubicacion,
+              pabellon, id_sede
+         FROM ambientes
+        WHERE id_sede = ?
+          AND id_tipo_ambiente = 5
+          AND estado IN ('DISPONIBLE', 'ACTIVO', 'OPERATIVO')
+        ORDER BY codigo_ambiente`,
+      [sedeId]
+    );
+    return filas.map((fila) => ({
+      id: Number(fila.id),
+      codigo_ambiente: fila.codigo_ambiente,
+      aforo_maximo: fila.aforo_maximo,
+      piso_ubicacion: fila.piso_ubicacion,
+      pabellon: fila.pabellon,
+      id_sede: Number(fila.id_sede),
+    }));
+  },
+
+  async obtener(idAmbiente) {
+    const [filas] = await db.query(
+      `SELECT id, codigo_ambiente, id_tipo_ambiente, id_sede, estado
+         FROM ambientes
+        WHERE id = ?
+        LIMIT 1`,
+      [idAmbiente]
+    );
+    return filas[0] ?? null;
+  },
+
   async obtenerCursos() {
     const [filas] = await db.query(
       `SELECT c.id_curso,

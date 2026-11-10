@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ETIQUETAS_ACTIVIDAD,
   ETIQUETAS_DIAS,
@@ -15,6 +15,14 @@ import {
   obtenerInicioSemanaPredeterminado,
   moverSesionesBorrador,
   cambiarEstadoHorario,
+  descargarHorariosZip,
+  obtenerAulasPorSede,
+  cambiarAulaHorario,
+  listarBorradoresPeriodo,
+  eliminarBorradorPeriodo,
+  generarBorradorPeriodo,
+  obtenerEstadoSolver,
+  cancelarSolver,
   obtenerLimitesHorario,
   obtenerDiasSemana,
   obtenerSesionesSemana,
@@ -384,6 +392,7 @@ function TarjetaClase({
   onDragEnd,
   onDragOver,
   onDrop,
+  onDoubleClick,
   estaArrastrando,
   movimientoValido,
   estaSobre,
@@ -431,6 +440,7 @@ function TarjetaClase({
   return (
     <div
       draggable={Boolean(sesion.scheduleIds?.length)}
+      onDoubleClick={onDoubleClick}
       className={[
         'schedule-class',
         isVAEE ? 'is-vaee' : '',
@@ -516,7 +526,21 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
   const [savingMove, setSavingMove] = useState(false);
   const [estadoHorario, establecerHorarioEstado] = useState('BORRADOR');
   const [changingState, setChangingState] = useState(false);
+  const [descargandoZip, setDescargandoZip] = useState(false);
   const [feriadosMapa, establecerFeriadosMapa] = useState(new Map());
+  const [borradores, establecerBorradores] = useState([]);
+  const [borradorSeleccionado, establecerBorradorSeleccionado] = useState(null);
+  const [cargandoBorradores, establecerCargandoBorradores] = useState(true);
+  const [generandoBorrador, establecerGenerandoBorrador] = useState(false);
+  const [cancelandoGeneracion, establecerCancelandoGeneracion] = useState(false);
+  const [progresoGeneracion, establecerProgresoGeneracion] = useState('');
+  const [progresoSolver, establecerProgresoSolver] = useState(0);
+  const [tiempoRestanteSolver, establecerTiempoRestanteSolver] = useState(0);
+  const [hitoSolver, establecerHitoSolver] = useState('');
+  const [lineasSolver, establecerLineasSolver] = useState([]);
+  const [eliminandoBorrador, establecerEliminandoBorrador] = useState(null);
+  const [borradorPendienteEliminacion, establecerBorradorPendienteEliminacion] = useState(null);
+  const [aulaModal, establecerAulaModal] = useState(null);
 
   const [registros, establecerRegistros] = useState([]);
   const [horariosOperativos, setOperatingHours] = useState(null);
@@ -528,14 +552,104 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
       })
       .catch(() => {});
     return () => controlador.abort();
-  }, []);
+  }, [periodoSeleccionado]);
+  const cargarBorradores = useCallback(async ({ signal, seleccionar } = {}) => {
+    const resultado = await listarBorradoresPeriodo(
+      String(periodoSeleccionado),
+      signal ? { signal } : {}
+    );
+    if (signal?.aborted) return null;
+
+    const lista = resultado.borradores;
+    establecerBorradores(lista);
+    establecerBorradorSeleccionado((actual) => {
+      const preferido = seleccionar ?? actual;
+      if (
+        preferido !== null &&
+        preferido !== undefined &&
+        lista.some((borrador) => borrador.id_borrador === Number(preferido))
+      ) {
+        return Number(preferido);
+      }
+      return lista[0]?.id_borrador ?? null;
+    });
+    return lista;
+  }, [periodoSeleccionado]);
+
   useEffect(() => {
     const controlador = new AbortController();
+    establecerCargando(true);
+    establecerCargandoBorradores(true);
+    establecerBorradores([]);
+    establecerBorradorSeleccionado(null);
+
+    cargarBorradores({ signal: controlador.signal })
+      .catch((error) => {
+        if (!controlador.signal.aborted) {
+          establecerCargarError(
+            error.message || 'No se pudieron cargar los borradores del periodo.'
+          );
+          establecerCargando(false);
+        }
+      })
+      .finally(() => {
+        if (!controlador.signal.aborted) establecerCargandoBorradores(false);
+      });
+
+    return () => controlador.abort();
+  }, [cargarBorradores]);
+
+  useEffect(() => {
+    if (cargandoBorradores) return undefined;
+
+    if (!borradorSeleccionado) {
+      const controlador = new AbortController();
+      const cargarPeriodo = async () => {
+        establecerCargando(true);
+        try {
+          const resultado = await obtenerHorarioBorrador(
+            String(periodoSeleccionado),
+            null,
+            { signal: controlador.signal }
+          );
+          if (controlador.signal.aborted) return;
+
+          establecerRegistros([]);
+          setOperatingHours(resultado.franja);
+          establecerHorarioEstado(resultado.estado || 'BORRADOR');
+          establecerPeriodoSemanas(resultado.semanas);
+          const inicio = resultado.fechaInicio || '';
+          const fin = resultado.fechaFin || '';
+          establecerPeriodoInicio(inicio);
+          establecerPeriodoFin(fin);
+          setRestrictions(resultado.restricciones);
+          establecerSemanaInicio(obtenerInicioSemanaPredeterminado([], inicio, fin));
+          establecerCargarError('');
+        } catch (error) {
+          if (!controlador.signal.aborted) {
+            establecerRegistros([]);
+            establecerCargarError(
+              error.message || 'No se pudo cargar la configuración del periodo.'
+            );
+          }
+        } finally {
+          if (!controlador.signal.aborted) establecerCargando(false);
+        }
+      };
+
+      cargarPeriodo();
+      return () => controlador.abort();
+    }
+
+    const controlador = new AbortController();
     const cargarHorario = async () => {
+      establecerCargando(true);
       try {
-        const resultado = await obtenerHorarioBorrador(String(periodoSeleccionado), {
-          signal: controlador.signal,
-        });
+        const resultado = await obtenerHorarioBorrador(
+          String(periodoSeleccionado),
+          borradorSeleccionado,
+          { signal: controlador.signal }
+        );
         if (controlador.signal.aborted) return;
 
         establecerRegistros(resultado.bloques);
@@ -571,7 +685,16 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
       } catch (error) {
         if (!controlador.signal.aborted) {
           establecerRegistros([]);
-          establecerCargarError(error.message || 'No se pudo cargar el horario borrador.');
+          const mensaje = error.message || 'No se pudo cargar el horario borrador.';
+          establecerCargarError(mensaje);
+          if (mensaje.includes('No existe el borrador')) {
+            try {
+              const lista = await cargarBorradores();
+              establecerBorradorSeleccionado(lista?.[0]?.id_borrador ?? null);
+            } catch {
+              // Ignorar errores secundarios al recargar borradores.
+            }
+          }
         }
       } finally {
         if (!controlador.signal.aborted) establecerCargando(false);
@@ -580,9 +703,11 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
 
     cargarHorario();
     return () => controlador.abort();
-  }, [periodoSeleccionado]);
+  }, [periodoSeleccionado, borradorSeleccionado, cargandoBorradores]);
   useEffect(() => {
     if (!toast) return undefined;
+    const esAvisoDeCruce = /no se puede mover|no se pudo mover|no se pudo guardar el cambio/i.test(toast);
+    if (esAvisoDeCruce) return undefined;
     const timeout = window.setTimeout(() => setToast(''), 4200);
     return () => window.clearTimeout(timeout);
   }, [toast]);
@@ -786,6 +911,7 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
   };
 
   const soltarElemento = async (e, dia, intervaloMinutos) => {
+    if (generandoBorrador) return;
     e.preventDefault();
     if (!sesionArrastrada || savingMove) return;
     const actualInicio = convertirHoraAMinutos(sesionArrastrada.hora_ini);
@@ -831,7 +957,8 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
         String(periodoSeleccionado),
         horarioIdentificadores,
         dia,
-        nuevoInicio.slice(0, 5)
+        nuevoInicio.slice(0, 5),
+        borradorSeleccionado
       );
       const identificadores = new Set(
         (resultado?.ids?.length ? resultado.ids : horarioIdentificadores).map(Number)
@@ -911,8 +1038,19 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
     if (!nuevoEstado || nuevoEstado === estadoHorario || changingState) return;
     setChangingState(true);
     try {
-      await cambiarEstadoHorario(String(periodoSeleccionado), nuevoEstado);
+      await cambiarEstadoHorario(
+        String(periodoSeleccionado),
+        nuevoEstado,
+        borradorSeleccionado
+      );
       establecerHorarioEstado(nuevoEstado);
+      establecerBorradores((actual) =>
+        actual.map((borrador) =>
+          borrador.id_borrador === Number(borradorSeleccionado)
+            ? { ...borrador, estado: nuevoEstado }
+            : borrador
+        )
+      );
       setToast(`Estado del horario actualizado a ${nuevoEstado === 'CONFIRMADO' ? 'Confirmado' : 'Borrador'}.`);
     } catch (error) {
       setToast(`No se pudo cambiar el estado: ${error.message}`);
@@ -920,14 +1058,470 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
       setChangingState(false);
     }
   };
-  const datePickerValue = inicioPeriodo && semanaInicio < inicioPeriodo
-    ? inicioPeriodo
-    : finPeriodo && semanaInicio > finPeriodo
-      ? finPeriodo
-      : semanaInicio;
+  const descargarZipHorarios = async () => {
+    if (descargandoZip) return;
+    if (!borradorSeleccionado) {
+      setToast('Selecciona un borrador antes de descargar el ZIP.');
+      return;
+    }
+    setDescargandoZip(true);
+    try {
+      const { blob, nombreArchivo } = await descargarHorariosZip(
+        String(periodoSeleccionado),
+        borradorSeleccionado
+      );
+      const url = URL.createObjectURL(blob);
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = nombreArchivo;
+      document.body.appendChild(enlace);
+      enlace.click();
+      enlace.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setToast('Se descargó el ZIP del borrador actual.');
+    } catch (error) {
+      setToast(`No se pudo descargar el ZIP: ${error.message}`);
+    } finally {
+      setDescargandoZip(false);
+    }
+  };
+
+  const esperarSolver = async (jobId) => {
+    while (true) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2000));
+      const estado = await obtenerEstadoSolver(jobId);
+      establecerProgresoSolver(Number(estado?.progreso) || 0);
+      establecerTiempoRestanteSolver(Number(estado?.tiempo_restante_seg) || 0);
+      establecerHitoSolver(estado?.hito || '');
+      establecerLineasSolver(Array.isArray(estado?.lineas) ? estado.lineas : []);
+      establecerProgresoGeneracion(
+        estado?.estado === 'COMPLETADO'
+          ? 'Completado.'
+          : estado?.estado === 'CANCELADO'
+          ? 'Cancelado.'
+          : estado?.error
+          ? estado.error
+          : estado?.estado === 'EJECUTANDO'
+          ? 'Generando horario...'
+          : `Estado: ${estado?.estado || 'desconocido'}`
+      );
+
+      if (estado?.estado === 'COMPLETADO') return estado;
+      if (estado?.estado === 'CANCELADO') {
+        throw new Error('La generación fue cancelada.');
+      }
+      if (estado?.estado === 'ERROR') {
+        throw new Error(estado.error || 'El solver terminó con error.');
+      }
+    }
+  };
+
+  const generarOtroBorrador = async () => {
+    if (generandoBorrador) return;
+    establecerGenerandoBorrador(true);
+    establecerProgresoGeneracion('Iniciando solver...');
+    try {
+      const job = await generarBorradorPeriodo(String(periodoSeleccionado));
+      if (!job?.jobId) {
+        throw new Error('No se recibió el identificador de la ejecución.');
+      }
+      establecerProgresoGeneracion('Generando horario...');
+      const resultado = await esperarSolver(job.jobId);
+      const idBorrador = Number(resultado.id_borrador);
+      await cargarBorradores({ seleccionar: idBorrador });
+      if (idBorrador) establecerBorradorSeleccionado(idBorrador);
+      setToast('Se generó un nuevo borrador del periodo.');
+    } catch (error) {
+      setToast(`No se pudo generar el borrador: ${error.message}`);
+      try {
+        const lista = await cargarBorradores();
+        establecerBorradorSeleccionado(lista?.[0]?.id_borrador ?? null);
+      } catch {
+        // Ignorar errores secundarios al recargar la lista.
+      }
+    } finally {
+      establecerGenerandoBorrador(false);
+      establecerCancelandoGeneracion(false);
+      establecerProgresoGeneracion('');
+      establecerProgresoSolver(0);
+      establecerTiempoRestanteSolver(0);
+      establecerHitoSolver('');
+      establecerLineasSolver([]);
+    }
+  };
+
+  const cancelarGeneracion = async () => {
+    if (!generandoBorrador || cancelandoGeneracion) return;
+    establecerCancelandoGeneracion(true);
+    try {
+      await cancelarSolver();
+      setToast('Cancelación solicitada.');
+    } catch (error) {
+      setToast(`No se pudo cancelar: ${error.message}`);
+    } finally {
+      establecerCancelandoGeneracion(false);
+    }
+  };
+
+  const aulaEstaOcupada = (aulaId, sesion, occupations, ids) => {
+    const idsSet = new Set((ids || []).map(Number));
+    return (occupations || []).some((ocupacion) => {
+      if (Number(ocupacion.id_ambiente) !== Number(aulaId)) return false;
+      if (String(ocupacion.dia ?? '').toUpperCase() !== String(sesion.dia ?? '').toUpperCase()) {
+        return false;
+      }
+      const inicioActual = convertirHoraAMinutos(sesion.hora_ini);
+      const finActual = convertirHoraAMinutos(sesion.hora_fin);
+      const inicioOtro = convertirHoraAMinutos(ocupacion.hora_ini);
+      const finOtro = convertirHoraAMinutos(ocupacion.hora_fin);
+      if (inicioActual === null || finActual === null || inicioOtro === null || finOtro === null) {
+        return false;
+      }
+      if (!(inicioActual < finOtro && finActual > inicioOtro)) return false;
+
+      const semInicioActual = Number(sesion.semana_inicio);
+      const semFinActual = Number(sesion.semana_fin);
+      const semInicioOtro = Number(ocupacion.semana_inicio);
+      const semFinOtro = Number(ocupacion.semana_fin);
+      if (!(semInicioActual <= semFinOtro && semFinActual >= semInicioOtro)) {
+        return false;
+      }
+
+      return !idsSet.has(Number(ocupacion.id_horario));
+    });
+  };
+
+  const abrirModalAula = async (sesion) => {
+    if (generandoBorrador || !borradorSeleccionado) return;
+    if (!sesion?.id_ambiente || !sesion?.id_sede) {
+      setToast('Este bloque no usa un aula asignada.');
+      return;
+    }
+    try {
+      const aulas = await obtenerAulasPorSede(sesion.id_sede);
+      if (!aulas.some((aula) => aula.id === Number(sesion.id_ambiente))) {
+        setToast('Este bloque usa un laboratorio; no se puede cambiar el aula.');
+        return;
+      }
+      const ids = sesion.scheduleIds?.length
+        ? sesion.scheduleIds
+        : [sesion.id_horario];
+      const aulasConEstado = aulas.map((aula) => ({
+        ...aula,
+        disponible: !aulaEstaOcupada(aula.id, sesion, restrictions.ocupaciones, ids),
+      }));
+      establecerAulaModal({
+        sesion,
+        aulas: aulasConEstado,
+        seleccionada: Number(sesion.id_ambiente),
+        guardando: false,
+      });
+    } catch (error) {
+      setToast(`No se pudieron cargar las aulas: ${error.message}`);
+    }
+  };
+
+  const confirmarCambioAula = async () => {
+    if (!aulaModal) return;
+    const { sesion, seleccionada } = aulaModal;
+    const ids = sesion.scheduleIds?.length ? sesion.scheduleIds : [sesion.id_horario];
+    establecerAulaModal((actual) => (actual ? { ...actual, guardando: true } : actual));
+    try {
+      await cambiarAulaHorario(
+        String(periodoSeleccionado),
+        ids,
+        seleccionada,
+        borradorSeleccionado
+      );
+      establecerAulaModal(null);
+      const nuevaAula = aulaModal.aulas.find((aula) => aula.id === Number(seleccionada));
+      const codigo = nuevaAula?.codigo_ambiente ?? sesion.ambiente;
+      const update = (registro) =>
+        ids.includes(Number(registro.id_horario))
+          ? { ...registro, id_ambiente: seleccionada, ambiente: codigo }
+          : registro;
+      establecerRegistros((actual) => actual.map(update));
+      setRestrictions((actual) => ({
+        ...actual,
+        ocupaciones: actual.ocupaciones.map(update),
+      }));
+      setToast('Aula actualizada.');
+    } catch (error) {
+      setToast(`No se pudo cambiar el aula: ${error.message}`);
+      establecerAulaModal((actual) => (actual ? { ...actual, guardando: false } : actual));
+    }
+  };
+
+  const solicitarEliminacionBorrador = (borrador) => {
+    if (!borrador || generandoBorrador || eliminandoBorrador) return;
+    if (borrador.estado === 'CONFIRMADO') {
+      setToast('No se puede eliminar un borrador confirmado.');
+      return;
+    }
+    establecerBorradorPendienteEliminacion(borrador);
+  };
+
+  const confirmarEliminacionBorrador = async () => {
+    const borrador = borradorPendienteEliminacion;
+    if (!borrador) return;
+    establecerBorradorPendienteEliminacion(null);
+    establecerEliminandoBorrador(borrador.id_borrador);
+    try {
+      await eliminarBorradorPeriodo(
+        String(periodoSeleccionado),
+        borrador.id_borrador
+      );
+      const eraActual = borrador.id_borrador === Number(borradorSeleccionado);
+      const lista = await cargarBorradores();
+      if (eraActual) {
+        const siguiente = lista?.[0]?.id_borrador ?? null;
+        establecerBorradorSeleccionado(siguiente);
+      }
+      setToast('Borrador eliminado.');
+    } catch (error) {
+      setToast(`No se pudo eliminar el borrador: ${error.message}`);
+    } finally {
+      establecerEliminandoBorrador(null);
+    }
+  };
+
+  const hoyISO = convertirAFechaISO(new Date());
+  const inicioSemanaVisible = analizarFechaLocal(semanaInicio);
+  const finSemanaVisible = inicioSemanaVisible
+    ? convertirAFechaISO(agregarDias(inicioSemanaVisible, 6))
+    : '';
+  const hoyEstaEnSemanaVisible = Boolean(
+    hoyISO && semanaInicio && finSemanaVisible &&
+    hoyISO >= semanaInicio && hoyISO <= finSemanaVisible
+  );
+  const hoyEstaDentroDelPeriodo = Boolean(
+    (!inicioPeriodo || hoyISO >= inicioPeriodo) &&
+    (!finPeriodo || hoyISO <= finPeriodo)
+  );
+  const datePickerValue = hoyEstaEnSemanaVisible && hoyEstaDentroDelPeriodo
+    ? hoyISO
+    : limitesPeriodo.firstWeek && semanaInicio === limitesPeriodo.firstWeek && inicioPeriodo
+      ? inicioPeriodo
+      : limitesPeriodo.lastWeek && semanaInicio === limitesPeriodo.lastWeek && finPeriodo
+        ? finPeriodo
+        : semanaInicio;
 
   return (
-    <div className="weekly-schedule-container">
+    <div className="weekly-schedule-page">
+      <aside className="schedule-drafts-sidebar" aria-label="Borradores del periodo">
+        <div className="drafts-sidebar__header">
+          <div>
+            <span className="drafts-sidebar__kicker">Periodo {periodoSeleccionado}</span>
+            <h2>Borradores</h2>
+          </div>
+          <button
+            type="button"
+            className="drafts-new-button"
+            onClick={generandoBorrador ? cancelarGeneracion : generarOtroBorrador}
+            disabled={cancelandoGeneracion}
+            title={generandoBorrador ? 'Cancelar generación' : 'Generar un nuevo borrador del mismo periodo'}
+          >
+            <i
+              className={
+                cancelandoGeneracion
+                  ? 'fas fa-spinner fa-spin'
+                  : generandoBorrador
+                  ? 'fas fa-stop'
+                  : 'fas fa-plus'
+              }
+              aria-hidden="true"
+            />
+            {cancelandoGeneracion
+              ? 'Cancelando...'
+              : generandoBorrador
+              ? 'Cancelar'
+              : 'Nuevo'}
+          </button>
+        </div>
+
+        {generandoBorrador && (
+          <div className="drafts-progress" role="status">
+            <i className="fas fa-spinner fa-spin" aria-hidden="true" />
+            <span>{progresoGeneracion || 'Generando borrador...'}</span>
+            <div className="solver-progress">
+              <div
+                className="solver-progress__bar"
+                style={{ width: `${progresoSolver}%` }}
+              />
+            </div>
+            <span className="solver-progress__time">
+              Tiempo restante: {Math.floor(tiempoRestanteSolver / 60)} min{' '}
+              {Math.round(tiempoRestanteSolver % 60)} s
+            </span>
+            {hitoSolver && (
+              <span className="solver-progress__hito">{hitoSolver}</span>
+            )}
+          </div>
+        )}
+
+        {generandoBorrador && (
+          <div className="solver-steps" role="status">
+            {[
+              { clave: 'INICIANDO', texto: 'Conectando a la base de datos' },
+              { clave: 'VALIDANDO', texto: 'Validando la oferta académica' },
+              { clave: 'RESOLVIENDO', texto: 'Resolviendo el horario' },
+              { clave: 'GUARDANDO', texto: 'Guardando el borrador' },
+            ].map((paso) => {
+              const hitoActual = hitoSolver || 'INICIANDO';
+              const orden = ['INICIANDO', 'VALIDANDO', 'RESOLVIENDO', 'GUARDANDO'];
+              const indiceActual = orden.indexOf(hitoActual === 'EJECUTANDO' ? 'RESOLVIENDO' : hitoActual);
+              const indicePaso = orden.indexOf(paso.clave);
+              const estadoPaso =
+                indicePaso < indiceActual
+                  ? 'done'
+                  : indicePaso === indiceActual
+                  ? 'active'
+                  : 'pending';
+              return (
+                <div
+                  key={paso.clave}
+                  className={`solver-step solver-step--${estadoPaso}`}
+                >
+                  <span className="solver-step__icon">
+                    {estadoPaso === 'done' ? '✓' : estadoPaso === 'active' ? '●' : '○'}
+                  </span>
+                  <span>{paso.texto}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {generandoBorrador && lineasSolver.length > 0 && (
+          <details className="solver-log">
+            <summary>Ver detalles técnicos</summary>
+            <pre>{lineasSolver.join('\\n')}</pre>
+          </details>
+        )}
+
+        {cargandoBorradores ? (
+          <div className="drafts-empty">
+            <i className="fas fa-spinner fa-spin" aria-hidden="true" />
+            <span>Cargando borradores...</span>
+          </div>
+        ) : borradores.length === 0 ? (
+          <div className="drafts-empty">
+            <i className="far fa-folder-open" aria-hidden="true" />
+            <span>No hay borradores. Genera el primero.</span>
+          </div>
+        ) : (
+          <ul className="drafts-list">
+            {borradores.map((borrador) => {
+              const activo = borrador.id_borrador === Number(borradorSeleccionado);
+              const eliminando = eliminandoBorrador === borrador.id_borrador;
+              return (
+                <li
+                  key={borrador.id_borrador}
+                  className={`draft-item ${activo ? 'is-active' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className="draft-item__select"
+                    onClick={() => establecerBorradorSeleccionado(borrador.id_borrador)}
+                  >
+                    <span className="draft-item__name">{borrador.nombre}</span>
+                    <span className="draft-item__meta">
+                      {Number(borrador.total) || 0} bloques · {borrador.estado}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="draft-item__delete"
+                    onClick={() => solicitarEliminacionBorrador(borrador)}
+                    disabled={
+                      generandoBorrador ||
+                      eliminando ||
+                      borrador.estado === 'CONFIRMADO'
+                    }
+                    title={
+                      borrador.estado === 'CONFIRMADO'
+                        ? 'No se puede eliminar un borrador confirmado'
+                        : 'Eliminar borrador'
+                    }
+                  >
+                    <i
+                      className={
+                        eliminando
+                          ? 'fas fa-spinner fa-spin'
+                          : 'fas fa-trash-alt'
+                      }
+                      aria-hidden="true"
+                    />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <p className="drafts-sidebar__hint">
+          El ZIP descarga solo el borrador seleccionado.
+        </p>
+
+        {(sesionArrastrada && intervaloArrastre) || toast ? (
+          <section className="drafts-alerts" aria-label="Avisos" aria-live="polite">
+            <h3 className="drafts-alerts__title">
+              <i className="fas fa-bell" aria-hidden="true" />
+              Avisos
+            </h3>
+
+            {sesionArrastrada && intervaloArrastre && (
+              <article
+                className={[
+                  'drafts-alert',
+                  intervaloArrastre.valid ? 'drafts-alert--success' : 'drafts-alert--danger',
+                ].join(' ')}
+                role="status"
+              >
+                <header className="drafts-alert__header">
+                  <i
+                    className={intervaloArrastre.valid ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'}
+                    aria-hidden="true"
+                  />
+                  <span>{intervaloArrastre.valid ? 'Espacio disponible' : 'No disponible'}</span>
+                </header>
+                <p className="drafts-alert__when">
+                  {ETIQUETAS_DIAS[intervaloArrastre.day]} · {formatearHora(formatearHoraHorario(intervaloArrastre.slotMinutes))}
+                </p>
+                {intervaloArrastre.reasons?.length ? (
+                  <ul className="drafts-alert__list">
+                    {intervaloArrastre.reasons.map((motivo, indice) => (
+                      <li key={`${motivo.tipo || 'motivo'}-${indice}`}>{motivo.mensaje}</li>
+                    ))}
+                  </ul>
+                ) : intervaloArrastre.reason ? (
+                  <p className="drafts-alert__reason">{intervaloArrastre.reason}</p>
+                ) : null}
+              </article>
+            )}
+
+            {toast && (
+              <article className="drafts-alert drafts-alert--danger" role="status">
+                <header className="drafts-alert__header">
+                  <i className="fas fa-exclamation-circle" aria-hidden="true" />
+                  <span>Aviso</span>
+                  <button
+                    type="button"
+                    className="drafts-alert__close"
+                    aria-label="Cerrar notificación"
+                    onClick={() => setToast('')}
+                  >
+                    ×
+                  </button>
+                </header>
+                <p className="drafts-alert__reason">{toast}</p>
+              </article>
+            )}
+          </section>
+        ) : null}
+      </aside>
+
+      <div className="weekly-schedule-container">
       <header className="schedule-header">
         <div>
           <h1 className="schedule-title">
@@ -936,12 +1530,45 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
         </div>
 
         <div className="schedule-summary">
+          <button
+            type="button"
+            className="generate-draft-button"
+            onClick={generandoBorrador ? cancelarGeneracion : generarOtroBorrador}
+            disabled={cancelandoGeneracion}
+            title={generandoBorrador ? 'Cancelar generación' : 'Generar otro borrador del mismo periodo'}
+          >
+            <i
+              className={
+                cancelandoGeneracion
+                  ? 'fas fa-spinner fa-spin'
+                  : generandoBorrador
+                  ? 'fas fa-stop'
+                  : 'fas fa-plus'
+              }
+              aria-hidden="true"
+            />
+            {cancelandoGeneracion
+              ? 'Cancelando...'
+              : generandoBorrador
+              ? 'Cancelar'
+              : 'Generar borrador'}
+          </button>
+          <button
+            type="button"
+            className="export-schedule-button"
+            onClick={descargarZipHorarios}
+            disabled={descargandoZip || generandoBorrador || !borradorSeleccionado}
+            title="Descargar el ZIP del borrador actual"
+          >
+            <i className={descargandoZip ? 'fas fa-spinner fa-spin' : 'fas fa-file-archive'} aria-hidden="true" />
+            {descargandoZip ? 'Generando ZIP…' : 'Descargar ZIP'}
+          </button>
           <div className="schedule-state" role="group" aria-label="Estado del horario">
             <button
               type="button"
               className={`state-button ${estadoHorario === 'BORRADOR' ? 'is-active' : ''}`}
               onClick={() => manejarCambioEstadoHorario('BORRADOR')}
-              disabled={changingState}
+              disabled={changingState || generandoBorrador}
             >
               Borrador
             </button>
@@ -949,7 +1576,7 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
               type="button"
               className={`state-button ${estadoHorario === 'CONFIRMADO' ? 'is-active' : ''}`}
               onClick={() => manejarCambioEstadoHorario('CONFIRMADO')}
-              disabled={changingState}
+              disabled={changingState || generandoBorrador}
             >
               Confirmado
             </button>
@@ -974,22 +1601,22 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
         <div className="toolbar-group">
           <label className="toolbar-field toolbar-field--wide" htmlFor="carrera-select">
             <span>1. Seleccionar Carrera</span>
-            <select id="carrera-select" valor={carreraSeleccionada} onChange={cambiarCarreraSeleccionada}>
-              {carreras.map((c) => (<option key={c} valor={c}>{c}</option>))}
+            <select id="carrera-select" value={carreraSeleccionada} onChange={cambiarCarreraSeleccionada}>
+              {carreras.map((c) => (<option key={c} value={c}>{c}</option>))}
             </select>
           </label>
 
           <label className="toolbar-field" htmlFor="semestre-select">
             <span>2. Seleccionar Semestre</span>
-            <select id="semestre-select" valor={semestreSeleccionado} onChange={cambiarSemestreSeleccionado}>
-              {semestres.map((s) => (<option key={s} valor={s}>{s}</option>))}
+            <select id="semestre-select" value={semestreSeleccionado} onChange={cambiarSemestreSeleccionado}>
+              {semestres.map((s) => (<option key={s} value={s}>{s}</option>))}
             </select>
           </label>
 
           <label className="toolbar-field" htmlFor="bloque-select">
             <span>3. Seleccionar Bloque</span>
-            <select id="bloque-select" valor={bloqueSeleccionado} onChange={(e) => establecerSeleccionadoBloque(e.target.value)}>
-              {bloques.map((b) => (<option key={b} valor={b}>{b}</option>))}
+            <select id="bloque-select" value={bloqueSeleccionado} onChange={(e) => establecerSeleccionadoBloque(e.target.value)}>
+              {bloques.map((b) => (<option key={b} value={b}>{b}</option>))}
             </select>
           </label>
 
@@ -1015,9 +1642,9 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
             <input
               type="date"
               className="week-date-input"
-              valor={datePickerValue}
-              minimo={inicioPeriodo || undefined}
-              maximo={finPeriodo || undefined}
+              value={datePickerValue}
+              min={inicioPeriodo || undefined}
+              max={finPeriodo || undefined}
               onChange={seleccionarFecha}
               aria-label="Elegir una fecha del periodo"
             />
@@ -1057,33 +1684,9 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
       )}
 
       <div className="schedule-grid-wrapper">
-        {toast && (
-          <div className="schedule-toast" role="status" aria-live="polite">
-            <i className="fas fa-exclamation-circle" aria-hidden="true" />
-            <span>{toast}</span>
-            <button type="button" aria-label="Cerrar notificación" onClick={() => setToast('')}>
-              ×
-            </button>
-          </div>
-        )}
         {savingMove && (
           <div className="schedule-saving" role="status" aria-live="polite">
             Guardando el cambio de horario…
-          </div>
-        )}
-        {sesionArrastrada && intervaloArrastre && (
-          <div
-            className={`drop-feedback ${intervaloArrastre.valid ? 'is-valid' : 'is-invalid'}`}
-            role="status"
-            aria-live="polite"
-          >
-            <strong>
-              {intervaloArrastre.valid ? 'Espacio disponible' : 'No disponible'}
-            </strong>
-            <span>
-              {ETIQUETAS_DIAS[intervaloArrastre.day]} · {formatearHora(formatearHoraHorario(intervaloArrastre.slotMinutes))}
-              {intervaloArrastre.reason ? ` — ${intervaloArrastre.reason}` : ''}
-            </span>
           </div>
         )}
         <div className="schedule-grid" style={{ gridTemplateColumns: `68px repeat(7, minmax(148px, 1fr))`, gridTemplateRows: `48px repeat(${intervalosHorario.length}, ${ALTURA_INTERVALO}px)` }}>
@@ -1184,6 +1787,7 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
                 onDragEnd={finalizarArrastre}
                 onDragOver={handleCardDragOver}
                 onDrop={handleCardDrop}
+                onDoubleClick={() => abrirModalAula(sesion)}
                 estaArrastrando={sesionArrastrada?.key === sesion.key}
                 estaSobre={intervaloArrastre?.day === diaInformacion.day}
                 movimientoValido={intervaloArrastre?.valid}
@@ -1246,6 +1850,89 @@ function CuadriculaSemanalHorarios({ periodo = 202620 }) {
           </div>
         </section>
       </footer>
+    </div>
+    {borradorPendienteEliminacion && (
+      <div className="delete-modal-overlay" role="dialog" aria-modal="true">
+        <div className="delete-modal">
+          <h3>Eliminar borrador</h3>
+          <p>
+            ¿Eliminar <strong>{borradorPendienteEliminacion.nombre}</strong>? Esta
+            acción no se puede deshacer.
+          </p>
+          <div className="delete-modal__actions">
+            <button
+              type="button"
+              className="delete-modal__cancel"
+              onClick={() => establecerBorradorPendienteEliminacion(null)}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="delete-modal__confirm"
+              onClick={confirmarEliminacionBorrador}
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {aulaModal && (
+      <div className="delete-modal-overlay" role="dialog" aria-modal="true">
+        <div className="delete-modal">
+          <h3>Cambiar aula</h3>
+          <p>
+            Selecciona el aula para{' '}
+            <strong>{aulaModal.sesion.nombre_curso || aulaModal.sesion.mat_cur}</strong>.
+          </p>
+          <select
+            value={aulaModal.seleccionada}
+            onChange={(e) =>
+              establecerAulaModal((actual) =>
+                actual ? { ...actual, seleccionada: Number(e.target.value) } : actual
+              )
+            }
+            style={{ width: '100%', padding: '8px', marginBottom: '16px' }}
+          >
+            {aulaModal.aulas.map((aula) => (
+              <option
+                key={aula.id}
+                value={aula.id}
+                disabled={!aula.disponible}
+                style={{ color: aula.disponible ? undefined : '#dc2626' }}
+              >
+                {aula.codigo_ambiente}
+                {aula.disponible ? '' : ' (ocupada)'}
+              </option>
+            ))}
+          </select>
+          <div className="delete-modal__actions">
+            <button
+              type="button"
+              className="delete-modal__cancel"
+              onClick={() => establecerAulaModal(null)}
+              disabled={aulaModal.guardando}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="delete-modal__confirm"
+              onClick={confirmarCambioAula}
+              disabled={
+                aulaModal.guardando ||
+                !aulaModal.aulas.find((aula) => aula.id === aulaModal.seleccionada)
+                  ?.disponible
+              }
+            >
+              {aulaModal.guardando ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }

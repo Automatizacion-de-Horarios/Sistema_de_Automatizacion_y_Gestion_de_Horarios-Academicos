@@ -16,6 +16,13 @@ algoritmo_python/__pycache__/
 # Código y datos locales que no se suben al repositorio
 legacy/
 
+# Artefactos generados por la exportación de horarios
+horarios_generados/
+
+# Entornos virtuales de Python del solver
+.venv/
+venv/
+
 __pycache__
 
 # Entorno virtual del solver

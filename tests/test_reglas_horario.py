@@ -719,12 +719,19 @@ class PruebasPersistenciaFiltrada(unittest.TestCase):
                 self.calls.append(("contar", periodo))
                 return 12
 
+            def crear_borrador(self, periodo, nombre=None, *, confirmar=True):
+                self.calls.append(("crear_borrador", periodo, confirmar))
+                return 999
+
+            def validar_borrador(self, id_borrador, periodo):
+                self.calls.append(("validar_borrador", id_borrador, periodo))
+
             def borrar_borradores_programaciones(self, periodo, ids):
                 self.calls.append(("borrar_filtrado", periodo, ids))
                 return 4
 
-            def insertar_horarios(self, filas, *, confirmar=True):
-                self.calls.append(("insertar", len(filas), confirmar))
+            def insertar_horarios(self, filas, *, id_borrador=None, confirmar=True):
+                self.calls.append(("insertar", len(filas), id_borrador, confirmar))
                 return len(filas)
 
             def commit(self):
@@ -744,7 +751,7 @@ class PruebasPersistenciaFiltrada(unittest.TestCase):
 
         self.assertEqual(insertados, 2)
         self.assertIn(("borrar_filtrado", 1, {21, 22}), repo.calls)
-        self.assertIn(("insertar", 2, False), repo.calls)
+        self.assertIn(("insertar", 2, 999, False), repo.calls)
         self.assertIn(("commit",), repo.calls)
         self.assertNotIn(("borrar_global", 1), repo.calls)
 

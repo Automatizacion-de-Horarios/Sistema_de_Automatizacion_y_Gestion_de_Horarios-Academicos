@@ -128,46 +128,56 @@ def guardar_horario(
     filas: list[dict[str, Any]],
     *,
     id_periodo: int,
+    id_borrador: int | None = None,
     reemplazar_borradores: bool = False,
     reemplazar_programaciones: set[int] | None = None,
 ) -> int:
-    """Inserta las filas en estado BORRADOR.
+    """Inserta las filas en estado BORRADOR dentro de un borrador.
 
-    Por seguridad, si ya existen borradores del periodo se aborta salvo que se
-    solicite explícitamente reemplazarlos. El borrado y la inserción comparten
-    la misma transacción de MySQL.
+    Si `id_borrador` se indica, las filas se agregan a ese borrador y no se
+    exige reemplazar los demás. Si no se indica, se crea un borrador nuevo
+    dentro de la misma transacción. Por seguridad, sin `id_borrador` se aborta
+    cuando ya hay borradores del periodo, salvo que se solicite reemplazarlos.
     """
     if not filas:
         raise ErrorDatos("No hay filas de horario para guardar.")
 
+    if id_borrador is not None and (
+        reemplazar_borradores or reemplazar_programaciones is not None
+    ):
+        raise ErrorDatos(
+            "Un borrador específico no se puede combinar con los modos de "
+            "reemplazo de borradores."
+        )
     if reemplazar_borradores and reemplazar_programaciones is not None:
         raise ErrorDatos(
             "No se puede combinar el reemplazo global de borradores con el "
             "reemplazo limitado a programaciones."
         )
 
-    existentes = repo.contar_borradores(id_periodo)
-    if (
-        existentes
-        and not reemplazar_borradores
-        and reemplazar_programaciones is None
-    ):
-        raise ErrorDatos(
-            f"El periodo {id_periodo} ya tiene {existentes} bloques en estado "
-            "BORRADOR. Ejecute con --reemplazar-borradores para sustituirlos."
-        )
+    if id_borrador is not None:
+        repo.validar_borrador(id_borrador, id_periodo)
+    else:
+        existentes = repo.contar_borradores(id_periodo)
+        if (
+            existentes
+            and not reemplazar_borradores
+            and reemplazar_programaciones is None
+        ):
+            raise ErrorDatos(
+                f"El periodo {id_periodo} ya tiene {existentes} bloques en estado "
+                "BORRADOR. Ejecute con --reemplazar-borradores para sustituirlos."
+            )
     if reemplazar_programaciones is not None and not reemplazar_programaciones:
         raise ErrorDatos(
             "No se recibieron programaciones para reemplazar borradores filtrados."
         )
 
     try:
-        if reemplazar_borradores and existentes:
+        if reemplazar_borradores and repo.contar_borradores(id_periodo):
             eliminados = repo.borrar_borradores(id_periodo)
             log.info("Borradores reemplazados: %d filas.", eliminados)
-            insertados = repo.insertar_horarios(filas, confirmar=False)
-            repo.conn.commit()
-        elif reemplazar_programaciones is not None:
+        if reemplazar_programaciones is not None:
             eliminados = repo.borrar_borradores_programaciones(
                 id_periodo, reemplazar_programaciones
             )
@@ -177,15 +187,26 @@ def guardar_horario(
                 len(reemplazar_programaciones),
                 eliminados,
             )
-            insertados = repo.insertar_horarios(filas, confirmar=False)
-            repo.conn.commit()
-        else:
-            insertados = repo.insertar_horarios(filas)
+
+        if id_borrador is None:
+            id_borrador = repo.crear_borrador(id_periodo, confirmar=False)
+            log.info("Borrador nuevo creado: %d.", id_borrador)
+
+        insertados = repo.insertar_horarios(
+            filas,
+            id_borrador=id_borrador,
+            confirmar=False,
+        )
+        repo.conn.commit()
     except Exception:
         try:
             repo.conn.rollback()
         except Exception:  # pragma: no cover - cierre defensivo
             pass
         raise
-    log.info("Horario guardado: %d filas en estado BORRADOR.", insertados)
+    log.info(
+        "Horario guardado: %d filas en estado BORRADOR (borrador %d).",
+        insertados,
+        id_borrador,
+    )
     return insertados

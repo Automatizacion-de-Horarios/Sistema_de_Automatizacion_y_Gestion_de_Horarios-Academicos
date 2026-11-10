@@ -352,6 +352,58 @@ class Repositorio:
     # Escritura del resultado
     # ------------------------------------------------------------------
 
+    def crear_borrador(
+        self,
+        id_periodo: int,
+        nombre: str | None = None,
+        *,
+        confirmar: bool = True,
+    ) -> int:
+        """Crea un borrador nuevo y devuelve su ID.
+
+        La generación del nombre es secuencial por periodo. Si `confirmar` es
+        falso, la inserción queda dentro de la transacción abierta para que el
+        guardado completo pueda confirmarse o revertirse junto con las filas.
+        """
+        with self.conn.cursor() as cur:
+            nombre_final = (nombre or "").strip()
+            if not nombre_final:
+                cur.execute(
+                    "SELECT nombre FROM horarios_borradores WHERE id_periodo = %s",
+                    (id_periodo,),
+                )
+                usados = {
+                    str(fila.get("nombre") or "")
+                    for fila in cur.fetchall()
+                }
+                consecutivo = 1
+                while f"Borrador {consecutivo}" in usados:
+                    consecutivo += 1
+                nombre_final = f"Borrador {consecutivo}"
+
+            cur.execute(
+                "INSERT INTO horarios_borradores (id_periodo, nombre, estado) "
+                "VALUES (%s, %s, 'BORRADOR')",
+                (id_periodo, nombre_final),
+            )
+            id_borrador = int(cur.lastrowid)
+        if confirmar:
+            self.conn.commit()
+        return id_borrador
+
+    def validar_borrador(self, id_borrador: int, id_periodo: int) -> None:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "SELECT id_borrador FROM horarios_borradores "
+                "WHERE id_borrador = %s AND id_periodo = %s",
+                (id_borrador, id_periodo),
+            )
+            if cur.fetchone() is None:
+                raise ErrorDatos(
+                    f"El borrador {id_borrador} no existe para el periodo "
+                    f"{id_periodo}."
+                )
+
     def contar_borradores(self, id_periodo: int) -> int:
         with self.conn.cursor() as cur:
             cur.execute(
@@ -388,23 +440,44 @@ class Repositorio:
             return int(cur.rowcount or 0)
 
     def insertar_horarios(
-        self, filas: list[dict[str, Any]], *, confirmar: bool = True
+        self,
+        filas: list[dict[str, Any]],
+        *,
+        id_borrador: int | None = None,
+        confirmar: bool = True,
     ) -> int:
         if not filas:
             return 0
-        sql = """
-            INSERT INTO horarios_generados
-                (id_periodo, id_programacion, id_ambiente, id_docente,
-                 tipo_modalidad, dia_semana, hora_inicio, hora_fin,
-                 semana_inicio, semana_fin, estado)
-            VALUES
-                (%(id_periodo)s, %(id_programacion)s, %(id_ambiente)s, %(id_docente)s,
-                 %(tipo_modalidad)s, %(dia_semana)s, %(hora_inicio)s, %(hora_fin)s,
-                 %(semana_inicio)s, %(semana_fin)s, 'BORRADOR')
-        """
+        if id_borrador is not None:
+            sql = """
+                INSERT INTO horarios_generados
+                    (id_borrador, id_periodo, id_programacion, id_ambiente,
+                     id_docente, tipo_modalidad, dia_semana, hora_inicio,
+                     hora_fin, semana_inicio, semana_fin, estado)
+                VALUES
+                    (%(id_borrador)s, %(id_periodo)s, %(id_programacion)s,
+                     %(id_ambiente)s, %(id_docente)s, %(tipo_modalidad)s,
+                     %(dia_semana)s, %(hora_inicio)s, %(hora_fin)s,
+                     %(semana_inicio)s, %(semana_fin)s, 'BORRADOR')
+            """
+            filas_insertar = [
+                {**fila, "id_borrador": id_borrador} for fila in filas
+            ]
+        else:
+            sql = """
+                INSERT INTO horarios_generados
+                    (id_periodo, id_programacion, id_ambiente, id_docente,
+                     tipo_modalidad, dia_semana, hora_inicio, hora_fin,
+                     semana_inicio, semana_fin, estado)
+                VALUES
+                    (%(id_periodo)s, %(id_programacion)s, %(id_ambiente)s, %(id_docente)s,
+                     %(tipo_modalidad)s, %(dia_semana)s, %(hora_inicio)s, %(hora_fin)s,
+                     %(semana_inicio)s, %(semana_fin)s, 'BORRADOR')
+            """
+            filas_insertar = filas
         try:
             with self.conn.cursor() as cur:
-                cur.executemany(sql, filas)
+                cur.executemany(sql, filas_insertar)
             if confirmar:
                 self.conn.commit()
             return len(filas)
